@@ -80,7 +80,8 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 - 2,242 prediction stations are subordinate (`type: "S"`): they return high/low only, and a 6-minute request returns an error. A curve for these has to be interpolated and labeled as such.
 - 9411340 Santa Barbara is harmonic and observing, and is the nearest station of both kinds to Campus Point (8.6 mi). 9411399 Gaviota State Park is harmonic with no observations; its nearest observing station is Santa Barbara, 31 mi away.
 - Three months of high/low is one 18 KB request; one month at 6-minute resolution is 7,440 points.
-- Observed data is preliminary (`q: "p"`). Use `datum=MLLW`, `units=english`, `time_zone=lst_ldt` for both products so they are comparable.
+- Observed data is preliminary (`q: "p"`). Use `datum=MLLW`, `units=english`, `time_zone=gmt` for both products so they are comparable. Request GMT and convert for display: station-local timestamps (`lst_ldt`) carry no offset and are ambiguous in the repeated hour of a clock change.
+- A 14-day predicted curve at 6-minute resolution is one request: 136 KB as JSON, 20 KB gzipped.
 - Responses carry `cache-control: no-store`, so any caching of tide data is ours to do. Predictions for a given date do not change.
 
 **Open-Meteo** — second source for days 8 to 10. Its `ncep_nbm_conus` model (NOAA National Blend, 2.5 km) returns 11 days. Free for non-commercial use with attribution.
@@ -89,6 +90,6 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 
 ## Next Steps
 
-- Stage 1 (Campus Point): design awaiting Nico's approval, then spec, implementation plan, build.
+- Stage 1 (Campus Point): design approved 2026-10-08. Spec is `docs/superpowers/specs/2026-10-08-stage-1-campus-point-design.md`; the implementation plan is under `docs/superpowers/plans/`. Nico reviews both before any code, then Stage 1 is built as four pull requests.
 - The first user: confirm or correct the provisional decisions above, and answer the sharing question.
 - Everything after Stage 1 is tracked as GitHub issues, in provisional order.
