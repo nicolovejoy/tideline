@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { astroForDays, dayAstro } from './astro.ts'
 import { USNO_CAMPUS_POINT } from './__fixtures__/usno-campus-point.ts'
 import { CAMPUS_POINT } from '../spot.ts'
+import { formatTime } from '../time.ts'
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
@@ -89,6 +90,36 @@ describe('moonrise near sunset', () => {
     const day = dayAstro(CAMPUS_POINT, '2026-10-25')
     expect(Math.abs(day.moonriseNearSunset! - day.moonrise!)).toBeLessThan(1000)
   })
+})
+
+describe('to the minute', () => {
+  const zone = CAMPUS_POINT.timeZone
+
+  // The Observatory rounds to the nearest minute. Showing 6:33 PM for a
+  // sunset at 6:33:43 would disagree with it on about half of all days.
+  test.each(USNO_CAMPUS_POINT)(
+    '$date: shows the same minute as the Observatory',
+    (row) => {
+      const day = dayAstro(CAMPUS_POINT, row.date)
+      expect(formatTime(day.sunset!, zone)).toBe(
+        formatTime(usnoInstant(row.date, row.sunset, row.utcOffset), zone),
+      )
+      if (row.moonrise !== null) {
+        expect(formatTime(day.moonrise!, zone)).toBe(
+          formatTime(usnoInstant(row.date, row.moonrise, row.utcOffset), zone),
+        )
+      }
+    },
+  )
+
+  test.each(['2026-10-25', '2026-10-28'])(
+    "%s: the flagged moonrise and the day's moonrise are one instant",
+    (date) => {
+      // Two separate searches for one event could print as different minutes.
+      const day = dayAstro(CAMPUS_POINT, date)
+      expect(day.moonriseNearSunset).toBe(day.moonrise)
+    },
+  )
 })
 
 describe('moon phase', () => {
