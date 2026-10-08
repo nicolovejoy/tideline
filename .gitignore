@@ -1,4 +1,10 @@
 # Personal context about people. Never commit.
 private/
 
+node_modules
+dist
+*.local
+.vercel
+*.log
 .DS_Store
+.env*

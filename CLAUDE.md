@@ -4,9 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-No code yet. The stack was approved on 2026-10-08 and nothing is scaffolded. There are no build, lint, or test commands; add them here when the project is scaffolded.
+Stage 1 is in progress. The scaffold and tooling are in place; `docs/superpowers/plans/` says what is built and what is next.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
+
+## Commands
+
+Node 24 (`.nvmrc`). In a fresh shell: `source ~/.nvm/nvm.sh && nvm use`.
+
+- `npm run dev`: dev server at http://localhost:5173
+- `npm run build`: type-check, then build to `dist/`
+- `npm run lint`: oxlint, then a Prettier check
+- `npm run format`: rewrite files with Prettier
+- `npm test`: run all tests once
+- `npx vitest run src/time.test.ts`: one test file
+- `npx vitest run -t "25 hours"`: tests whose name matches
+
+Tests run with `TZ=Asia/Tokyo` (set in `vite.config.ts`), so code that leans on the viewer's time zone instead of the spot's fails.
+
+Code style is the Vite template's: no semicolons, single quotes, relative imports carry their `.ts`/`.tsx` extension, type-only imports use `import type`, no enums.
 
 ## What this is
 
