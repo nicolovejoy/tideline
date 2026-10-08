@@ -75,10 +75,22 @@ function instant(gmt: string): number {
   return Date.UTC(year, month - 1, day, hour, minute)
 }
 
+/**
+ * NOAA sends values as text, and a gauge outage shows up as rows with an empty
+ * value. A blank, or anything else that is not a number, is not a reading:
+ * the row is dropped. Read as a number, a blank would become 0 ft.
+ */
+function hasValue(row: NoaaRow): boolean {
+  return (
+    typeof row.v === 'string' &&
+    row.v.trim() !== '' &&
+    Number.isFinite(Number(row.v))
+  )
+}
+
 function points(list: NoaaRow[]): TidePoint[] {
-  // A gauge outage shows up as rows with an empty value.
   return list
-    .filter((row) => row.v !== '')
+    .filter(hasValue)
     .map((row) => ({ t: instant(row.t), ft: Number(row.v) }))
 }
 
@@ -88,7 +100,7 @@ export function parsePredictions(json: unknown): TidePoint[] {
 
 export function parseHiLo(json: unknown): TideExtreme[] {
   return rows(json, 'predictions')
-    .filter((row) => row.v !== '')
+    .filter(hasValue)
     .map((row): TideExtreme => ({
       t: instant(row.t),
       ft: Number(row.v),
