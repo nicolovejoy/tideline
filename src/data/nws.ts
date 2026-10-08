@@ -31,7 +31,7 @@ interface LayerSpec {
 
 interface GridLayer {
   uom?: string
-  values: { validTime: string; value: number | null }[]
+  values?: { validTime: string; value?: number | null }[]
 }
 
 const HOUR = 3_600_000
@@ -105,14 +105,17 @@ export function parseGridpoint(json: unknown): Forecast {
   for (const field of Object.keys(LAYERS) as Field[]) {
     const spec = LAYERS[field]
     const layer = properties[spec.layer] as GridLayer | undefined
-    if (!layer) continue
+    // NWS sends a layer it has no data for as { values: [] } with no unit.
+    if (!layer || !Array.isArray(layer.values) || layer.values.length === 0) {
+      continue
+    }
     if (layer.uom !== spec.unit) {
       throw new Error(
         `NWS: ${spec.layer} is in ${layer.uom}, expected ${spec.unit}`,
       )
     }
     for (const { validTime, value } of layer.values) {
-      if (value === null) continue
+      if (typeof value !== 'number') continue
       // validTime is a start and a duration: '2026-10-08T08:00:00+00:00/PT3H'
       const [startText, duration] = validTime.split('/')
       const start = Date.parse(startText)

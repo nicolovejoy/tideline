@@ -158,6 +158,42 @@ describe('parseGridpoint', () => {
   })
 })
 
+describe('parseGridpoint with gaps in the data', () => {
+  test('a layer that arrives empty leaves its field null and the rest intact', () => {
+    const body = sample()
+    // NWS sends layers it has no data for in exactly this shape: no unit.
+    body.properties.windGust = { values: [] }
+    const { hours } = parseGridpoint(body)
+    expect(hours.map((h) => h.gustMph)).toEqual([null, null, null])
+    expect(hours[0].tempF).toBeCloseTo(68, 5)
+  })
+
+  test('a null in a layer that gets converted stays null, not a converted zero', () => {
+    const body = sample()
+    body.properties.temperature = {
+      uom: 'wmoUnit:degC',
+      values: [{ validTime: '2026-10-08T08:00:00+00:00/PT3H', value: null }],
+    }
+    body.properties.windSpeed = {
+      uom: 'wmoUnit:km_h-1',
+      values: [{ validTime: '2026-10-08T08:00:00+00:00/PT3H', value: null }],
+    }
+    const { hours } = parseGridpoint(body)
+    expect(hours.map((h) => h.tempF)).toEqual([null, null, null])
+    expect(hours.map((h) => h.windMph)).toEqual([null, null, null])
+  })
+
+  test('an entry with no value at all is null, never NaN', () => {
+    const body = sample()
+    body.properties.temperature = {
+      uom: 'wmoUnit:degC',
+      values: [{ validTime: '2026-10-08T08:00:00+00:00/PT3H' }],
+    }
+    const { hours } = parseGridpoint(body)
+    expect(hours.map((h) => h.tempF)).toEqual([null, null, null])
+  })
+})
+
 describe('fetchForecast', () => {
   test('requests the cell and parses the body', async () => {
     const fetchMock = vi.fn(
