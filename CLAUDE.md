@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Stage 1 is in progress. The scaffold and tooling are in place; `docs/superpowers/plans/` says what is built and what is next.
+Stage 1 is in progress.
+
+- Built: the scaffold, tooling and CI, and the data layer under `src/` (`time.ts`, `data/noaa.ts`, `data/nws.ts`, `data/astro.ts`, `data/cache.ts`), each with tests beside it.
+- Not built: the screen. It needs its own plan; `docs/superpowers/plans/2026-10-08-stage-1-foundation-and-data.md` ends with what to carry into it.
+- The page is still a placeholder that shows the spot name.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
 
