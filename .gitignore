@@ -1,0 +1,4 @@
+# Personal context about people. Never commit.
+private/
+
+.DS_Store
