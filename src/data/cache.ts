@@ -26,9 +26,29 @@ function storageKey(spotId: string, source: Source): string {
   return `tideline:v1:${spotId}:${source}`
 }
 
+function isSpan(value: unknown): value is Span {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'start' in value &&
+    typeof value.start === 'number' &&
+    'end' in value &&
+    typeof value.end === 'number'
+  )
+}
+
+/**
+ * The saved entry for a source, or null if there is none worth using.
+ *
+ * `isData` says what the caller's data looks like. An entry that fails it, or
+ * whose envelope is malformed, is treated as nothing saved, so it is fetched
+ * again. That is what stops a leftover from an older version of the app, or a
+ * damaged entry, from breaking every open.
+ */
 export function readCache<T>(
   spotId: string,
   source: Source,
+  isData: (data: unknown) => data is T,
 ): CacheEntry<T> | null {
   try {
     const text = localStorage.getItem(storageKey(spotId, source))
@@ -40,11 +60,13 @@ export function readCache<T>(
       !('fetchedAt' in entry) ||
       typeof entry.fetchedAt !== 'number' ||
       !('span' in entry) ||
-      !('data' in entry)
+      !(entry.span === null || isSpan(entry.span)) ||
+      !('data' in entry) ||
+      !isData(entry.data)
     ) {
       return null
     }
-    return entry as CacheEntry<T>
+    return { fetchedAt: entry.fetchedAt, span: entry.span, data: entry.data }
   } catch {
     // Storage is disabled, or the entry is not valid JSON.
     return null

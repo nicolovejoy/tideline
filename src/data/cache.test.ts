@@ -7,6 +7,13 @@ const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
 const NOW = Date.UTC(2026, 9, 8, 17)
 const WINDOW = { start: Date.UTC(2026, 9, 8, 7), end: Date.UTC(2026, 9, 22, 7) }
+const KEY = 'tideline:v1:campus-point:forecast'
+
+// The checks a caller hands to readCache to say what its data looks like.
+const isNumbers = (data: unknown): data is number[] =>
+  Array.isArray(data) && data.every((n) => typeof n === 'number')
+const isText = (data: unknown): data is string => typeof data === 'string'
+const anything = (_data: unknown): _data is unknown => true
 
 function fakeStorage(initial: Record<string, string> = {}): Storage {
   const items = new Map(Object.entries(initial))
@@ -47,7 +54,7 @@ describe('readCache and writeCache', () => {
       data: [1, 2, 3],
     }
     writeCache('campus-point', 'predictions', entry)
-    expect(readCache<number[]>('campus-point', 'predictions')).toEqual(entry)
+    expect(readCache('campus-point', 'predictions', isNumbers)).toEqual(entry)
   })
 
   test('sources and spots do not overwrite each other', () => {
@@ -67,22 +74,19 @@ describe('readCache and writeCache', () => {
       span: null,
       data: 'c',
     })
-    expect(readCache<string>('campus-point', 'forecast')?.data).toBe('a')
-    expect(readCache<string>('campus-point', 'observed')?.data).toBe('b')
-    expect(readCache<string>('elsewhere', 'forecast')?.data).toBe('c')
+    expect(readCache('campus-point', 'forecast', isText)?.data).toBe('a')
+    expect(readCache('campus-point', 'observed', isText)?.data).toBe('b')
+    expect(readCache('elsewhere', 'forecast', isText)?.data).toBe('c')
   })
 
   test('nothing saved reads as null', () => {
     vi.stubGlobal('localStorage', fakeStorage())
-    expect(readCache('campus-point', 'forecast')).toBeNull()
+    expect(readCache('campus-point', 'forecast', anything)).toBeNull()
   })
 
   test('a corrupt entry reads as null', () => {
-    vi.stubGlobal(
-      'localStorage',
-      fakeStorage({ 'tideline:v1:campus-point:forecast': '{not json' }),
-    )
-    expect(readCache('campus-point', 'forecast')).toBeNull()
+    vi.stubGlobal('localStorage', fakeStorage({ [KEY]: '{not json' }))
+    expect(readCache('campus-point', 'forecast', anything)).toBeNull()
   })
 
   test.each([
@@ -91,17 +95,35 @@ describe('readCache and writeCache', () => {
     '5',
     'null',
     '"text"',
+    // No span, or no data.
+    '{"fetchedAt":1,"data":[]}',
+    '{"fetchedAt":1,"span":null}',
+    // A span that is not a pair of instants. Accepted as it stood, this one
+    // made predictions look fresh for ever, so they were never fetched again.
+    '{"fetchedAt":1,"span":"oops","data":[]}',
+    '{"fetchedAt":1,"span":{},"data":[]}',
+    '{"fetchedAt":1,"span":{"start":"a","end":2},"data":[]}',
   ])('an entry with the wrong shape reads as null: %s', (saved) => {
+    vi.stubGlobal('localStorage', fakeStorage({ [KEY]: saved }))
+    expect(readCache('campus-point', 'forecast', anything)).toBeNull()
+  })
+
+  test("data that fails the caller's check reads as null", () => {
+    // What an entry saved by an older version of the app would look like.
     vi.stubGlobal(
       'localStorage',
-      fakeStorage({ 'tideline:v1:campus-point:forecast': saved }),
+      fakeStorage({
+        [KEY]: '{"fetchedAt":1,"span":null,"data":[{"time":1,"feet":2}]}',
+      }),
     )
-    expect(readCache('campus-point', 'forecast')).toBeNull()
+    expect(readCache('campus-point', 'forecast', isNumbers)).toBeNull()
+    // The same entry is fine for a caller that accepts it.
+    expect(readCache('campus-point', 'forecast', anything)).not.toBeNull()
   })
 
   test('with storage disabled, reading gives null and writing does nothing', () => {
     vi.stubGlobal('localStorage', brokenStorage())
-    expect(readCache('campus-point', 'forecast')).toBeNull()
+    expect(readCache('campus-point', 'forecast', anything)).toBeNull()
     expect(() =>
       writeCache('campus-point', 'forecast', {
         fetchedAt: NOW,
@@ -113,7 +135,7 @@ describe('readCache and writeCache', () => {
 
   test('with no localStorage at all, reading gives null and writing does nothing', () => {
     // The test environment has no localStorage unless one is stubbed.
-    expect(readCache('campus-point', 'forecast')).toBeNull()
+    expect(readCache('campus-point', 'forecast', anything)).toBeNull()
     expect(() =>
       writeCache('campus-point', 'forecast', {
         fetchedAt: NOW,
