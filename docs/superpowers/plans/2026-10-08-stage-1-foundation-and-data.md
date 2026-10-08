@@ -658,7 +658,7 @@ export function formatTime(t: number, timeZone: string): string {
     hour12: true,
   }).format(t)
   // Some browsers put a narrow no-break space before AM/PM. Use a plain one.
-  return text.replace(/ /g, ' ')
+  return text.replace(/\u202f/g, ' ')
 }
 ```
 
@@ -2216,3 +2216,29 @@ Expected: the `check` job passes. Report the pull request URL to the owner and w
 ## After this plan
 
 Pull requests 3 and 4 build the screen on these modules: the loading hook, the tonight strip, the panels with their shared cursor, the high/low table, the day list, failure states, and the manifest and icons. They get their own plan, written against the merged data layer.
+
+### What changed after this plan was executed
+
+An independent review of the finished branch led to four changes, so the code blocks above for `nws.ts`, `astro.ts`, `cache.ts` and `formatTime` are not the final code. The repository is.
+
+- `parseGridpoint` skips a layer that arrives empty and an entry with no value.
+- `dayAstro` rounds sunset and moonrise to the nearest minute, and the flagged moonrise reuses the day's own moonrise.
+- `readCache` takes a third argument, the caller's check for its data, and validates the span.
+- `formatTime` is assembled from parts and no longer contains an invisible character.
+
+### Carried into the screen plan
+
+Found during execution and review. None is handled yet.
+
+- `time.ts` has no date or weekday formatter, and it is the only module allowed to know zones. The day list needs one.
+- The loading hook must supply `readCache` with a check for each source's data shape.
+- The hook should not save an empty prediction result: with a covering span it would look fresh until the next day.
+- Nothing refreshes while the page stays open and visible. The spec only checks staleness on open and on becoming visible.
+- The fetch functions take no `AbortSignal` and have no timeout, so a hung request on a weak connection cannot be cancelled.
+- A forecast hour can be partly filled. On the last day inside the horizon the sunset-hour record had no temperature but did have wind, cloud and rain, so every readout must render a missing field.
+- The forecast grid's first hour is partway through the day it was issued, so today's weather panels start partway across.
+- Split points into days with `localDayStart` boundaries, not by calling `localDate` on every point.
+- The predicted curve for a day ends at 11:54 PM, six minutes short of the right edge of the axis.
+- NOAA's quality flags on observed readings are ignored. The spec asks only for a "preliminary" caption.
+- `vite.config.ts` includes only `*.test.ts`. A `*.test.tsx` file would be skipped without any warning.
+- The plan and its execution came from one session, and every review finding traced back to the plan's own code. Before executing the next plan, have its code blocks reviewed, and check that each test for a named failure mode fails when its guard is removed.

@@ -105,7 +105,7 @@ One request: `https://api.weather.gov/gridpoints/LOX/100,71`. This is the raw gr
 
 Layers used: `temperature`, `windSpeed`, `windGust`, `windDirection`, `skyCover`, `probabilityOfPrecipitation`. Each layer is a list of values with an ISO 8601 interval such as `2026-10-08T08:00:00+00:00/PT3H`. Parsing expands each interval into one entry per hour and converts units: °C to °F, km/h to mph. Direction in degrees is turned into a 16-point compass name for display.
 
-Parsed form: an array of hourly records `{ t, tempF, windMph, gustMph, windDeg, cloudPct, rainPct }`, where any field may be `null` if its layer has no value for that hour. `updateTime` from the response is kept for the caption.
+Parsed form: an array of hourly records `{ t, tempF, windMph, gustMph, windDeg, cloudPct, rainPct }`, where any field may be `null` if its layer has no value for that hour. NWS sends a layer it has no data for as an empty list with no unit; that leaves the field `null` and does not fail the forecast. `updateTime` from the response is kept for the caption.
 
 The forecast runs about 7 days and 17 hours. A day is "inside the forecast horizon" if the forecast has a record for that day's sunset hour.
 
@@ -120,6 +120,8 @@ For each of the 14 days, for the spot's coordinates at sea level:
 - **Moon illumination and phase name:** evaluated at that day's sunset. The name is New Moon, First Quarter, Full Moon or Last Quarter when that exact phase occurs during the local day; otherwise Waxing Crescent, Waxing Gibbous, Waning Gibbous or Waning Crescent by phase angle.
 - **Moonrise flag:** set when a moonrise occurs between 2 hours before and 2 hours after that day's sunset. The search covers that window directly, so it does not depend on which calendar day the moonrise falls in. The flag carries the moonrise time.
 
+Sunset and moonrise are reported to the nearest minute, which is how the Naval Observatory reports them. Cutting the seconds off instead would show a time one minute early on about half of all days. When the day's own moonrise falls in the flag's window, the flag carries that same instant.
+
 Times assume a flat sea-level horizon, as most weather sites do. Elevation is #9.
 
 ## Time handling
@@ -131,6 +133,8 @@ Times assume a flat sea-level horizon, as most weather sites do. Elevation is #9
 ## Cache
 
 Saved in the browser's `localStorage`, one entry per source, each holding its data and the time it was fetched. All access is wrapped so that a browser with storage disabled still works, just without a cache.
+
+On reading, an entry is checked against the shape its caller expects. One that fails, including a leftover from an older version of the app, is treated as nothing saved and is fetched again.
 
 On open:
 1. Draw at once from whatever is saved, however old.
