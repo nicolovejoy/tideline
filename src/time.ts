@@ -75,12 +75,15 @@ export function addDays(date: string, days: number): string {
 
 /** A 12-hour clock time in a zone, such as '6:33 PM'. */
 export function formatTime(t: number, timeZone: string): string {
-  const text = new Intl.DateTimeFormat('en-US', {
+  const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
-  }).format(t)
-  // Some browsers put a narrow no-break space before AM/PM. Use a plain one.
-  return text.replace(/ /g, ' ')
+  }).formatToParts(t)
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? ''
+  // Assembled from parts, because browsers disagree on which kind of space
+  // goes before AM/PM, and some use one that is invisible in source code.
+  return `${part('hour')}:${part('minute')} ${part('dayPeriod')}`
 }
