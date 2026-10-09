@@ -3,6 +3,8 @@ import {
   fetchHiLo,
   fetchPredictions,
   fetchWaterLevel,
+  isTideExtremes,
+  isTidePoints,
   noaaUrl,
   parseHiLo,
   parsePredictions,
@@ -232,5 +234,31 @@ describe('fetching', () => {
     await expect(fetchPredictions('9411340', OCT_8, OCT_9)).rejects.toThrow(
       'NOAA: HTTP 503',
     )
+  })
+})
+
+describe('shape checks for saved data', () => {
+  test('a parsed curve passes, and so does an empty one', () => {
+    expect(isTidePoints(parsePredictions(curve))).toBe(true)
+    expect(isTidePoints([])).toBe(true)
+  })
+
+  test.each([
+    ['null', null],
+    ['text', 'oops'],
+    ['an object', {}],
+    ['a point with no height', [{ t: 1 }]],
+    ['a time that is text', [{ t: '1', ft: 2 }]],
+    ['an older shape', [{ time: 1, feet: 2 }]],
+    // What a NaN height turns into once it has been saved as JSON.
+    ['a height that is null', [{ t: 1, ft: null }]],
+  ])('%s is not a curve', (_name, bad) => {
+    expect(isTidePoints(bad)).toBe(false)
+  })
+
+  test('highs and lows must each say which they are', () => {
+    expect(isTideExtremes(parseHiLo(hilo))).toBe(true)
+    expect(isTideExtremes(parsePredictions(curve))).toBe(false)
+    expect(isTideExtremes([{ t: 1, ft: 2, type: 'X' }])).toBe(false)
   })
 })
