@@ -16,6 +16,8 @@ import {
   isTidePoints,
 } from './noaa.ts'
 import type { TideExtreme, TidePoint } from './noaa.ts'
+import { fetchForecast, isForecast } from './nws.ts'
+import type { Forecast } from './nws.ts'
 import type { Spot } from '../spot.ts'
 import { addDays, localDate, localDayStart } from '../time.ts'
 
@@ -33,21 +35,33 @@ export interface SpotData {
   /** The 14 local days starting today. */
   window: Span
   days: DayAstro[]
+  /** When each of those days starts and ends, in the same order. */
+  spans: Span[]
   predictions: Loaded<TidePoint[]>
   hilo: Loaded<TideExtreme[]>
   observed: Loaded<TidePoint[]>
+  forecast: Loaded<Forecast>
 }
 
 /** The spans of time, and the sun and moon, for the 14 days from `today`. */
 export function frameFor(
   spot: Spot,
   today: string,
-): Pick<SpotData, 'day' | 'window' | 'days'> {
-  const start = localDayStart(today, spot.timeZone)
+): Pick<SpotData, 'day' | 'window' | 'days' | 'spans'> {
+  // One more local midnight than there are days: each day runs from its own
+  // midnight to the next, which on a clock-change day is 23 or 25 hours on.
+  const midnights = Array.from({ length: DAYS + 1 }, (_, i) =>
+    localDayStart(addDays(today, i), spot.timeZone),
+  )
+  const spans = Array.from({ length: DAYS }, (_, i) => ({
+    start: midnights[i],
+    end: midnights[i + 1],
+  }))
   return {
-    day: { start, end: localDayStart(addDays(today, 1), spot.timeZone) },
-    window: { start, end: localDayStart(addDays(today, DAYS), spot.timeZone) },
+    day: spans[0],
+    window: { start: midnights[0], end: midnights[DAYS] },
     days: astroForDays(spot, today, DAYS),
+    spans,
   }
 }
 
@@ -92,6 +106,24 @@ export function tideSpecs(
   }
 }
 
+/** What to load for the weather. */
+export function forecastSpec(
+  spot: Spot,
+  frame: Pick<SpotData, 'window'>,
+): SourceSpec<Forecast> {
+  const { office, gridX, gridY } = spot.nws
+  return {
+    spotId: spot.id,
+    source: 'forecast',
+    isData: isForecast,
+    // NWS decides how far the forecast runs. It goes stale by age, not by
+    // which days it covers, so the window is only recorded with what is saved.
+    needed: frame.window,
+    fetch: () => fetchForecast(office, gridX, gridY),
+    isEmpty: (forecast) => forecast.hours.length === 0,
+  }
+}
+
 function useClock(): Pick<SpotData, 'now' | 'shown'> {
   const [clock, setClock] = useState(() => ({ now: Date.now(), shown: 0 }))
   useEffect(() => {
@@ -132,6 +164,7 @@ export function useSpotData(spot: Spot): SpotData {
   const predictions = useLoaded(specs.predictions, now)
   const hilo = useLoaded(specs.hilo, now)
   const observed = useLoaded(specs.observed, now)
+  const forecast = useLoaded(forecastSpec(spot, frame), now)
 
-  return { now, shown, today, ...frame, predictions, hilo, observed }
+  return { now, shown, today, ...frame, predictions, hilo, observed, forecast }
 }
