@@ -8,6 +8,7 @@ import { CAMPUS_POINT } from './spot.ts'
 import { formatDay, formatTime } from './time.ts'
 import { tideCaption } from './ui/captions.ts'
 import { HiLoTable } from './ui/HiLoTable.tsx'
+import { selectedDay } from './ui/selection.ts'
 import { tideView } from './ui/tideView.ts'
 import type { CursorPick } from './ui/tideView.ts'
 import { TonightStrip } from './ui/TonightStrip.tsx'
@@ -25,7 +26,7 @@ export default function App() {
   const today = data.days[0]
 
   const [pick, setPick] = useState<CursorPick | null>(null)
-  const view = tideView(data, pick)
+  const view = tideView(data, selectedDay(data, null), pick)
   const [low, high] = view.bounds
   const words = tideWords(view.readout)
   const cursorTime = formatTime(view.cursor, zone)
