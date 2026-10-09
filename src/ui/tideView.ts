@@ -4,7 +4,7 @@
 
 import { STEP, restingCursor, tideReadout } from '../chart/readout.ts'
 import type { TideReadout } from '../chart/readout.ts'
-import { wholeBounds } from '../chart/scales.ts'
+import { steppedBounds } from '../chart/scales.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
 import type { SpotData } from '../data/useSpotData.ts'
 import type { Selected } from './selection.ts'
@@ -77,8 +77,9 @@ export function tideView(
   // One vertical range for all 14 days, so one day can be compared with
   // another, widened if needed to fit today's readings. Those count on every
   // day, so the scale does not jump when another day is chosen.
-  const bounds = wholeBounds(
+  const bounds = steppedBounds(
     [...(data.predictions.data ?? []), ...readings].map((point) => point.ft),
+    1,
   )
 
   let notice: string | null = null
