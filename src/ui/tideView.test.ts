@@ -401,9 +401,9 @@ describe('a spot whose tide is hidden', () => {
     expect(view.text.second).toBeNull()
   })
 
-  test('the cursor still rests where it would, so the weather under it is right', () => {
+  test('with the tide hidden the cursor rests on the clock today, and at sunset on other days', () => {
     const view = tideView(data(), TODAY, null, LA_CUMBRE)
-    expect(view.cursor).toBe(START + 15 * HOUR + 24 * MINUTE)
+    expect(view.cursor).toBe(NOW)
     expect(tideView(data(), TOMORROW, null, LA_CUMBRE).cursor).toBe(
       END + 18 * HOUR + 30 * MINUTE,
     )

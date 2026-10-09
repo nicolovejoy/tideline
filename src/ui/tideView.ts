@@ -134,12 +134,15 @@ export function tideView(
   const events = tides.shown ? onDay(data.hilo.data ?? [], span) : []
 
   // Where the cursor sits until someone moves it. Today that is the latest
-  // reading, or the clock. Any other day it is the day's anchor. It is the
-  // step that contains the anchor, never the one after: a sunset at 4:59 PM
-  // must not tip the cursor into the 5 PM hour, or the weather under it
-  // would not be the hour that the day's row in the list gives.
+  // reading, or the clock. With the tide hidden nothing on screen justifies
+  // resting on a reading, and a cached one is not refreshed while the tide
+  // is not wanted, so the cursor rests on the clock. Any other day it is the
+  // day's anchor. It is the step that contains the anchor, never the one
+  // after: a sunset at 4:59 PM must not tip the cursor into the 5 PM hour,
+  // or the weather under it would not be the hour that the day's row in the
+  // list gives.
   const rest = selected.isToday
-    ? restingCursor(data.now, readings)
+    ? restingCursor(data.now, tides.shown ? readings : [])
     : Math.floor(selected.anchor / STEP) * STEP
   // A pick belongs to the day it was made on, and lasts until the page is put
   // away and brought back. After that the cursor goes back to rest, so
