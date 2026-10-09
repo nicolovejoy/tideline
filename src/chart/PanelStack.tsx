@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
-import { isSideways, isTap } from './gesture.ts'
+import { pressCancel, pressDown, pressMove, pressUp } from './gesture.ts'
+import type { Outcome, Pointer, Press } from './gesture.ts'
 import { STEP, snap } from './readout.ts'
 import { linearScale } from './scales.ts'
 import type { Scale } from './scales.ts'
@@ -15,7 +16,7 @@ const HOUR_LABELS: Record<number, string> = {
   18: '6p',
 }
 
-interface PanelStackProps {
+interface PanelStackProps<P> {
   /** The instants the shared time axis starts and ends at. */
   start: number
   end: number
@@ -24,6 +25,12 @@ interface PanelStackProps {
   /** The cursor's time and the values under it, in words. */
   cursorText: string
   onCursor: (t: number) => void
+  /**
+   * Whatever the page keeps to say where the cursor was put. It is read when
+   * a press begins, and handed to `onRestore` if the cursor has to go back.
+   */
+  pick: P
+  onRestore: (pick: P) => void
   /** Draws the panels, given the width to fill and the shared time scale. */
   children: (frame: { width: number; x: Scale }) => ReactNode
 }
@@ -31,26 +38,23 @@ interface PanelStackProps {
 /**
  * The panels for one day, stacked on one time axis with one cursor. A tap or
  * a sideways drag anywhere in the stack moves the cursor, and so do the arrow
- * keys. A swipe up or down scrolls the page and leaves the cursor alone.
+ * keys. A swipe up or down scrolls the page and leaves the cursor alone. The
+ * rules for a press are in gesture.ts; this applies what they decide.
  */
-export function PanelStack({
+export function PanelStack<P>({
   start,
   end,
   timeZone,
   cursor,
   cursorText,
   onCursor,
+  pick,
+  onRestore,
   children,
-}: PanelStackProps) {
+}: PanelStackProps<P>) {
   const box = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
-  // The press in progress: where it began, and whether it is moving the cursor.
-  const press = useRef<{
-    id: number
-    x: number
-    y: number
-    dragging: boolean
-  } | null>(null)
+  const press = useRef<Press<P> | null>(null)
 
   // Measured before the first paint, so the page does not jump when the
   // panels appear.
@@ -72,42 +76,18 @@ export function PanelStack({
     moveTo(x.invert(event.clientX - left))
   }
 
-  const onDown = (event: PointerEvent<HTMLDivElement>) => {
-    // A mouse press means "here". A finger may be starting a scroll, so it
-    // moves nothing until it has shown which way it is going.
-    const dragging = event.pointerType !== 'touch'
-    press.current = {
-      id: event.pointerId,
-      x: event.clientX,
-      y: event.clientY,
-      dragging,
-    }
-    if (dragging) {
-      event.currentTarget.setPointerCapture(event.pointerId)
-      moveToPointer(event)
-    }
-  }
-
-  const onMove = (event: PointerEvent<HTMLDivElement>) => {
-    const began = press.current
-    if (!began || began.id !== event.pointerId) return
-    const dx = event.clientX - began.x
-    const dy = event.clientY - began.y
-    if (!began.dragging && isSideways(dx, dy)) {
-      began.dragging = true
-      // Keep receiving the drag even if the finger leaves the stack.
-      event.currentTarget.setPointerCapture(event.pointerId)
-    }
-    if (began.dragging) moveToPointer(event)
-  }
-
-  const onUp = (event: PointerEvent<HTMLDivElement>) => {
-    const began = press.current
-    press.current = null
-    if (!began || began.id !== event.pointerId || began.dragging) return
-    const dx = event.clientX - began.x
-    const dy = event.clientY - began.y
-    if (isTap(dx, dy)) moveToPointer(event)
+  const pointer = (event: PointerEvent<HTMLDivElement>): Pointer => ({
+    id: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+  })
+  const apply = (outcome: Outcome<P>, event: PointerEvent<HTMLDivElement>) => {
+    const startsDrag = outcome.press?.dragging && !press.current?.dragging
+    press.current = outcome.press
+    // Keep receiving a drag even if the pointer leaves the stack.
+    if (startsDrag) event.currentTarget.setPointerCapture(event.pointerId)
+    if (outcome.act === 'move') moveToPointer(event)
+    if (outcome.act === 'restore') onRestore(outcome.pick)
   }
 
   const onKey = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -139,14 +119,19 @@ export function PanelStack({
       aria-valuemax={Math.round((end - start) / MINUTE)}
       aria-valuenow={Math.round((cursor - start) / MINUTE)}
       aria-valuetext={cursorText}
-      onPointerDown={onDown}
-      onPointerMove={onMove}
-      onPointerUp={onUp}
-      // The browser has taken the touch over to scroll the page. The cursor
-      // was never moved, so there is nothing to undo.
-      onPointerCancel={() => {
-        press.current = null
+      onPointerDown={(event) => {
+        const touch = event.pointerType === 'touch'
+        apply(pressDown(press.current, pointer(event), touch, pick), event)
       }}
+      onPointerMove={(event) =>
+        apply(pressMove(press.current, pointer(event)), event)
+      }
+      onPointerUp={(event) =>
+        apply(pressUp(press.current, pointer(event)), event)
+      }
+      onPointerCancel={(event) =>
+        apply(pressCancel(press.current, event.pointerId), event)
+      }
       onKeyDown={onKey}
     >
       {width > 0 && children({ width, x })}

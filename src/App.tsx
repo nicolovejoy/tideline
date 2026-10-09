@@ -67,6 +67,8 @@ export default function App() {
               .filter(Boolean)
               .join(', ')}
             onCursor={(t) => setPick({ t, day: data.today, shown: data.shown })}
+            pick={pick}
+            onRestore={setPick}
           >
             {({ width, x }) => (
               <Panel
