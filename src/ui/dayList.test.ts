@@ -192,7 +192,8 @@ describe('dayRows', () => {
   })
 
   test("a forecast with any hour still to come keeps every row's weather", () => {
-    // It is tomorrow's sunset hour. Today's sunset is long past, but the forecast still has an hour to come, so today's row keeps its weather.
+    // It is tomorrow's sunset hour. Today's sunset is long past, but the
+    // forecast still has an hour to come, so today's row keeps its weather.
     const evening = dayRows({ ...data, now: sunsetHour(1) }, null, ZONE)
     expect(evening[0].weather).not.toBeNull()
   })
