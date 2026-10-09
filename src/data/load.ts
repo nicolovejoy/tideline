@@ -106,9 +106,9 @@ export interface Loader<T> {
   current: () => Loaded<T>
   /**
    * Fetch if what is on screen needs it. Safe to call as often as you like:
-   * it does nothing while a request is in flight, and after a failure it
-   * leaves the source alone until RETRY_AFTER has passed since the check
-   * that made the failed request.
+   * it does nothing while a request is in flight, it fetches at most once
+   * for one value of `now`, and after a failure it leaves the source alone
+   * until RETRY_AFTER has passed since the check that made the failed request.
    */
   check: (spec: SourceSpec<T>, now: number) => void
   /** Calls `listener` whenever `current()` changes. Returns how to stop. */
@@ -127,6 +127,7 @@ export function createLoader<T>(
   let loaded = fromCache(initial, now)
   let busy = false
   let failedAt: number | null = null
+  let answeredAt: number | null = null
   const listeners = new Set<() => void>()
 
   return {
@@ -140,6 +141,11 @@ export function createLoader<T>(
     check(spec, now) {
       if (busy || !needsFetch(spec, loaded, now)) return
       if (failedAt !== null && now - failedAt < RETRY_AFTER) return
+      // One answer is enough for one reading of the clock. The device's clock
+      // can be changed while a request is out, and an answer stamped with the
+      // new time can look stale against the old reading. Without this, every
+      // draw until the next reading would fetch again.
+      if (answeredAt === now) return
       busy = true
       void refresh(spec, loaded, clock).then((next) => {
         busy = false
@@ -147,6 +153,7 @@ export function createLoader<T>(
         // request gave up. Checks come once a minute, so a request that took
         // 20 seconds to fail is still retried at the next one.
         failedAt = next.status === 'ready' ? null : now
+        if (next.status === 'ready') answeredAt = now
         loaded = next
         for (const listener of listeners) listener()
       })
