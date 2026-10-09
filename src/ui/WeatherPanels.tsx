@@ -1,9 +1,8 @@
 import { Panel } from '../chart/Panel.tsx'
 import type { Marker } from '../chart/Panel.tsx'
-import { linearScale, wholeSteps } from '../chart/scales.ts'
+import { linearScale } from '../chart/scales.ts'
 import type { Scale } from '../chart/scales.ts'
 import type { WeatherPanelView, WeatherView } from './weatherView.ts'
-import { HOUR } from '../time.ts'
 
 const HEIGHT = 84
 /** Room above the highest value for a rule's label. */
@@ -27,14 +26,9 @@ export function WeatherPanels({
 }: WeatherPanelsProps) {
   if (view.notice !== null) return <p className="notice">{view.notice}</p>
 
-  const panel = (
-    title: string,
-    one: WeatherPanelView,
-    every: number,
-    unit: string,
-  ) => (
+  const panel = (one: WeatherPanelView) => (
     <Panel
-      title={title}
+      title={one.title}
       readout={
         <span className="readout-row">
           {one.readout.map((part) => (
@@ -51,11 +45,8 @@ export function WeatherPanels({
       height={HEIGHT}
       x={x}
       y={linearScale(one.bounds, [HEIGHT, HEADROOM])}
-      rules={wholeSteps(one.bounds[0], one.bounds[1], every).map((v) => ({
-        v,
-        label: `${v}${unit}`,
-      }))}
-      series={one.series.map((series) => ({ ...series, step: HOUR }))}
+      rules={one.rules}
+      series={one.series}
       markers={markers}
       cursor={cursor}
       dots={one.dots}
@@ -64,9 +55,9 @@ export function WeatherPanels({
 
   return (
     <>
-      {panel('Wind', view.wind, 10, ' mph')}
-      {panel('Temperature', view.temp, 10, '°F')}
-      {panel('Sky', view.sky, 50, '%')}
+      {panel(view.wind)}
+      {panel(view.temp)}
+      {panel(view.sky)}
     </>
   )
 }
