@@ -26,10 +26,9 @@ const HOUR = 60 * MINUTE
  */
 const AHEAD = 5 * MINUTE
 
-// Bump the version when the shape of any saved data changes, so old entries
-// are ignored instead of misread.
+// Bump the version when the shape or coverage of a saved entry changes, so saved entries from an older build are not reused (v2: the predicted curve includes its end instant).
 function storageKey(spotId: string, source: Source): string {
-  return `tideline:v1:${spotId}:${source}`
+  return `tideline:v2:${spotId}:${source}`
 }
 
 function isSpan(value: unknown): value is Span {

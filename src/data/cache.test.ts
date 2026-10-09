@@ -7,7 +7,7 @@ const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
 const NOW = Date.UTC(2026, 9, 8, 17)
 const WINDOW = { start: Date.UTC(2026, 9, 8, 7), end: Date.UTC(2026, 9, 22, 7) }
-const KEY = 'tideline:v1:campus-point:forecast'
+const KEY = 'tideline:v2:campus-point:forecast'
 
 // The checks a caller hands to readCache to say what its data looks like.
 const isNumbers = (data: unknown): data is number[] =>

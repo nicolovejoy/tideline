@@ -3648,7 +3648,7 @@ These need the browser's tools; do them last, because blocked requests log error
 Pass, all of:
 1. With requests to `api.weather.gov` blocked: the Tide panel is drawn; under it is "Forecast unavailable" and no weather panel; the second caption is exactly "Weather: NWS forecast for the 2.5 km cell at this spot."; no row has an "At sunset" line; every row still has its highs and lows.
 2. With requests to `api.tidesandcurrents.noaa.gov` blocked instead: the stack starts with "Tide data unavailable", then the three weather panels; a click in a weather panel still moves the cursor; the first caption includes "High and low times unavailable."
-3. With everything loaded once, then both hosts blocked, the saved forecast made two hours old (subtract 7,200,000 from `fetchedAt` in the `tideline:v1:campus-point:forecast` entry of `localStorage`) and the page reloaded: all four panels are drawn, and the second caption ends "Couldn't refresh. Showing the forecast from …" with a time.
+3. With everything loaded once, then both hosts blocked, the saved forecast made two hours old (subtract 7,200,000 from `fetchedAt` in the `tideline:v2:campus-point:forecast` entry of `localStorage`) and the page reloaded: all four panels are drawn, and the second caption ends "Couldn't refresh. Showing the forecast from …" with a time.
 
 Clear the site's saved data afterwards, and stop the dev server.
 
