@@ -36,24 +36,25 @@ The owner should read these before approving. Each is one line to change now and
 8. **The tide panel keeps room for its second readout line on every day,** so the plot does not move when a day with no readings is chosen.
 9. **A saved forecast or reading stamped more than 5 minutes into the future is not believed.** Less than that is allowed for, because the page reads the clock once a minute and an answer is stamped when it arrives. And the loader now fetches at most once for one reading of the clock, so a device clock that is changed while a request is out cannot set off a run of requests.
 10. **The manifest's colours are the dark ground,** and the icons are not declared maskable.
-11. **The tonight strip's wording is unchanged.** It now comes from a plain function with tests instead of from the component.
+11. **The tonight strip's wording changes in one word.** It now comes from a plain function with tests instead of from the component, and its moon line says "Rose 5:00 AM" once that moonrise has passed and "Rises" before. By evening the calendar day's moonrise is twelve hours gone, and "Rises" read as still to come. (Amended 2026-10-09, with the owner.)
 12. **On a day other than today the cursor rests on the 6-minute step that contains sunset,** not the nearest one. For a 4:59 PM sunset that is 4:54 PM, not 5:00 PM, so the weather under the resting cursor is the same hour's that the day's row gives.
 13. **The predicted curve keeps the instant its 14 days end at.** Without it the last day's line stops six minutes short of the right-hand edge and the cursor there reads "No prediction here".
 14. **The list is headed "14 days",** because it starts with today.
+15. **The panels are headed by the day they show,** such as "Sat Oct 11", with the cursor's time beside it. The strip above them always describes today, so without the heading a chosen day would put two sunset times on screen with nothing saying which is which. (Confirmed 2026-10-09, with the owner.)
 
 ## Questions for the first user, for the owner to relay
 
-None of these blocks the build.
+The owner settled these on 2026-10-09 so the build could go ahead; the first user can still overturn them.
 
-1. The third line of each row gives the forecast at the hour of sunset, not the day's high and low. Is that the right moment?
-2. "Rises 5:00 AM" in the tonight strip is this morning's moonrise by evening. Reword it, or show the next moonrise?
-3. The strip at the top always describes today, with nothing on screen that says so. With another day in the panels, is that confusing?
+1. The third line of each row gives the forecast at the hour of sunset, not the day's high and low, because sunset is when he goes. Is that the right moment? If he also wants an earlier hour, that is a small addition.
+2. The strip's moon line names the calendar day's moonrise, now in the right tense ("Rose 5:00 AM"). Would he rather it said whether the moon is up at sunset, and if not, when it rises? That follows the product rule about moonrise near sunset more closely, and is a design change for an issue.
+3. The strip at the top always describes today, and the panels are headed by the day they show. Is that clear enough with another day chosen?
 
 ## How this plan was checked
 
 Every code block below was built and run as a throwaway prototype before this plan was written, and the blocks are copied from it by script, not retyped.
 
-- **Tests:** 380 pass in the prototype: the 268 on `main` and the 112 this plan adds. Lint with warnings denied, the type check and the build are clean.
+- **Tests:** 380 passed in the prototype: the 268 on `main` and the 112 this plan adds, plus the 2 the 2026-10-09 amendment to Task 7 adds, 382 in all. Lint with warnings denied, the type check and the build are clean.
 - **Each task on its own:** the prototype's files were laid onto a clean copy of `main` one task at a time, in the order below. Lint, the build and the tests were green after every task, with the totals each task states.
 - **Each test against its guard:** 41 rules were broken one at a time, and the tests were run. All 41 are caught. Along the way one guard turned out to do nothing (`String` already turns a negative zero into "0") and was removed, and the reviewer's breakages that got past the first draft's tests each have a test now.
 - **In a browser at 390 px, with touch emulated,** against live data: 42 checks, all passing. The four panels and their readouts; a sideways drag on a weather panel moving the cursor; a swipe up on a weather panel scrolling the page and leaving the cursor alone; a tapped row putting its day on screen, marking itself, bringing the panels into view and resting the cursor at sunset with no current-time line and no observed reading; a day past the forecast saying so; the forecast failing with nothing saved while the tide draws; NOAA failing with nothing saved while the weather draws and the cursor still works; a reopen with no network drawing all four panels from what was saved; and, after the review, a cursor put by hand not coming back with its day, two quick taps on a row leaving that row's day on screen, and the 14th day reading a prediction at its right-hand edge.
@@ -2645,7 +2646,7 @@ git commit -m "Caption the forecast, and say when the highs and lows are missing
 - Consumes: `SpotData` with `days`, `spans`, `hilo` and `forecast` (Task 2); `selectedDay` (Task 4); `feet`, `hourAt`, `partsText`, `windParts`, `tempParts` and `skyParts` (Task 3); `formatDay` and `formatTime`.
 - Produces:
   - `interface TonightWords { sunset: string; moon: string; moonrise: string; flag: string | null }`
-  - `tonightWords(day: DayAstro, timeZone: string): TonightWords`
+  - `tonightWords(day: DayAstro, now: number, timeZone: string): TonightWords`. `now` decides the tense of the moon line.
   - `interface DayRow { date: string; day: string; selected: boolean; sunset: string; moon: string; flag: string | null; tides: string[]; weather: string[] | null }`
   - `dayRows(data: Pick<SpotData, 'days' | 'spans' | 'hilo' | 'forecast'>, picked: string | null, timeZone: string): DayRow[]`
 
@@ -2689,8 +2690,11 @@ describe('tonightWords', () => {
     moonriseNearSunset: null,
   }
 
+  const morning = Date.UTC(2026, 9, 8, 11, 0) // 4:00 AM, before the moonrise
+  const evening = Date.UTC(2026, 9, 9, 1, 0) // 6:00 PM, long after it
+
   test('sunset, the moon and moonrise', () => {
-    expect(tonightWords(day, ZONE)).toEqual({
+    expect(tonightWords(day, morning, ZONE)).toEqual({
       sunset: '6:34 PM',
       moon: '3% lit, waning crescent',
       moonrise: 'Rises 5:00 AM',
@@ -2698,15 +2702,29 @@ describe('tonightWords', () => {
     })
   })
 
+  test('a moonrise that has passed is in the past tense', () => {
+    expect(tonightWords(day, evening, ZONE).moonrise).toBe('Rose 5:00 AM')
+  })
+
+  test('the very minute of moonrise still reads as coming', () => {
+    expect(tonightWords(day, day.moonrise!, ZONE).moonrise).toBe(
+      'Rises 5:00 AM',
+    )
+  })
+
   test('a moonrise near sunset is flagged with its time', () => {
     const flagged = { ...day, moonriseNearSunset: Date.UTC(2026, 9, 9, 0, 45) }
-    expect(tonightWords(flagged, ZONE).flag).toBe(
+    expect(tonightWords(flagged, morning, ZONE).flag).toBe(
       'Moonrise near sunset: 5:45 PM',
     )
   })
 
   test('a day with no moonrise, or no sunset, says so', () => {
-    const words = tonightWords({ ...day, sunset: null, moonrise: null }, ZONE)
+    const words = tonightWords(
+      { ...day, sunset: null, moonrise: null },
+      morning,
+      ZONE,
+    )
     expect(words.sunset).toBe('None today')
     expect(words.moonrise).toBe('No moonrise today')
   })
@@ -2870,8 +2888,15 @@ export interface TonightWords {
   flag: string | null
 }
 
-/** What the strip at the top says about today. */
-export function tonightWords(day: DayAstro, timeZone: string): TonightWords {
+/**
+ * What the strip at the top says about today. `now` decides the tense of
+ * the moon line: by evening the day's moonrise is usually hours past.
+ */
+export function tonightWords(
+  day: DayAstro,
+  now: number,
+  timeZone: string,
+): TonightWords {
   const time = (t: number) => formatTime(t, timeZone)
   return {
     sunset: day.sunset === null ? 'None today' : time(day.sunset),
@@ -2879,7 +2904,7 @@ export function tonightWords(day: DayAstro, timeZone: string): TonightWords {
     moonrise:
       day.moonrise === null
         ? 'No moonrise today'
-        : `Rises ${time(day.moonrise)}`,
+        : `${day.moonrise < now ? 'Rose' : 'Rises'} ${time(day.moonrise)}`,
     flag:
       day.moonriseNearSunset === null
         ? null
@@ -2963,7 +2988,7 @@ Expected: PASS, 13 tests.
 npm run format && npm run lint && npm test
 ```
 
-Expected: lint prints no problems; 380 tests pass.
+Expected: lint prints no problems; 382 tests pass.
 
 ```bash
 git add src/ui/dayList.ts src/ui/dayList.test.ts
@@ -3247,7 +3272,10 @@ export default function App() {
   const cursorTime = formatTime(tide.cursor, zone)
   const markers = dayMarkers(selected, data.now)
 
-  const tonight = useMemo(() => tonightWords(days[0], zone), [days, zone])
+  const tonight = useMemo(
+    () => tonightWords(days[0], data.now, zone),
+    [days, data.now, zone],
+  )
   // The rows do not depend on the cursor, so they are not worked out again,
   // and the list is not drawn again, each time it moves.
   const rows = useMemo(
@@ -3578,7 +3606,7 @@ Then:
 npm run format && npm run lint && npm run build && npm test
 ```
 
-Expected: lint prints no problems; the build ends with `✓ built`; 380 tests pass.
+Expected: lint prints no problems; the build ends with `✓ built`; 382 tests pass.
 
 - [ ] **Step 4: Check the screen in a browser**
 
@@ -3746,7 +3774,7 @@ ls dist
 node -e "JSON.parse(require('fs').readFileSync('dist/manifest.webmanifest','utf8')); console.log('manifest parses')"
 ```
 
-Expected: lint prints no problems; the build ends with `✓ built`; 380 tests pass; `dist` holds `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `icon.svg`, `manifest.webmanifest` and `index.html`; the last command prints "manifest parses".
+Expected: lint prints no problems; the build ends with `✓ built`; 382 tests pass; `dist` holds `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `icon.svg`, `manifest.webmanifest` and `index.html`; the last command prints "manifest parses".
 
 Run `npm run dev`, open the page, and confirm the browser tab shows the icon and the console has no errors about the manifest or the icons. Stop the dev server.
 
