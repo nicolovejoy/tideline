@@ -3211,6 +3211,7 @@ Found by the review of the finished branch and not fixed:
 - A reading with a gap on both sides draws nothing but the cursor's dot, because a line needs two points.
 - `refresh` swallows every error, so a parsing bug looks like an outage and leaves nothing in the console.
 - `formatTime` and `formatDay` build a new formatter on every call. That will cost more once the 14-day list is on the page.
+- Saved data stamped later than the current time counts as fresh until the clock catches up with the stamp. A device whose clock was ahead when it saved, and was then corrected, would not refresh that source in the meantime. `isStale` in `cache.ts` should treat a stamp in the future as stale. Seen while testing with a fake clock.
 - Not confirmed on a phone: whether iOS Safari, like Chromium, sends the page a touch's first moves before it claims the touch for a scroll or a pinch; what a pen does; and whether a fetch fired the moment the page comes back fails before the network is up.
 
 ### What changed after this plan was executed
