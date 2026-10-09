@@ -11,7 +11,7 @@ Stage 1 is in progress.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
 
-Live: https://tideline-inky.vercel.app (production, deploys from `main`, public). Pull request previews need a Vercel sign-in. https://tideline.vercel.app is someone else's site, not this project.
+Live: https://tideline.ibuild4you.com (production, deploys from `main`, public). The name is a Cloudflare CNAME to Vercel with the proxy off; https://tideline-inky.vercel.app serves the same build. Pull request previews need a Vercel sign-in. https://tideline.vercel.app is someone else's site, not this project.
 
 ## Commands
 

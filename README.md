@@ -4,7 +4,7 @@ Sunset, tide, weather and moon for one spot, side by side.
 
 For a named spot, tonight and the days ahead: when the sun sets, what the tide is doing, what the weather is doing, and what the moon is doing. Tideline shows the data and leaves the decision to you. It has no scores and no alerts.
 
-Live at https://tideline-inky.vercel.app
+Live at https://tideline.ibuild4you.com
 
 ## Status
 
