@@ -15,8 +15,8 @@ import type { Point } from '../chart/scales.ts'
 import type { Loaded } from '../data/load.ts'
 import type { Forecast, ForecastHour } from '../data/nws.ts'
 import type { Selected } from './selection.ts'
+import { HOUR } from '../time.ts'
 
-const HOUR = 3_600_000
 const NOTHING_HERE: ReadoutPart[] = [{ key: null, text: 'No forecast here' }]
 
 export interface WeatherPanelView {

@@ -3,6 +3,7 @@
 import type { TidePoint } from '../data/noaa.ts'
 import { compassPoint } from '../data/nws.ts'
 import type { ForecastHour } from '../data/nws.ts'
+import { HOUR } from '../time.ts'
 
 /** NOAA's tide points sit on 6-minute steps, and so does the cursor. */
 export const STEP = 6 * 60_000
@@ -28,8 +29,6 @@ function nearest(
   }
   return best
 }
-
-const HOUR = 3_600_000
 
 /**
  * Where the cursor sits until someone moves it: on the latest observed

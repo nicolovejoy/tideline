@@ -3,12 +3,11 @@ import type { Marker } from '../chart/Panel.tsx'
 import { linearScale, wholeSteps } from '../chart/scales.ts'
 import type { Scale } from '../chart/scales.ts'
 import type { WeatherPanelView, WeatherView } from './weatherView.ts'
+import { HOUR } from '../time.ts'
 
 const HEIGHT = 84
 /** Room above the highest value for a rule's label. */
 const HEADROOM = 14
-/** Each forecast value holds for an hour. */
-const HOUR = 3_600_000
 
 interface WeatherPanelsProps {
   view: WeatherView

@@ -1,6 +1,8 @@
 // The NWS forecast for one 2.5 km grid cell, from the raw gridpoint endpoint.
 // That endpoint is used because /forecast/hourly has no gusts or cloud cover.
 
+import { HOUR } from '../time.ts'
+
 export interface ForecastHour {
   /** Start of the hour, UTC instant in epoch ms. */
   t: number
@@ -34,7 +36,6 @@ interface GridLayer {
   values?: { validTime: string; value?: number | null }[]
 }
 
-const HOUR = 3_600_000
 const KMH_TO_MPH = 0.621371
 const asIs = (value: number) => value
 

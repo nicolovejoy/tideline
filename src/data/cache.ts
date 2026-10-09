@@ -2,6 +2,8 @@
 // returns. Every access is wrapped: with storage disabled the app still
 // works, just without a cache.
 
+import { HOUR, MINUTE } from '../time.ts'
+
 export type Source = 'predictions' | 'hilo' | 'observed' | 'forecast'
 
 export interface Span {
@@ -17,8 +19,6 @@ export interface CacheEntry<T> {
   data: T
 }
 
-const MINUTE = 60_000
-const HOUR = 60 * MINUTE
 /**
  * How far ahead of the clock a stamp may be and still be believed. The
  * caller's reading of the clock can be a minute or so behind the one that
@@ -26,7 +26,9 @@ const HOUR = 60 * MINUTE
  */
 const AHEAD = 5 * MINUTE
 
-// Bump the version when the shape or coverage of a saved entry changes, so saved entries from an older build are not reused (v2: the predicted curve includes its end instant).
+// Bump the version when the shape or coverage of a saved entry changes, so
+// saved entries from an older build are not reused. v2: the predicted curve
+// includes its end instant.
 function storageKey(spotId: string, source: Source): string {
   return `tideline:v2:${spotId}:${source}`
 }

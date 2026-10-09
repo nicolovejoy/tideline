@@ -19,10 +19,9 @@ import type { TideExtreme, TidePoint } from './noaa.ts'
 import { fetchForecast, isForecast } from './nws.ts'
 import type { Forecast } from './nws.ts'
 import type { Spot } from '../spot.ts'
-import { addDays, localDate, localDayStart } from '../time.ts'
+import { MINUTE, addDays, localDate, localDayStart } from '../time.ts'
 
 const DAYS = 14
-const MINUTE = 60_000
 
 export interface SpotData {
   /** The current instant. Advances every minute and when the page is shown. */
