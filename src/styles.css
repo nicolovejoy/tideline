@@ -1,10 +1,50 @@
+/*
+  Colours come from the place: fog and ink by day, the channel after dark,
+  sea-green for the tide, ember for sunset, a cool grey-blue for the moon.
+  The tide curve is the picture; everything around it stays quiet.
+*/
 :root {
   color-scheme: light dark;
+
+  --ground: #eef2f3;
+  --ink: #12222e;
+  --muted: #566875;
+  --rule: #d3dce0;
+  --sea: #2a7b82;
+  --sea-fill: rgb(42 123 130 / 0.18);
+  --observed: #12222e;
+  --ember: #a8550c;
+  --moon: #6a769f;
+
+  /* Numbers are set in the rounded system face where there is one. */
+  --numerals: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+
   font-family:
     system-ui,
     -apple-system,
     sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  /* Stops iOS enlarging the text when the phone is turned on its side. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   font-variant-numeric: tabular-nums;
+  background: var(--ground);
+  color: var(--ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #0f1d28;
+    --ink: #e6edf0;
+    --muted: #93a5b1;
+    --rule: #24394a;
+    --sea: #66bcb8;
+    --sea-fill: rgb(102 188 184 / 0.22);
+    --observed: #f4f8f9;
+    --ember: #f0a04b;
+    --moon: #7f8ce6;
+  }
 }
 
 body {
@@ -12,7 +52,244 @@ body {
 }
 
 main {
-  max-width: 34rem;
+  max-width: 30rem;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 1.25rem max(1rem, env(safe-area-inset-right)) 2.5rem
+    max(1rem, env(safe-area-inset-left));
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 1.1333rem;
+  font-weight: 600;
+}
+
+/* A short bar in a series' or a marker's colour, in front of its name. */
+.key::before {
+  content: '';
+  display: inline-block;
+  width: 0.2rem;
+  height: 0.9em;
+  margin-right: 0.4em;
+  border-radius: 1px;
+  vertical-align: -0.08em;
+  background: var(--key, currentColor);
+}
+.key-sunset {
+  --key: var(--ember);
+}
+.key-moonrise {
+  --key: var(--moon);
+}
+.key-predicted {
+  --key: var(--sea);
+}
+.key-observed {
+  --key: var(--observed);
+}
+
+/* Tonight */
+.tonight {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 2rem;
+  row-gap: 0.75rem;
+  align-items: end;
+  margin-top: 1.25rem;
+}
+.tonight h2 {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+.tonight-time {
+  font-family: var(--numerals);
+  font-size: 2.2667rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.tonight-flag {
+  grid-column: 1 / -1;
+  padding-left: 0.6rem;
+  border-left: 0.2rem solid var(--moon);
+  font-weight: 600;
+}
+
+/* The day and its panels */
+.day {
+  margin-top: 2rem;
+}
+.day-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.day-head h2 {
+  font-size: 1.1333rem;
+  font-weight: 600;
+}
+.day-cursor {
+  font-family: var(--numerals);
+  font-size: 1.1333rem;
+  font-weight: 600;
+}
+
+.stack {
+  position: relative;
+  margin-top: 0.75rem;
+  /* The browser scrolls the page for an up-and-down drag and zooms for a
+     pinch. A sideways drag is left to the stack, to move the cursor. */
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: crosshair;
+}
+.stack:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 4px;
+}
+
+.panel-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.panel-readout {
+  /* Always two lines tall, so the plot does not move when the second value
+     comes and goes as the cursor crosses the last reading. */
+  display: grid;
+  grid-template-rows: 1.4em 1.4em;
+  font-family: var(--numerals);
+}
+.panel-plot {
+  display: block;
+  margin-top: 0.5rem;
+  border-bottom: 1px solid var(--rule);
+  overflow: visible;
+}
+
+.series .line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.series-predicted .line {
+  stroke: var(--sea);
+}
+.series-predicted .fill {
+  fill: var(--sea-fill);
+}
+/* What the water actually did rides on top, in the strongest colour. */
+.series-observed .line {
+  stroke: var(--observed);
+  stroke-width: 2.5;
+}
+
+/* Drawn in the text colour at low strength, so the rules show over both the
+   background and the filled curve. */
+.rule line {
+  stroke: var(--ink);
+  stroke-opacity: 0.16;
+  stroke-width: 1;
+}
+.rule text {
+  fill: var(--muted);
+  font-size: 0.7333rem;
+  /* A halo in the background colour keeps labels legible over the curves. */
+  paint-order: stroke;
+  stroke: var(--ground);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.marker {
+  stroke-width: 2;
+}
+.marker-sunset {
+  stroke: var(--ember);
+}
+.marker-moonrise {
+  stroke: var(--moon);
+}
+.marker-now {
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.cursor {
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+.dot {
+  stroke: var(--ground);
+  stroke-width: 2;
+}
+.dot-predicted {
+  fill: var(--sea);
+}
+.dot-observed {
+  fill: var(--observed);
+}
+
+.hours {
+  position: relative;
+  height: 1.4rem;
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.hours span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+.hours span:first-child {
+  transform: none;
+}
+.hours span:last-child {
+  transform: translateX(-100%);
+}
+
+/* Highs and lows */
+.hilo {
+  width: 100%;
+  margin-top: 1.5rem;
+  border-collapse: collapse;
+  font-family: var(--numerals);
+}
+.hilo caption {
+  padding-bottom: 0.25rem;
+  text-align: left;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-weight: 600;
+}
+.hilo th,
+.hilo td {
+  padding: 0.3rem 0;
+  border-top: 1px solid var(--rule);
+  text-align: left;
+  font-weight: 400;
+}
+.hilo td:last-child {
+  text-align: right;
+}
+
+.notice {
+  margin-top: 0.75rem;
+  color: var(--muted);
+}
+.caption {
+  margin-top: 1.25rem;
+  color: var(--muted);
+  font-size: 0.8667rem;
 }

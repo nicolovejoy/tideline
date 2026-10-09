@@ -6,9 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Stage 1 is in progress.
 
-- Built: the scaffold, tooling and CI, and the data layer under `src/` (`time.ts`, `data/noaa.ts`, `data/nws.ts`, `data/astro.ts`, `data/cache.ts`), each with tests beside it.
-- Not built: the screen. It needs its own plan; `docs/superpowers/plans/2026-10-08-stage-1-foundation-and-data.md` ends with what to carry into it.
-- The page is still a placeholder that shows the spot name.
+- Built: the scaffold, tooling and CI; the data layer; and the first screen, which shows tonight's sunset and moon, today's tide curve with the observed level and a cursor, and the high/low table.
+- Not built: the three weather panels, the 14-day list, and the manifest and icons. They are pull request 4 of Stage 1 and need their own plan.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
 
@@ -65,7 +64,8 @@ In every tracked file, commit message, issue, and pull request, that person is "
 
 - Static single-page app with no server: Vite, React, strict TypeScript, plain CSS. Hosted on Vercel.
 - The browser calls NOAA, NWS and Open-Meteo directly. Sun and moon are computed on the device.
-- Charts are hand-written SVG using `d3-scale` and `d3-shape`: stacked panels on one time axis with one shared touch cursor. Not Grafana, not a chart library.
+- Charts are hand-written SVG: stacked panels on one time axis with one shared cursor. The arithmetic is in `src/chart/scales.ts`. No charting library and no d3.
+- Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/tideView.ts`, `src/data/load.ts`), and the components are checked in a browser.
 - Data modules (NOAA, NWS, astronomy) are framework-free TypeScript so they can move behind a server function unchanged. Tested with Vitest against recorded real responses.
 - Caching is on the device in Stage 1: draw from the last saved data, refresh behind it, show each source's "as of" time. A server cache is deferred to an issue.
 
@@ -112,6 +112,7 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 
 ## Next Steps
 
-- Stage 1 (Campus Point): pull requests 1 and 2 of 4 are merged (scaffold, data layer). Next is the screen, pull requests 3 and 4. Write its plan against `docs/superpowers/specs/2026-10-08-stage-1-campus-point-design.md`, have the plan's code reviewed by a fresh reviewer, get Nico's approval, then build.
+- Stage 1 (Campus Point): pull requests 1 to 3 of 4 are built (scaffold, data layer, tide screen). Next is pull request 4: the weather panels, the 14-day list, the manifest and icons. Write its plan against `docs/superpowers/specs/2026-10-08-stage-1-campus-point-design.md`, starting from the list at the end of `docs/superpowers/plans/2026-10-08-stage-1-tide-screen.md`. Have the plan's code reviewed by a fresh reviewer, get Nico's approval, then build.
+- Not yet checked on the tide screen: touch on a real iPhone, and a screen reader on the cursor.
 - The first user: confirm or correct the provisional decisions above, and answer the sharing question.
 - Everything after Stage 1 is tracked as GitHub issues, in provisional order.

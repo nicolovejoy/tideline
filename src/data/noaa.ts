@@ -154,3 +154,32 @@ export async function fetchWaterLevel(
   const json = await getJson(noaaUrl(stationId, 'water_level', start, end))
   return within(parseWaterLevel(json), start, end)
 }
+
+function isTidePoint(value: unknown): value is TidePoint {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    't' in value &&
+    typeof value.t === 'number' &&
+    'ft' in value &&
+    typeof value.ft === 'number'
+  )
+}
+
+/** Whether saved data has the shape of a tide curve. For the cache. */
+export function isTidePoints(data: unknown): data is TidePoint[] {
+  return Array.isArray(data) && data.every(isTidePoint)
+}
+
+/** Whether saved data has the shape of a list of highs and lows. */
+export function isTideExtremes(data: unknown): data is TideExtreme[] {
+  return (
+    Array.isArray(data) &&
+    data.every(
+      (value) =>
+        isTidePoint(value) &&
+        'type' in value &&
+        (value.type === 'H' || value.type === 'L'),
+    )
+  )
+}

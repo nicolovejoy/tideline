@@ -40,7 +40,7 @@ A single column, top to bottom. It is designed for a phone held upright and stay
 
 1. **Header.** Spot name.
 2. **Tonight strip.** Sunset time; moon illumination and phase name; moonrise time, or "no moonrise today". When a moonrise falls within 2 hours of sunset, the strip shows it as a marked line: "Moonrise near sunset: 5:45 PM". The strip always describes today, whichever day is selected below.
-3. **Day panels.** The selected day's date, then four panels sharing one time axis (see below).
+3. **Day panels.** The selected day's date on the left and the time at the cursor on the right, written "at 4:00 PM" so it is not mistaken for a clock, then four panels sharing one time axis (see below).
 4. **High/low table.** The selected day's highs and lows: time and height in feet.
 5. **Source captions.**
    - "Tide: NOAA 9411340 Santa Barbara, 8.6 mi east. Observed through 2:06 PM, preliminary."
@@ -56,19 +56,19 @@ All four panels share one horizontal axis: the selected day from midnight to mid
 - **Temperature (°F).** One line.
 - **Sky (%).** Cloud cover and chance of rain as two lines on a 0 to 100 scale.
 
-Vertical lines cross all four panels at sunset, at moonrise if it falls in the selected day, and at the current time when the selected day is today.
+Vertical lines cross all four panels at sunset, at moonrise if it falls in the selected day, and at the current time when the selected day is today. The lines carry no labels: the coloured bars beside "Sunset" and "Moon" in the tonight strip are their key, and the current-time line is dashed.
 
 ### Cursor and readouts
 
-- One cursor runs through all four panels. Touching or dragging horizontally on any panel moves it. Vertical drags still scroll the page (`touch-action: pan-y`). A mouse works the same way.
+- One cursor runs through all four panels. A tap on any panel moves it there, and a sideways drag moves it with the finger. A finger moves nothing until it has travelled 6 px sideways, so a swipe up or down that starts on a panel scrolls the page and leaves the cursor alone. If the browser takes a touch over to scroll or zoom after it has begun to move the cursor, or a second finger goes down, the cursor goes back to where it was. A mouse moves the cursor while its button is held. The arrow keys move it one 6-minute step at a time, or an hour with Shift, and Home and End take it to the ends of the day.
 - The cursor snaps to 6-minute steps.
 - Each panel has a one-line readout above it showing its values at the cursor:
-  - Tide: "0.8 ft predicted", plus "1.9 ft observed (+1.1)" when an observation exists within 6 minutes of the cursor. The number in brackets is observed minus predicted.
+  - Tide: "0.8 ft predicted", plus "1.9 ft observed (+1.1)" when there is a reading at the cursor's own 6-minute step. The number in brackets is observed minus predicted, taken between the two numbers as they are shown, so the three always agree with each other. It can differ by 0.1 ft from a difference worked out at full precision.
   - Wind: "9 mph, gusts 12, from W"
   - Temperature: "74°F"
   - Sky: "3% cloud, 0% rain"
 - Weather readouts use the forecast hour that contains the cursor.
-- The cursor is always present. It starts at the current time when the selected day is today and at sunset on any other day, so the readouts show useful values before anything is touched.
+- The cursor is always present, so the readouts show useful values before anything is touched. When the selected day is today it rests on the latest observed reading, if there is one from the past hour, and otherwise on the current time. NOAA publishes readings about ten minutes late, so a cursor resting on the current time would never have a reading under it. On any other day it rests at sunset. A cursor put somewhere by hand stays there until the day changes or the page is put away and brought back; then it goes back to rest, so reopening the app shows the latest reading.
 - On a day beyond the forecast horizon, the three weather panels are replaced by one line: "No forecast this far out."
 
 ### Day list rows
@@ -145,13 +145,13 @@ Staleness rules:
 - Forecast: stale after 1 hour.
 - Observed level: stale after 6 minutes.
 
-When the page becomes visible again after being in the background, the same staleness check runs.
+When the page becomes visible again after being in the background, the same staleness check runs. While the page stays open and in view it also runs once a minute, which keeps the current-time line moving and picks up new readings. A request with no answer after 20 seconds is given up on. After a failure a source is left alone for about a minute, counted from when the failed request was made, and then tried again.
 
 ## Failure behaviour
 
 Each source loads and fails on its own.
 
-- If a refresh fails and saved data exists, the saved data stays on screen and its caption says "Couldn't refresh. Showing data from 2:05 PM."
+- If a refresh fails and saved data exists, the saved data stays on screen and its caption says so and gives the time it was saved: "Couldn't refresh. Showing predictions from 2:05 PM."
 - If a source fails and nothing is saved, its part of the screen says "Tide data unavailable" or "Forecast unavailable". The rest of the screen is unaffected.
 - Sun and moon cannot fail; they are computed.
 
@@ -167,11 +167,15 @@ src/
   data/nws.ts           fetch and parse the raw forecast grid
   data/astro.ts         sunset, moonrise, phase, moonrise flag
   data/cache.ts         localStorage wrapper and staleness rules
-  data/useSpotData.ts   React hook: cache-first loading, per-source status
-  chart/scales.ts       the shared time scale and each panel's vertical scale
+  data/load.ts          cache-first loading rules and the loader for one source
+  data/useSpotData.ts   what to load for the spot, and the hook that loads it
+  chart/scales.ts       scales, bounds and SVG paths
   chart/readout.ts      values at the cursor, as pure functions
+  chart/gesture.ts      telling a tap and a sideways drag from a scroll
   chart/Panel.tsx       one generic line panel
   chart/PanelStack.tsx  the four panels, shared cursor, vertical markers
+  ui/captions.ts        the small print under the panels
+  ui/tideView.ts        what the tide part of the screen shows
   ui/TonightStrip.tsx
   ui/HiLoTable.tsx
   ui/DayList.tsx
@@ -180,13 +184,13 @@ src/
   styles.css
 ```
 
-Everything under `data/`, plus `time.ts`, `chart/scales.ts` and `chart/readout.ts`, is plain TypeScript with no React, so it can be tested without a browser and can later move behind a server function unchanged (#10).
+Everything under `data/` except the hook itself, plus `time.ts`, the `.ts` files under `chart/` and `ui/`, is plain TypeScript with no React, so it can be tested without a browser, and the data modules can later move behind a server function unchanged (#10). The components and the hook hold no arithmetic, no rules and no wording: they arrange what the plain modules return.
 
-Dependencies: `react`, `react-dom`, `d3-scale`, `d3-shape`, `astronomy-engine`. The charts are hand-written SVG; `d3-scale` and `d3-shape` supply only the arithmetic.
+Dependencies: `react`, `react-dom`, `astronomy-engine`. The charts are hand-written SVG. The arithmetic behind them is about 90 lines in `chart/scales.ts`, so there is no charting library and no d3.
 
 ## Testing
 
-Vitest. The logic lives in pure functions so most tests need no DOM.
+Vitest. The logic lives in pure functions, so the tests need no DOM. The components and the few lines of hook that wire them to the loader are not unit-tested; they are checked in a browser against exact expected values, with touch emulated and with a fake clock, and on a real phone for touch.
 
 - **NOAA and NWS parsing:** run against real responses saved as fixtures. The tide fixtures are for 2026-10-08, when the observed level ran about 1.1 ft above the prediction, so they cover the motivating case.
 - **NWS interval expansion:** multi-hour intervals, unit conversion, hours with missing layers.

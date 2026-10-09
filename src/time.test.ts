@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'vitest'
-import { addDays, formatTime, localDate, localDayStart } from './time.ts'
+import {
+  addDays,
+  formatDay,
+  formatTime,
+  hourMarks,
+  localDate,
+  localDayStart,
+  localHour,
+} from './time.ts'
 
 const LA = 'America/Los_Angeles'
 const HOUR = 3_600_000
@@ -78,5 +86,54 @@ describe('formatTime', () => {
   test('midnight and noon', () => {
     expect(formatTime(Date.UTC(2026, 9, 8, 7, 0), LA)).toBe('12:00 AM')
     expect(formatTime(Date.UTC(2026, 9, 8, 19, 0), LA)).toBe('12:00 PM')
+  })
+})
+
+describe('localHour', () => {
+  test('the hour of the day in the given zone', () => {
+    expect(localHour(Date.UTC(2026, 9, 9, 1, 33), LA)).toBe(18)
+    expect(localHour(Date.UTC(2026, 9, 8, 7, 0), LA)).toBe(0)
+    expect(localHour(Date.UTC(2026, 9, 9, 1, 33), 'America/New_York')).toBe(21)
+  })
+})
+
+describe('hourMarks', () => {
+  test('every six local hours on an ordinary day, both ends included', () => {
+    const start = localDayStart('2026-10-08', LA)
+    const end = localDayStart('2026-10-09', LA)
+    expect(hourMarks(start, end, LA, 6)).toEqual([
+      { t: start, hour: 0 },
+      { t: start + 6 * HOUR, hour: 6 },
+      { t: start + 12 * HOUR, hour: 12 },
+      { t: start + 18 * HOUR, hour: 18 },
+      { t: end, hour: 0 },
+    ])
+  })
+
+  test('on the 25-hour day the marks follow the clock, not a fixed spacing', () => {
+    const start = localDayStart('2026-11-01', LA)
+    const end = localDayStart('2026-11-02', LA)
+    const hoursIn = hourMarks(start, end, LA, 6).map(
+      (m) => (m.t - start) / HOUR,
+    )
+    // 6 AM comes seven hours after midnight, because 1 AM happens twice.
+    expect(hoursIn).toEqual([0, 7, 13, 19, 25])
+  })
+
+  test('on the 23-hour day 6 AM comes five hours after midnight', () => {
+    const start = localDayStart('2027-03-14', LA)
+    const end = localDayStart('2027-03-15', LA)
+    const hoursIn = hourMarks(start, end, LA, 6).map(
+      (m) => (m.t - start) / HOUR,
+    )
+    expect(hoursIn).toEqual([0, 5, 11, 17, 23])
+  })
+})
+
+describe('formatDay', () => {
+  test('weekday, month and day of the month', () => {
+    expect(formatDay('2026-10-08')).toBe('Thu Oct 8')
+    expect(formatDay('2026-11-01')).toBe('Sun Nov 1')
+    expect(formatDay('2027-01-01')).toBe('Fri Jan 1')
   })
 })

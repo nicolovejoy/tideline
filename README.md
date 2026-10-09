@@ -8,7 +8,7 @@ Live at https://tideline-inky.vercel.app
 
 ## Status
 
-Early. The first spot is Campus Point in Santa Barbara, California. The data layer is built and tested; the screen is next, so the live page is still a placeholder. The roadmap is in the issues: https://github.com/nicolovejoy/tideline/issues
+Early. The first spot is Campus Point in Santa Barbara, California. The live page shows tonight's sunset and moon, today's tide curve with the observed water level drawn over it, and the day's highs and lows. Weather and the days ahead are next. The roadmap is in the issues: https://github.com/nicolovejoy/tideline/issues
 
 ## Run it
 
