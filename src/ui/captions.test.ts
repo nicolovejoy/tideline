@@ -3,7 +3,7 @@ import { tideCaption, weatherCaption } from './captions.ts'
 import type { Loaded } from '../data/load.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
 import type { Forecast } from '../data/nws.ts'
-import { CAMPUS_POINT } from '../spot.ts'
+import { CAMPUS_POINT, spotById } from '../spot.ts'
 
 const TODAY = '2026-10-08'
 const STATION = 'Tide: NOAA 9411340 Santa Barbara, 8.6 mi east.'
@@ -148,8 +148,69 @@ describe('tideCaption', () => {
   })
 })
 
+describe('tideCaption at a spot whose gauge is another station', () => {
+  const GAVIOTA = spotById('gaviota')
+  const THEIRS =
+    'Tide: NOAA 9411399 Gaviota State Park, 0.2 mi south, predictions only.'
+  const GAUGE = 'Gauge: NOAA 9411340 Santa Barbara, 31 mi east'
+
+  function theirs(
+    predictions: Loaded<TidePoint[]>,
+    observed: Loaded<TidePoint[]>,
+    readings: TidePoint[],
+    rest: { hilo?: Loaded<TideExtreme[]>; isToday?: boolean } = {},
+  ): string {
+    return tideCaption(GAVIOTA, {
+      predictions,
+      hilo: HILO,
+      observed,
+      readings,
+      today: TODAY,
+      isToday: true,
+      ...rest,
+    })
+  }
+
+  test('names both stations, and the gauge gives the time of its last reading', () => {
+    expect(theirs(loaded('ready'), loaded('ready'), [EARLIER, READING])).toBe(
+      `${THEIRS} ${GAUGE}, observed through 2:06 PM, preliminary.`,
+    )
+  })
+
+  test('with no reading yet, the gauge is named and then the reason', () => {
+    expect(theirs(loaded('ready'), loaded('ready', []), [])).toBe(
+      `${THEIRS} ${GAUGE}. No observed readings yet today.`,
+    )
+    expect(theirs(loaded('ready'), loaded('unavailable', null), [])).toBe(
+      `${THEIRS} ${GAUGE}. Observed level unavailable.`,
+    )
+    expect(theirs(loaded('ready'), loaded('loading', null), [])).toBe(
+      `${THEIRS} ${GAUGE}.`,
+    )
+  })
+
+  test("a refresh that failed keeps the gauge's last reading and says so", () => {
+    expect(theirs(loaded('ready'), loaded('stale'), [READING])).toBe(
+      `${THEIRS} ${GAUGE}, observed through 2:06 PM, preliminary. Couldn't refresh the observed level.`,
+    )
+  })
+
+  test('old predictions are reported before the gauge', () => {
+    expect(theirs(loaded('stale'), loaded('ready'), [READING])).toBe(
+      `${THEIRS} Couldn't refresh. Showing predictions from 2:05 PM. ${GAUGE}, observed through 2:06 PM, preliminary.`,
+    )
+  })
+
+  test('on another day the gauge is not mentioned', () => {
+    expect(
+      theirs(loaded('ready'), loaded('ready'), [], { isToday: false }),
+    ).toBe(THEIRS)
+  })
+})
+
 describe('weatherCaption', () => {
-  const SOURCE = 'Weather: NWS forecast for the 2.5 km cell at this spot'
+  const SOURCE =
+    'Weather: NWS forecast for the 2.5 km cell at this spot, 3 ft above sea level'
   // Updated by NWS at 7:26 AM Pacific on 8 October 2026.
   const UPDATED = Date.UTC(2026, 9, 8, 14, 26)
 
@@ -164,27 +225,27 @@ describe('weatherCaption', () => {
 
   test('names the source and says when NWS last updated it', () => {
     expect(weatherCaption(CAMPUS_POINT, forecast('ready'), TODAY)).toBe(
-      `${SOURCE}, updated 7:26 AM.`,
+      `${SOURCE}. Updated 7:26 AM.`,
     )
   })
 
   test('names the day when the update was not today', () => {
     const old = forecast('ready', DAYS_AGO)
     expect(weatherCaption(CAMPUS_POINT, old, TODAY)).toBe(
-      `${SOURCE}, updated Mon Oct 5, 1:33 AM.`,
+      `${SOURCE}. Updated Mon Oct 5, 1:33 AM.`,
     )
   })
 
   test('says when the forecast on screen is a saved one that could not be refreshed', () => {
     expect(weatherCaption(CAMPUS_POINT, forecast('stale'), TODAY)).toBe(
-      `${SOURCE}, updated 7:26 AM. Couldn't refresh. Showing the forecast from 2:05 PM.`,
+      `${SOURCE}. Updated 7:26 AM. Couldn't refresh. Showing the forecast from 2:05 PM.`,
     )
   })
 
   test('names the day when the saved forecast is not from today', () => {
     const old = forecast('stale', UPDATED, DAYS_AGO)
     expect(weatherCaption(CAMPUS_POINT, old, TODAY)).toBe(
-      `${SOURCE}, updated 7:26 AM. Couldn't refresh. Showing the forecast from Mon Oct 5, 1:33 AM.`,
+      `${SOURCE}. Updated 7:26 AM. Couldn't refresh. Showing the forecast from Mon Oct 5, 1:33 AM.`,
     )
   })
 
@@ -194,5 +255,22 @@ describe('weatherCaption', () => {
         `${SOURCE}.`,
       )
     }
+  })
+
+  test("gives the cell's average and the spot's own height where the two differ", () => {
+    const laCumbre = spotById('la-cumbre-peak')
+    expect(weatherCaption(laCumbre, forecast('ready'), TODAY)).toBe(
+      'Weather: NWS forecast for the 2.5 km cell at this spot, which averages 3,258 ft above sea level; the spot itself is at 3,997 ft. Updated 7:26 AM.',
+    )
+    expect(weatherCaption(laCumbre, forecast('loading', null), TODAY)).toBe(
+      'Weather: NWS forecast for the 2.5 km cell at this spot, which averages 3,258 ft above sea level; the spot itself is at 3,997 ft.',
+    )
+  })
+
+  test('a cell at sea level says 0 ft', () => {
+    const gaviota = spotById('gaviota')
+    expect(weatherCaption(gaviota, forecast('ready'), TODAY)).toBe(
+      'Weather: NWS forecast for the 2.5 km cell at this spot, 0 ft above sea level. Updated 7:26 AM.',
+    )
   })
 })
