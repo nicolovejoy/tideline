@@ -69,6 +69,7 @@ function day(index: number, sunset: number | null): Selected {
       moonriseNearSunset: null,
     },
     isToday: index === 0,
+    anchor: sunset ?? START + index * DAY + DAY / 2,
   }
 }
 

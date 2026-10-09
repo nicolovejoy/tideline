@@ -101,8 +101,7 @@ export function weatherView(
     // A day is inside the forecast if the forecast reaches the hour of its
     // sunset, the moment the rest of the screen is about. Today is inside it
     // for as long as the forecast has any of today left, whatever the hour.
-    const anchor = selected.astro.sunset ?? (span.start + span.end) / 2
-    const reaches = Math.floor(anchor / HOUR) * HOUR <= last
+    const reaches = Math.floor(selected.anchor / HOUR) * HOUR <= last
     hours = all.filter((hour) => hour.t >= span.start && hour.t < span.end)
     if (hours.length === 0 || !(reaches || selected.isToday)) {
       notice = 'No forecast this far out.'

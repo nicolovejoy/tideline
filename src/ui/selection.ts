@@ -12,6 +12,13 @@ export interface Selected {
   span: Span
   astro: DayAstro
   isToday: boolean
+  /**
+   * The instant the day is about: sunset, the moment the rest of the screen
+   * is about, or the middle of the day where the sun does not set. The
+   * cursor rests here on a day other than today, and the forecast counts as
+   * reaching the day if it reaches this hour.
+   */
+  anchor: number
 }
 
 /**
@@ -26,13 +33,23 @@ export function selectedDay(
   const found = data.days.findIndex((day) => day.date === picked)
   const index = found === -1 ? 0 : found
   const astro = data.days[index]
+  const span = data.spans[index]
   return {
     index,
     date: astro.date,
-    span: data.spans[index],
+    span,
     astro,
     isToday: index === 0,
+    anchor: astro.sunset ?? (span.start + span.end) / 2,
   }
+}
+
+/**
+ * The items that fall on a day, such as its highs and lows. One at midnight
+ * belongs to the day it starts, not to both.
+ */
+export function onDay<T extends { t: number }>(items: T[], span: Span): T[] {
+  return items.filter((item) => item.t >= span.start && item.t < span.end)
 }
 
 /**

@@ -7,6 +7,7 @@ import type { TideReadout } from '../chart/readout.ts'
 import { steppedBounds } from '../chart/scales.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
 import type { SpotData } from '../data/useSpotData.ts'
+import { onDay } from './selection.ts'
 import type { Selected } from './selection.ts'
 
 /** Where the cursor was put by hand, and when. */
@@ -51,21 +52,16 @@ export function tideView(
   const predicted = within(data.predictions.data, span)
   const readings = within(data.observed.data, data.day)
   const observed = selected.isToday ? readings : []
-  // A high or low at midnight belongs to the day it starts, not both.
-  const events = (data.hilo.data ?? []).filter(
-    (event) => event.t >= span.start && event.t < span.end,
-  )
+  const events = onDay(data.hilo.data ?? [], span)
 
   // Where the cursor sits until someone moves it. Today that is the latest
-  // reading, or the clock. Any other day it is sunset, the moment the rest of
-  // the screen is about, or the middle of the day where the sun does not set.
+  // reading, or the clock. Any other day it is the day's anchor.
   // It is the step that contains sunset, never the one after: a sunset at
   // 4:59 PM must not tip the cursor into the 5 PM hour, or the weather under
   // it would not be the hour that the day's row in the list gives.
-  const anchor = selected.astro.sunset ?? (span.start + span.end) / 2
   const rest = selected.isToday
     ? restingCursor(data.now, observed)
-    : Math.floor(anchor / STEP) * STEP
+    : Math.floor(selected.anchor / STEP) * STEP
   // A pick belongs to the day it was made on, and lasts until the page is put
   // away and brought back. After that the cursor goes back to rest, so
   // reopening the app shows the latest reading and not wherever the cursor
