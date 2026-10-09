@@ -67,11 +67,10 @@ describe('parseDurationHours', () => {
     expect(parseDurationHours('P2DT4H')).toBe(52)
   })
 
-  test('anything else is an error, not a guess', () => {
-    expect(() => parseDurationHours('PT30M')).toThrow(
-      'NWS: unsupported duration PT30M',
-    )
-    expect(() => parseDurationHours('P')).toThrow('NWS: unsupported duration P')
+  test('anything else is null, not a guess and not an error', () => {
+    expect(parseDurationHours('PT30M')).toBeNull()
+    expect(parseDurationHours('P')).toBeNull()
+    expect(parseDurationHours('')).toBeNull()
   })
 })
 
@@ -192,6 +191,36 @@ describe('parseGridpoint with gaps in the data', () => {
     }
     const { hours } = parseGridpoint(body)
     expect(hours.map((h) => h.tempF)).toEqual([null, null, null])
+  })
+
+  test('a value with a duration it cannot read is left out, and the rest of the forecast stands', () => {
+    const body = sample()
+    body.properties.windGust = {
+      uom: 'wmoUnit:km_h-1',
+      values: [
+        { validTime: '2026-10-08T08:00:00+00:00/PT30M', value: 20 },
+        { validTime: '2026-10-08T09:00:00+00:00/PT2H', value: 30 },
+      ],
+    }
+    const { hours } = parseGridpoint(body)
+    expect(hours.map((h) => h.gustMph && Math.round(h.gustMph))).toEqual([
+      null,
+      19,
+      19,
+    ])
+    expect(hours[0].tempF).toBeCloseTo(68, 5)
+  })
+
+  test('a value whose start it cannot read is left out, never a NaN hour', () => {
+    const body = sample()
+    body.properties.windGust = {
+      uom: 'wmoUnit:km_h-1',
+      values: [{ validTime: 'soon/PT1H', value: 20 }],
+    }
+    const { hours } = parseGridpoint(body)
+    expect(hours).toHaveLength(3)
+    expect(hours.map((h) => h.gustMph)).toEqual([null, null, null])
+    expect(hours.every((h) => Number.isFinite(h.t))).toBe(true)
   })
 })
 
