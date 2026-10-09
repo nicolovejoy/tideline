@@ -30,7 +30,7 @@ export default function App() {
   const [pickedDay, setPickedDay] = useState<string | null>(null)
   const [pick, setPick] = useState<CursorPick | null>(null)
   const selected = selectedDay(data, pickedDay)
-  const tide = tideView(data, selected, pick)
+  const tide = tideView(data, selected, pick, { spot, shown: true })
   const weather = weatherView(forecast, selected, tide.cursor, data.now)
   const cursorTime = formatTime(tide.cursor, zone)
   const markers = dayMarkers(selected, data.now)
@@ -98,12 +98,12 @@ export default function App() {
                           reading comes and goes. */}
                       <span
                         className={
-                          tide.text.observed === null
-                            ? undefined
-                            : 'key key-observed'
+                          tide.text.second?.key === 'observed'
+                            ? 'key key-observed'
+                            : undefined
                         }
                       >
-                        {tide.text.observed}
+                        {tide.text.second?.words}
                       </span>
                     </>
                   }
