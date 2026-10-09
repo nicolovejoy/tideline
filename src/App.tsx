@@ -115,13 +115,14 @@ export default function App() {
         )}
 
         <p className="caption">
-          {tideCaption(
-            spot,
-            data.predictions,
-            data.observed,
-            view.observed,
-            data.today,
-          )}
+          {tideCaption(spot, {
+            predictions: data.predictions,
+            hilo: data.hilo,
+            observed: data.observed,
+            readings: view.observed,
+            today: data.today,
+            isToday: true,
+          })}
         </p>
       </section>
     </main>
