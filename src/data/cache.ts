@@ -4,7 +4,8 @@
 
 import { HOUR, MINUTE } from '../time.ts'
 
-export type Source = 'predictions' | 'hilo' | 'observed' | 'forecast'
+export type Source =
+  'predictions' | 'hilo' | 'observed' | 'gauge-predictions' | 'forecast'
 
 export interface Span {
   start: number
@@ -112,6 +113,7 @@ export function isStale(
     // they cover the window.
     case 'predictions':
     case 'hilo':
+    case 'gauge-predictions':
       return (
         !entry.span ||
         entry.span.start > needed.start ||

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { forecastSpec, frameFor, tideSpecs } from './useSpotData.ts'
-import { CAMPUS_POINT } from '../spot.ts'
+import { CAMPUS_POINT, spotById } from '../spot.ts'
 
 const HOUR = 3_600_000
 
@@ -101,6 +101,35 @@ describe('tideSpecs', () => {
       expect(url).toContain('station=9411340')
       expect(url).toContain('begin_date=20261008&end_date=20261009')
     }
+  })
+
+  test("the gauge's own prediction is for today, at the gauge, and is saved as its own source", () => {
+    expect(specs.gaugePredictions.needed).toEqual(frame.day)
+    expect(specs.gaugePredictions.source).toBe('gauge-predictions')
+    expect(specs.gaugePredictions.spotId).toBe('campus-point')
+    expect(specs.gaugePredictions.isEmpty([])).toBe(true)
+  })
+
+  test('where the gauge is another station, readings and its prediction come from there', async () => {
+    const gaviota = spotById('gaviota')
+    const theirs = tideSpecs(gaviota, frameFor(gaviota, '2026-10-09'))
+    const fetchMock = vi.fn(
+      async (_url: string) => new Response('{"predictions":[],"data":[]}'),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await theirs.predictions.fetch(frame.day)
+    await theirs.hilo.fetch(frame.day)
+    await theirs.observed.fetch(frame.day)
+    await theirs.gaugePredictions.fetch(frame.day)
+
+    const urls = fetchMock.mock.calls.map((call) => call[0])
+    expect(urls[0]).toContain('station=9411399')
+    expect(urls[1]).toContain('station=9411399')
+    expect(urls[2]).toContain('product=water_level&')
+    expect(urls[2]).toContain('station=9411340')
+    expect(urls[3]).toContain('product=predictions&interval=6&')
+    expect(urls[3]).toContain('station=9411340')
   })
 })
 

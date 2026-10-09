@@ -24,7 +24,7 @@ const HEADROOM = 14
 export default function App() {
   const spot = CAMPUS_POINT
   const zone = spot.timeZone
-  const data = useSpotData(spot)
+  const data = useSpotData(spot, true)
   const { days, spans, hilo, forecast } = data
 
   const [pickedDay, setPickedDay] = useState<string | null>(null)

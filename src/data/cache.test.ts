@@ -158,6 +158,17 @@ describe('isStale', () => {
     expect(isStale('predictions', null, NOW, WINDOW)).toBe(true)
   })
 
+  test("the gauge's own prediction is stale by coverage, like the spot's", () => {
+    const covering = { fetchedAt: NOW - 30 * DAY, span: WINDOW, data: null }
+    expect(isStale('gauge-predictions', covering, NOW, WINDOW)).toBe(false)
+    const short = {
+      fetchedAt: NOW,
+      span: { start: WINDOW.start, end: WINDOW.end - HOUR },
+      data: null,
+    }
+    expect(isStale('gauge-predictions', short, NOW, WINDOW)).toBe(true)
+  })
+
   test('the forecast is stale after an hour', () => {
     expect(isStale('forecast', at(NOW - 59 * MINUTE), NOW, WINDOW)).toBe(false)
     expect(isStale('forecast', at(NOW - 61 * MINUTE), NOW, WINDOW)).toBe(true)
