@@ -112,7 +112,7 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 
 ## Next Steps
 
-- Stage 1 (Campus Point): pull requests 1 to 3 of 4 are built (scaffold, data layer, tide screen). Next is pull request 4: the weather panels, the 14-day list, the manifest and icons. Write its plan against `docs/superpowers/specs/2026-10-08-stage-1-campus-point-design.md`, starting from the list at the end of `docs/superpowers/plans/2026-10-08-stage-1-tide-screen.md`. Have the plan's code reviewed by a fresh reviewer, get Nico's approval, then build.
+- Stage 1 (Campus Point): pull requests 1 to 3 of 4 are built (scaffold, data layer, tide screen). Pull request 4 is the weather panels, the 14-day list, the manifest and icons. Its plan is written and has been reviewed by a fresh reviewer: `docs/superpowers/plans/2026-10-08-stage-1-weather-and-days.md`, on branch `stage-1/weather-and-days`. Next: Nico reads the decisions at the top of the plan and approves it or changes it. Then build it on that branch with subagent-driven development.
 - Not yet checked on the tide screen: touch on a real iPhone, and a screen reader on the cursor.
 - The first user: confirm or correct the provisional decisions above, and answer the sharing question.
 - Everything after Stage 1 is tracked as GitHub issues, in provisional order.

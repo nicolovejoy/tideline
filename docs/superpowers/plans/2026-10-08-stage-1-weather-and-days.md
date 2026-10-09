@@ -29,14 +29,17 @@ The owner should read these before approving. Each is one line to change now and
 1. **Weather is drawn as staircases, not as lines from point to point.** The spec says the readout uses the forecast hour that contains the cursor. A line sloping from one hour's value to the next would put the cursor's dot somewhere the words do not say. With a staircase the dot, the line and the words always agree, and a value NWS gives for a six-hour block looks like what it is.
 2. **Weather uses no new colours.** The first value in each panel is in the text colour and the second in the muted one, with a bar of the same colour beside each in the readout. Sea-green stays the tide's, ember the sunset's and grey-blue the moon's.
 3. **A chosen day stays chosen** until it drops out of the 14 days, which is what happens to yesterday at midnight. Putting the page away and bringing it back does not go back to today, although it does put the cursor back to rest.
-4. **Tapping a row scrolls up to the panels.** They are above the list and usually off screen, so without this a tap seems to do nothing.
+4. **Tapping a row jumps up to the panels.** They are above the list and usually off screen, so without this a tap seems to do nothing. It jumps and does not glide: the review found that a glide moves the list under a second tap, which then chooses another day. Tapping a row also puts the cursor back to rest.
 5. **The third line of a row starts "At sunset".** Without it nobody could tell that 68°F is the temperature at 6 PM and not the day's high.
-6. **A day is inside the forecast if the forecast reaches the hour of its sunset.** The spec says "has a record for that day's sunset hour". Read literally, that would hide today's panels every evening that NWS issues a forecast starting after sunset.
+6. **A day is inside the forecast if the forecast reaches the hour of its sunset, and today is inside it for as long as the forecast has any of today left.** The spec says "has a record for that day's sunset hour". Read literally, that would hide today's panels every evening that NWS issues a forecast starting after sunset.
 7. **At the right-hand edge of a day the weather reads the last hour drawn,** not the first hour of the next day.
 8. **The tide panel keeps room for its second readout line on every day,** so the plot does not move when a day with no readings is chosen.
-9. **A saved forecast or reading stamped more than 5 minutes into the future is not believed.** Less than that is allowed for, because the page reads the clock once a minute and an answer is stamped when it arrives.
+9. **A saved forecast or reading stamped more than 5 minutes into the future is not believed.** Less than that is allowed for, because the page reads the clock once a minute and an answer is stamped when it arrives. And the loader now fetches at most once for one reading of the clock, so a device clock that is changed while a request is out cannot set off a run of requests.
 10. **The manifest's colours are the dark ground,** and the icons are not declared maskable.
 11. **The tonight strip's wording is unchanged.** It now comes from a plain function with tests instead of from the component.
+12. **On a day other than today the cursor rests on the 6-minute step that contains sunset,** not the nearest one. For a 4:59 PM sunset that is 4:54 PM, not 5:00 PM, so the weather under the resting cursor is the same hour's that the day's row gives.
+13. **The predicted curve keeps the instant its 14 days end at.** Without it the last day's line stops six minutes short of the right-hand edge and the cursor there reads "No prediction here".
+14. **The list is headed "14 days",** because it starts with today.
 
 ## Questions for the first user, for the owner to relay
 
@@ -50,11 +53,12 @@ None of these blocks the build.
 
 Every code block below was built and run as a throwaway prototype before this plan was written, and the blocks are copied from it by script, not retyped.
 
-- **Tests:** 367 pass in the prototype: the 268 on `main` and the 99 this plan adds. Lint with warnings denied, the type check and the build are clean.
+- **Tests:** 380 pass in the prototype: the 268 on `main` and the 112 this plan adds. Lint with warnings denied, the type check and the build are clean.
 - **Each task on its own:** the prototype's files were laid onto a clean copy of `main` one task at a time, in the order below. Lint, the build and the tests were green after every task, with the totals each task states.
-- **Each test against its guard:** 27 rules were broken one at a time, and the tests were run. 26 were caught. The one that was not turned out to be a guard that did nothing (`String` already turns a negative zero into "0"), and it was removed.
-- **In a browser at 390 px, with touch emulated,** against live data: 37 checks, all passing. The four panels and their readouts; a sideways drag on a weather panel moving the cursor; a swipe up on a weather panel scrolling the page and leaving the cursor alone; a tapped row putting its day on screen, marking itself, bringing the panels into view and resting the cursor at sunset with no current-time line and no observed reading; a day past the forecast saying so; the forecast failing with nothing saved while the tide draws; NOAA failing with nothing saved while the weather draws and the cursor still works; and a reopen with no network drawing all four panels from what was saved.
-- **Not checked:** anything on a real phone, including the home-screen icon and whether the page clears the status bar and the home indicator there; a screen reader; and a fake clock run past midnight with another day chosen, which only the tests of `selectedDay` cover.
+- **Each test against its guard:** 41 rules were broken one at a time, and the tests were run. All 41 are caught. Along the way one guard turned out to do nothing (`String` already turns a negative zero into "0") and was removed, and the reviewer's breakages that got past the first draft's tests each have a test now.
+- **In a browser at 390 px, with touch emulated,** against live data: 42 checks, all passing. The four panels and their readouts; a sideways drag on a weather panel moving the cursor; a swipe up on a weather panel scrolling the page and leaving the cursor alone; a tapped row putting its day on screen, marking itself, bringing the panels into view and resting the cursor at sunset with no current-time line and no observed reading; a day past the forecast saying so; the forecast failing with nothing saved while the tide draws; NOAA failing with nothing saved while the weather draws and the cursor still works; a reopen with no network drawing all four panels from what was saved; and, after the review, a cursor put by hand not coming back with its day, two quick taps on a row leaving that row's day on screen, and the 14th day reading a prediction at its right-hand edge.
+- **Not checked:** anything on a real phone, including the home-screen icon and whether the page clears the status bar and the home indicator there; a screen reader; and a fake clock run past midnight by the author, though the reviewer did run one, with another day chosen, and it behaved.
+- **Independent review:** a fresh reviewer read the first draft of this code, tried 35 breakages of its own against the tests, and drove the page in a browser with a fake clock, touch and the keyboard. It found nothing critical and six important things, all fixed here. They are listed in "Review of this plan" at the end.
 ## Global Constraints
 
 - **Node 24 for every `npm`, `npx` and `node` command.** In a fresh shell run `source ~/.nvm/nvm.sh && nvm use` first.
@@ -93,9 +97,9 @@ Created:
 - A `*.test.ts` beside each plain module
 - `public/icon.svg`, `public/icon-192.png`, `public/icon-512.png`, `public/apple-touch-icon.png`, `public/manifest.webmanifest`
 
-Modified: `src/time.ts`, `src/data/cache.ts`, `src/data/nws.ts`, `src/data/useSpotData.ts`, `src/chart/scales.ts`, `src/chart/readout.ts`, `src/chart/Panel.tsx`, `src/ui/tideView.ts`, `src/ui/captions.ts`, `src/ui/TonightStrip.tsx`, `src/App.tsx`, `src/styles.css`, their tests, `src/data/load.test.ts`, `index.html`, `CLAUDE.md`, `README.md`.
+Modified: `src/time.ts`, `src/data/cache.ts`, `src/data/load.ts`, `src/data/noaa.ts`, `src/data/nws.ts`, `src/data/useSpotData.ts`, `src/chart/scales.ts`, `src/chart/readout.ts`, `src/chart/Panel.tsx`, `src/ui/tideView.ts`, `src/ui/captions.ts`, `src/ui/TonightStrip.tsx`, `src/App.tsx`, `src/styles.css`, their tests, `index.html`, `CLAUDE.md`, `README.md` and the spec.
 
-Not touched: `src/chart/PanelStack.tsx`, `src/chart/gesture.ts`, `src/data/load.ts`, `src/data/noaa.ts`, `src/data/astro.ts`, `src/ui/HiLoTable.tsx`.
+Not touched: `src/chart/PanelStack.tsx`, `src/chart/gesture.ts`, `src/data/astro.ts`, `src/ui/HiLoTable.tsx`.
 
 Work on branch `stage-1/weather-and-days`, which already exists and holds this plan:
 
@@ -109,16 +113,16 @@ Expected: 268 tests pass.
 
 ---
 
-### Task 1: Two fixes carried from the last review, in `src/time.ts` and `src/data/cache.ts`
+### Task 1: Fixes carried from the last review, in `src/time.ts`, `src/data/cache.ts` and `src/data/load.ts`
 
 **Files:**
-- Modify: `src/time.ts`, `src/time.test.ts`, `src/data/cache.ts`, `src/data/cache.test.ts`, `src/data/load.test.ts`
+- Modify: `src/time.ts`, `src/time.test.ts`, `src/data/cache.ts`, `src/data/cache.test.ts`, `src/data/load.ts`, `src/data/load.test.ts`
 
 **Interfaces:**
 - Consumes: nothing new.
-- Produces: no new names. `formatTime` and `formatDay` keep their signatures and results and stop building a formatter on every call. `isStale` keeps its signature; for `'forecast'` and `'observed'` it now also returns `true` when the entry's `fetchedAt` is more than 5 minutes after `now`.
+- Produces: no new names. `formatTime` and `formatDay` keep their signatures and results and stop building a formatter on every call. `isStale` keeps its signature; for `'forecast'` and `'observed'` it now also returns `true` when the entry's `fetchedAt` is more than 5 minutes after `now`. A `Loader`'s `check` keeps its signature and fetches at most once for one value of `now`.
 
-**Why.** The day list calls `formatTime` about a hundred times on every draw, and the page draws again on every move of the cursor. And a device whose clock was ahead when it saved, and was put right afterwards, would otherwise never refresh the forecast or the readings until the clock caught up with the stamp.
+**Why.** The day list calls `formatTime` about a hundred times on every draw, and the page draws again on every move of the cursor. A device whose clock was ahead when it saved, and was put right afterwards, would otherwise never refresh the forecast or the readings until the clock caught up with the stamp. And a device whose clock is changed while a request is out gets an answer that looks stale against the reading it was asked on; since the page checks after every draw, each draw until the next minute would fetch again.
 
 - [ ] **Step 1: Write the failing test for the formatters**
 
@@ -291,27 +295,55 @@ Apply to `src/data/load.test.ts`:
 ```diff
 --- a/src/data/load.test.ts
 +++ b/src/data/load.test.ts
-@@ -255,6 +255,24 @@ describe('createLoader', () => {
+@@ -91,6 +91,14 @@ describe('needsFetch', () => {
+     expect(needsFetch(spec(), shown(NOW - 61 * MINUTE), NOW)).toBe(true)
+   })
+ 
++  test('an answer stamped a moment after the clock was read is fresh, not a stamp from the future', () => {
++    // The page reads the clock once a minute, and an answer is stamped when
++    // it arrives, so the stamp is always a little later than the reading.
++    const observed = spec({ source: 'observed' })
++    expect(needsFetch(spec(), shown(NOW + 59_000), NOW)).toBe(false)
++    expect(needsFetch(observed, shown(NOW + 59_000), NOW)).toBe(false)
++  })
++
+   test('predictions need fetching again only when the window moves', () => {
+     const predictions = spec({ source: 'predictions' })
+     expect(needsFetch(predictions, shown(NOW - 5 * DAY), NOW)).toBe(false)
+@@ -255,6 +263,37 @@ describe('createLoader', () => {
      expect(fetch).toHaveBeenCalledTimes(2)
    })
  
-+  test('an answer stamped after the check that asked for it is not asked for again', async () => {
-+    // The page reads the clock once a minute, so an answer is always stamped
-+    // a little later than the reading the checks are made with. If that
-+    // counted as a stamp from the future, every draw would fetch again.
-+    const fetch = vi.fn(async () => [1, 2, 3])
-+    const loader = createLoader(spec({ fetch }), NOW, clock)
-+    loader.check(spec({ fetch }), NOW)
-+    time = NOW + 59_000
-+    await settle()
-+    expect(loader.current().fetchedAt).toBe(NOW + 59_000)
++  test.each([
++    ['back', -20 * MINUTE],
++    ['forward', 20 * MINUTE],
++  ])(
++    'one answer is enough for one reading of the clock, even when the clock is put %s while the request is out',
++    async (_direction, jump) => {
++      const fetch = vi.fn(async () => [1, 2, 3])
++      const observed = spec({ fetch, source: 'observed' })
++      const loader = createLoader(observed, NOW, clock)
 +
-+    loader.check(spec({ fetch }), NOW)
-+    await settle()
-+    loader.check(spec({ fetch, source: 'observed' }), NOW)
-+    await settle()
-+    expect(fetch).toHaveBeenCalledTimes(1)
-+  })
++      loader.check(observed, NOW)
++      time = NOW + jump
++      await settle()
++      // Against the reading it was asked on, the answer looks stale at once.
++      expect(loader.current().fetchedAt).toBe(NOW + jump)
++      expect(needsFetch(observed, loader.current(), NOW)).toBe(true)
++
++      // The page draws again, and again, on that same reading.
++      loader.check(observed, NOW)
++      await settle()
++      loader.check(observed, NOW)
++      await settle()
++      expect(fetch).toHaveBeenCalledTimes(1)
++
++      // The next reading agrees with the stamp, and nothing more is needed.
++      loader.check(observed, time + MINUTE)
++      await settle()
++      expect(fetch).toHaveBeenCalledTimes(1)
++    },
++  )
 +
    test('makes one request however often it is checked while waiting', async () => {
      let answer: (data: number[]) => void = () => {}
@@ -321,9 +353,9 @@ Apply to `src/data/load.test.ts`:
 - [ ] **Step 7: Run them to see which fail**
 
 Run: `npx vitest run src/data/cache.test.ts src/data/load.test.ts`
-Expected: FAIL in the two "stamped well into the future is stale" tests only. The others pass already, the new one in `load.test.ts` among them: they pin down what the fix must not break. In particular, if the fix in the next step had no allowance for a clock read a minute late, "an answer stamped after the check that asked for it is not asked for again" would fail, and in the app every draw would fetch again.
+Expected: FAIL in four tests only: the two "stamped well into the future is stale" tests in `cache.test.ts`, and the two "one answer is enough for one reading of the clock" tests in `load.test.ts`. The other new tests pass already: they pin down what the fixes must not break. In particular, if the fix to `cache.ts` had no allowance for a clock read a minute late, "an answer stamped a moment after the clock was read is fresh" would fail.
 
-- [ ] **Step 8: Stop believing a stamp from the future**
+- [ ] **Step 8: Stop believing a stamp from the future, and fetch once for one reading of the clock**
 
 Apply to `src/data/cache.ts`:
 
@@ -367,12 +399,60 @@ Apply to `src/data/cache.ts`:
  }
 ```
 
+Apply to `src/data/load.ts`:
+
+```diff
+--- a/src/data/load.ts
++++ b/src/data/load.ts
+@@ -106,9 +106,9 @@ export interface Loader<T> {
+   current: () => Loaded<T>
+   /**
+    * Fetch if what is on screen needs it. Safe to call as often as you like:
+-   * it does nothing while a request is in flight, and after a failure it
+-   * leaves the source alone until RETRY_AFTER has passed since the check
+-   * that made the failed request.
++   * it does nothing while a request is in flight, it fetches at most once
++   * for one value of `now`, and after a failure it leaves the source alone
++   * until RETRY_AFTER has passed since the check that made the failed request.
+    */
+   check: (spec: SourceSpec<T>, now: number) => void
+   /** Calls `listener` whenever `current()` changes. Returns how to stop. */
+@@ -127,6 +127,7 @@ export function createLoader<T>(
+   let loaded = fromCache(initial, now)
+   let busy = false
+   let failedAt: number | null = null
++  let answeredAt: number | null = null
+   const listeners = new Set<() => void>()
+ 
+   return {
+@@ -140,6 +141,11 @@ export function createLoader<T>(
+     check(spec, now) {
+       if (busy || !needsFetch(spec, loaded, now)) return
+       if (failedAt !== null && now - failedAt < RETRY_AFTER) return
++      // One answer is enough for one reading of the clock. The device's clock
++      // can be changed while a request is out, and an answer stamped with the
++      // new time can look stale against the old reading. Without this, every
++      // draw until the next reading would fetch again.
++      if (answeredAt === now) return
+       busy = true
+       void refresh(spec, loaded, clock).then((next) => {
+         busy = false
+@@ -147,6 +153,7 @@ export function createLoader<T>(
+         // request gave up. Checks come once a minute, so a request that took
+         // 20 seconds to fail is still retried at the next one.
+         failedAt = next.status === 'ready' ? null : now
++        if (next.status === 'ready') answeredAt = now
+         loaded = next
+         for (const listener of listeners) listener()
+       })
+```
+
 - [ ] **Step 9: Run them to see them pass**
 
 Run: `npx vitest run src/data/cache.test.ts src/data/load.test.ts`
 Expected: PASS, every test in both files.
 
-Then prove the allowance matters. In `src/data/cache.ts` change `const AHEAD = 5 * MINUTE` to `const AHEAD = 0`, run the same command, and confirm that "an answer stamped after the check that asked for it is not asked for again" now FAILS. Put `5 * MINUTE` back and run once more to see every test pass.
+Then prove the allowance matters. In `src/data/cache.ts` change `const AHEAD = 5 * MINUTE` to `const AHEAD = 0`, run the same command, and confirm that "an answer stamped a moment after the clock was read is fresh, not a stamp from the future" now FAILS. Put `5 * MINUTE` back and run once more to see every test pass.
 
 - [ ] **Step 10: Commit**
 
@@ -380,11 +460,11 @@ Then prove the allowance matters. In `src/data/cache.ts` change `const AHEAD = 5
 npm run format && npm run lint && npm test
 ```
 
-Expected: lint prints no problems; 276 tests pass.
+Expected: lint prints no problems; 278 tests pass.
 
 ```bash
-git add src/data/cache.ts src/data/cache.test.ts src/data/load.test.ts
-git commit -m "Treat saved data stamped in the future as stale" -m "A device whose clock was ahead when it saved, and was put right afterwards, kept its forecast and readings until the clock caught up with the stamp. Five minutes are allowed for, because the page reads the clock once a minute and stamps an answer when it arrives." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git add src/data/cache.ts src/data/cache.test.ts src/data/load.ts src/data/load.test.ts
+git commit -m "Treat saved data stamped in the future as stale" -m "A device whose clock was ahead when it saved, and was put right afterwards, kept its forecast and readings until the clock caught up with the stamp. Five minutes are allowed for, because the page reads the clock once a minute and stamps an answer when it arrives. The loader also fetches at most once for one reading of the clock, so a clock changed while a request is out cannot set off a run of requests." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -562,7 +642,7 @@ Apply to `src/data/useSpotData.test.ts`:
 - [ ] **Step 2: Run them to see them fail**
 
 Run: `npx vitest run src/data/nws.test.ts src/data/useSpotData.test.ts`
-Expected: FAIL. The new tests fail, because `isForecast`, `forecastSpec` and `spans` do not exist yet. The tests that were there before pass.
+Expected: FAIL. `useSpotData.test.ts` fails to load and runs none of its tests, because `forecastSpec` does not exist yet. In `nws.test.ts` the `isForecast` tests fail and the tests that were there before pass.
 
 - [ ] **Step 3: Write the shape check**
 
@@ -702,7 +782,7 @@ Expected: PASS, every test in both files.
 npm run format && npm run lint && npm run build && npm test
 ```
 
-Expected: lint prints no problems; the build ends with `✓ built`; 292 tests pass. The page now fetches the forecast and saves it, and draws nothing with it yet.
+Expected: lint prints no problems; the build ends with `✓ built`; 294 tests pass. The page now fetches the forecast and saves it, and draws nothing with it yet.
 
 ```bash
 git add src/data/nws.ts src/data/nws.test.ts src/data/useSpotData.ts src/data/useSpotData.test.ts
@@ -1130,7 +1210,7 @@ Expected: PASS, every test in the three files.
 npm run format && npm run lint && npm test
 ```
 
-Expected: lint prints no problems; 315 tests pass.
+Expected: lint prints no problems; 317 tests pass.
 
 ```bash
 git add src/chart/scales.ts src/chart/scales.test.ts src/chart/readout.ts src/chart/readout.test.ts
@@ -1143,7 +1223,7 @@ git commit -m "Add a staircase path, round bounds and the weather in words" -m "
 
 **Files:**
 - Create: `src/ui/selection.ts`, `src/ui/selection.test.ts`
-- Modify: `src/ui/tideView.ts` (replace), `src/ui/tideView.test.ts` (replace), `src/App.tsx` (two lines)
+- Modify: `src/ui/tideView.ts` (replace), `src/ui/tideView.test.ts` (replace), `src/data/noaa.ts`, `src/data/noaa.test.ts`, `src/App.tsx` (two lines)
 
 **Interfaces:**
 - Consumes: `SpotData` with `days` and `spans` (Task 2); `DayAstro` from `src/data/astro.ts`; `Span` from `src/data/cache.ts`; `restingCursor`, `snap` and `tideReadout` from `src/chart/readout.ts`.
@@ -1154,6 +1234,9 @@ git commit -m "Add a staircase path, round bounds and the weather in words" -m "
 - Changes, in `tideView.ts`:
   - `tideView(data, selected: Selected, pick: CursorPick | null): TideView`. It used to take `(data, pick)` and knew only about today. `data` no longer needs `today`.
   - `CursorPick.day` is now the date of the day that was on screen when the cursor was put there.
+- Changes, in `noaa.ts`: `fetchPredictions(stationId, start, end)` keeps the point at `end` as well as the one at `start`. `fetchHiLo` and `fetchWaterLevel` still leave `end` out.
+
+**Why `noaa.ts` is here.** Each day's curve is drawn up to the first point of the next day. The last of the 14 days had no next day in what was fetched, which did not matter while only today was ever on screen.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1366,9 +1449,16 @@ describe('where the cursor is', () => {
     expect(view.readout).toEqual({ predictedFt: 3, observedFt: 4, aboveFt: 1 })
   })
 
-  test('at rest on another day it sits at sunset, to the nearest step', () => {
+  test('at rest on another day it sits at sunset, on the step that contains it', () => {
     const view = tideView(data(), TOMORROW, null)
     expect(view.cursor).toBe(END + 18 * HOUR + 30 * MINUTE)
+  })
+
+  test('a sunset just before the hour does not tip the cursor into the next hour', () => {
+    // 4:59 PM. The nearest step is 5:00 PM, where the weather is another
+    // hour's and no longer what the day's row in the list gives.
+    const view = tideView(data(), day(1, END + 16 * HOUR + 59 * MINUTE), null)
+    expect(view.cursor).toBe(END + 16 * HOUR + 54 * MINUTE)
   })
 
   test('where the sun does not set it rests in the middle of the day', () => {
@@ -1445,10 +1535,48 @@ describe('when there is no curve to draw', () => {
 })
 ```
 
+Apply to `src/data/noaa.test.ts`:
+
+```diff
+--- a/src/data/noaa.test.ts
++++ b/src/data/noaa.test.ts
+@@ -186,7 +186,7 @@ describe('values that are not numbers', () => {
+ })
+ 
+ describe('fetching', () => {
+-  test('fetchPredictions asks for the covering UTC dates and trims to the window', async () => {
++  test('fetchPredictions asks for the covering UTC dates and keeps the window, both ends included', async () => {
+     const fetchMock = vi.fn(async (_url: string) => new Response(curveRaw))
+     vi.stubGlobal('fetch', fetchMock)
+ 
+@@ -196,9 +196,11 @@ describe('fetching', () => {
+     const url = fetchMock.mock.calls[0][0]
+     expect(url).toContain('product=predictions&interval=6')
+     expect(url).toContain('begin_date=20261008&end_date=20261009')
+-    expect(points).toHaveLength(240)
++    // The midnight that ends the window is kept, so the last day on screen
++    // has a point at its right-hand edge like every other day.
++    expect(points).toHaveLength(241)
+     expect(points[0].t).toBe(OCT_8)
+-    expect(points.at(-1)!.t).toBe(OCT_9 - 6 * MINUTE)
++    expect(points.at(-1)!.t).toBe(OCT_9)
+   })
+ 
+   test('fetchHiLo trims to the window', async () => {
+@@ -207,6 +209,7 @@ describe('fetching', () => {
+       vi.fn(async (_url: string) => new Response(hiloRaw)),
+     )
+     const events = await fetchHiLo('9411340', OCT_8, OCT_9)
++    expect(events.every((e) => e.t >= OCT_8 && e.t < OCT_9)).toBe(true)
+     // Local 8 October: low 2:35 AM, high 8:52 AM, low 2:58 PM, high 8:58 PM.
+     expect(events.map((e) => e.type)).toEqual(['L', 'H', 'L', 'H'])
+     expect(events[0]).toEqual({
+```
+
 - [ ] **Step 2: Run them to see them fail**
 
-Run: `npx vitest run src/ui/selection.test.ts src/ui/tideView.test.ts`
-Expected: FAIL. `selection.test.ts` fails to load, because `selection.ts` does not exist. In `tideView.test.ts` every test fails, because `tideView` does not take a day yet.
+Run: `npx vitest run src/ui/selection.test.ts src/ui/tideView.test.ts src/data/noaa.test.ts`
+Expected: FAIL. `selection.test.ts` fails to load, because `selection.ts` does not exist. In `tideView.test.ts` the tests about another day, and some of those about the cursor, fail, because `tideView` does not take a day yet; the rest pass. In `noaa.test.ts` one test fails: "fetchPredictions asks for the covering UTC dates and keeps the window, both ends included".
 
 - [ ] **Step 3: Write `src/ui/selection.ts`**
 
@@ -1514,7 +1642,7 @@ export function dayMarkers(
 // which day is on screen and where the cursor was last put. A plain function,
 // so the rules have tests and App.tsx only arranges the result.
 
-import { restingCursor, snap, tideReadout } from '../chart/readout.ts'
+import { STEP, restingCursor, tideReadout } from '../chart/readout.ts'
 import type { TideReadout } from '../chart/readout.ts'
 import { wholeBounds } from '../chart/scales.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
@@ -1571,12 +1699,17 @@ export function tideView(
   // Where the cursor sits until someone moves it. Today that is the latest
   // reading, or the clock. Any other day it is sunset, the moment the rest of
   // the screen is about, or the middle of the day where the sun does not set.
+  // It is the step that contains sunset, never the one after: a sunset at
+  // 4:59 PM must not tip the cursor into the 5 PM hour, or the weather under
+  // it would not be the hour that the day's row in the list gives.
+  const anchor = selected.astro.sunset ?? (span.start + span.end) / 2
   const rest = selected.isToday
     ? restingCursor(data.now, observed)
-    : snap(selected.astro.sunset ?? (span.start + span.end) / 2)
-  // A pick lasts until another day is put on screen or the page is put away
-  // and brought back. After that the cursor goes back to rest, so reopening
-  // the app shows the latest reading and not wherever the cursor was left.
+    : Math.floor(anchor / STEP) * STEP
+  // A pick belongs to the day it was made on, and lasts until the page is put
+  // away and brought back. After that the cursor goes back to rest, so
+  // reopening the app shows the latest reading and not wherever the cursor
+  // was left. Choosing a day from the list clears the pick, in App.tsx.
   const held =
     pick !== null && pick.day === selected.date && pick.shown === data.shown
   const cursor = held ? Math.min(Math.max(pick.t, span.start), span.end) : rest
@@ -1608,7 +1741,30 @@ export function tideView(
 }
 ```
 
-- [ ] **Step 5: Keep the page building**
+- [ ] **Step 5: Keep the end of the window in the predicted curve**
+
+Apply to `src/data/noaa.ts`:
+
+```diff
+--- a/src/data/noaa.ts
++++ b/src/data/noaa.ts
+@@ -132,7 +132,10 @@ export async function fetchPredictions(
+   end: number,
+ ): Promise<TidePoint[]> {
+   const json = await getJson(noaaUrl(stationId, 'predictions', start, end, '6'))
+-  return within(parsePredictions(json), start, end)
++  // Unlike the others, the curve keeps the instant its window ends at. Each
++  // day's line is drawn up to the first point of the next day, and without
++  // this the last day would stop six minutes short of its right-hand edge.
++  return parsePredictions(json).filter((p) => p.t >= start && p.t <= end)
+ }
+ 
+ export async function fetchHiLo(
+```
+
+A phone that saved its predictions before this change keeps them until the next day, as predictions are only fetched again when the 14 days move on. Until then the last day stops six minutes short, as it does now.
+
+- [ ] **Step 6: Keep the page building**
 
 The page is rebuilt in Task 8. Until then it shows today only, so it hands `tideView` today. In `src/App.tsx`, add this import after the one for `HiLoTable`:
 
@@ -1628,22 +1784,22 @@ to
   const view = tideView(data, selectedDay(data, null), pick)
 ```
 
-- [ ] **Step 6: Run them to see them pass**
+- [ ] **Step 7: Run them to see them pass**
 
-Run: `npx vitest run src/ui`
-Expected: PASS, every test in the three files.
+Run: `npx vitest run src/ui src/data/noaa.test.ts`
+Expected: PASS, every test in the four files.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 npm run format && npm run lint && npm run build && npm test
 ```
 
-Expected: lint prints no problems; the build ends with `✓ built`; 328 tests pass.
+Expected: lint prints no problems; the build ends with `✓ built`; 331 tests pass.
 
 ```bash
-git add src/ui/selection.ts src/ui/selection.test.ts src/ui/tideView.ts src/ui/tideView.test.ts src/App.tsx
-git commit -m "Let the tide view show any of the 14 days" -m "A plain function says which day is on screen. On a day other than today there are no readings and the cursor rests at sunset. The page still shows today only." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git add src/ui/selection.ts src/ui/selection.test.ts src/ui/tideView.ts src/ui/tideView.test.ts src/data/noaa.ts src/data/noaa.test.ts src/App.tsx
+git commit -m "Let the tide view show any of the 14 days" -m "A plain function says which day is on screen. On a day other than today there are no readings and the cursor rests on the step that holds sunset. The predicted curve keeps the instant its window ends at, so the last day reaches its right-hand edge. The page still shows today only." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1657,10 +1813,10 @@ git commit -m "Let the tide view show any of the 14 days" -m "A plain function s
 - Consumes: `Selected` (Task 4); `hourAt`, `windParts`, `tempParts`, `skyParts`, `ReadoutPart` and `steppedBounds` (Task 3); `Loaded<Forecast>`; `Point` from `src/chart/scales.ts`.
 - Produces:
   - `interface WeatherPanelView { readout: ReadoutPart[]; bounds: [number, number]; series: { name: string; points: Point[] }[]; dots: { name: string; v: number }[] }`
-  - `interface WeatherView { notice: string | null; wind: WeatherPanelView; temp: WeatherPanelView; sky: WeatherPanelView }`
+  - `interface WeatherView { notice: string | null; words: string; wind: WeatherPanelView; temp: WeatherPanelView; sky: WeatherPanelView }`
   - `weatherView(forecast: Loaded<Forecast>, selected: Selected, cursor: number, now: number): WeatherView`
 
-  The notices are `'Loading forecast'`, `'Forecast unavailable'` and `'No forecast this far out.'`. When there is one, every series is empty and there are no dots. A panel whose hour has none of its values reads `[{ key: null, text: 'No forecast here' }]`.
+  The notices are `'Loading forecast'`, `'Forecast unavailable'` and `'No forecast this far out.'`. When there is one, every series is empty and there are no dots. A panel whose hour has none of its values reads `[{ key: null, text: 'No forecast here' }]`. `words` is for a screen reader: the notice when there is one, and otherwise the three readouts in one run, with anything they all say said once.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1780,17 +1936,31 @@ describe('what is drawn', () => {
   })
 
   test('one vertical range for every day, on round numbers', () => {
-    const windy = loaded(
+    const afternoon = START + 3 * DAY + 15 * HOUR
+    const stormy = loaded(
       hourly(FIRST, 185, (hour) => {
-        // A blustery afternoon three days on.
-        if (hour.t === START + 3 * DAY + 15 * HOUR) hour.gustMph = 23
+        // A hot and blustery afternoon three days on.
+        if (hour.t === afternoon) {
+          hour.gustMph = 23
+          hour.tempF = 91
+        }
       }),
     )
-    const view = weatherView(windy, day(0), NOW, NOW)
+    // Today itself has gusts of 12 and temperatures from 55 to 73.
+    const view = weatherView(stormy, day(0), NOW, NOW)
     expect(view.wind.bounds).toEqual([0, 30])
-    // Temperatures run from 50 to 73.
-    expect(view.temp.bounds).toEqual([50, 80])
+    expect(view.temp.bounds).toEqual([50, 100])
     expect(view.sky.bounds).toEqual([0, 100])
+  })
+
+  test('the wind range starts at zero even when it never drops that low', () => {
+    const breezy = loaded(
+      hourly(FIRST, 185, (hour) => {
+        hour.windMph = 14
+        hour.gustMph = 18
+      }),
+    )
+    expect(weatherView(breezy, day(0), NOW, NOW).wind.bounds).toEqual([0, 20])
   })
 })
 
@@ -1821,6 +1991,17 @@ describe('what is read out', () => {
       { name: 'cloud', v: 3 },
       { name: 'rain', v: 0 },
     ])
+  })
+
+  test('says it all in one run of words, for a screen reader', () => {
+    expect(weatherView(week, day(0), NOW, NOW).words).toBe(
+      '9 mph, gusts 12, from W, 65°F, 3% cloud, 0% rain',
+    )
+  })
+
+  test('where no panel has anything to say, the run of words says so once', () => {
+    const view = weatherView(week, day(0), START + 3 * HOUR, NOW)
+    expect(view.words).toBe('No forecast here')
   })
 
   test('at the right-hand edge it reads the last hour drawn, not the next day', () => {
@@ -1880,12 +2061,30 @@ describe('when the panels are not drawn', () => {
   test('a day past the end of the forecast says so', () => {
     const view = weatherView(week, day(8), NOW, NOW)
     expect(view.notice).toBe('No forecast this far out.')
+    expect(view.words).toBe('No forecast this far out.')
     expect(blank(view)).toBe(true)
   })
 
   test('the last day counts as inside the forecast when it reaches the hour of sunset', () => {
     // The forecast ends with the 9 PM hour on 15 October. Sunset is 6:34 PM.
     expect(weatherView(week, day(7), NOW, NOW).notice).toBeNull()
+  })
+
+  test('a missing record at the hour of sunset, with the forecast running on past it, is a gap and not the end', () => {
+    const sunsetHour = START + 2 * DAY + 18 * HOUR
+    const holed = loaded(
+      hourly(FIRST, 185).filter((hour) => hour.t !== sunsetHour),
+    )
+    const view = weatherView(holed, day(2), NOW, NOW)
+    expect(view.notice).toBeNull()
+    expect(view.temp.series[0].points).toHaveLength(23)
+  })
+
+  test('the last day counts as inside when the last record is the very hour of sunset', () => {
+    // 182 hours from 5 AM: the last record is for 6 PM on 15 October, the
+    // hour that the 6:34 PM sunset falls in.
+    const exact = loaded(hourly(FIRST, 182))
+    expect(weatherView(exact, day(7), NOW, NOW).notice).toBeNull()
   })
 
   test('the last day counts as past the end when the forecast stops before the hour of sunset', () => {
@@ -1905,6 +2104,23 @@ describe('when the panels are not drawn', () => {
     expect(view.temp.series[0].points).toHaveLength(4)
   })
 
+  test('today keeps its panels while a saved forecast has any of today left, even short of sunset', () => {
+    // It is 3:36 PM, and the saved forecast stops with the 3 PM hour.
+    const nearlyOut = loaded(hourly(START, 16), 'stale')
+    const view = weatherView(nearlyOut, day(0), NOW, NOW)
+    expect(view.notice).toBeNull()
+    expect(view.temp.series[0].points).toHaveLength(16)
+    expect(view.temp.readout).toEqual([{ key: 'temp', text: '65°F' }])
+  })
+
+  test('once its last hour is over, it has wholly passed', () => {
+    const nearlyOut = loaded(hourly(START, 16), 'stale')
+    const four = START + 16 * HOUR
+    expect(weatherView(nearlyOut, day(0), four, four).notice).toBe(
+      'Forecast unavailable',
+    )
+  })
+
   test('a saved forecast that has wholly passed, with no way to refresh it: unavailable', () => {
     // Saved ten days ago. Its last hour was two days ago.
     const old = loaded(hourly(FIRST - 10 * DAY, 185), 'stale')
@@ -1919,12 +2135,14 @@ describe('when the panels are not drawn', () => {
   })
 
   test('where the sun does not set, the middle of the day decides', () => {
-    // The forecast ends with the 9 PM hour on 15 October: past that day's
-    // midday, short of the next day's.
+    // The week's forecast ends with the 9 PM hour on 15 October, past that
+    // day's midday. One that ends with its 8 AM hour stops short of it.
+    const morning = loaded(hourly(FIRST, 172))
     expect(weatherView(week, day(7, null), NOW, NOW).notice).toBeNull()
-    expect(weatherView(week, day(8, null), NOW, NOW).notice).toBe(
+    expect(weatherView(morning, day(7, null), NOW, NOW).notice).toBe(
       'No forecast this far out.',
     )
+    expect(weatherView(morning, day(6, null), NOW, NOW).notice).toBeNull()
   })
 })
 ```
@@ -1941,7 +2159,13 @@ Expected: FAIL. The file fails to load, because `weatherView.ts` does not exist.
 // is on screen and where the cursor is. A plain function, so the rules have
 // tests and App.tsx only arranges the result.
 
-import { hourAt, skyParts, tempParts, windParts } from '../chart/readout.ts'
+import {
+  hourAt,
+  partsText,
+  skyParts,
+  tempParts,
+  windParts,
+} from '../chart/readout.ts'
 import type { ReadoutPart } from '../chart/readout.ts'
 import { steppedBounds } from '../chart/scales.ts'
 import type { Point } from '../chart/scales.ts'
@@ -1966,6 +2190,8 @@ export interface WeatherPanelView {
 export interface WeatherView {
   /** What to say where the three panels would be, when they are not drawn. */
   notice: string | null
+  /** Everything the panels say at the cursor, as one run of words. */
+  words: string
   wind: WeatherPanelView
   temp: WeatherPanelView
   sky: WeatherPanelView
@@ -2029,11 +2255,13 @@ export function weatherView(
         ? 'Loading forecast'
         : 'Forecast unavailable'
   } else {
-    // The day is inside the forecast if the forecast reaches the hour of its
-    // sunset, the moment the rest of the screen is about.
+    // A day is inside the forecast if the forecast reaches the hour of its
+    // sunset, the moment the rest of the screen is about. Today is inside it
+    // for as long as the forecast has any of today left, whatever the hour.
     const anchor = selected.astro.sunset ?? (span.start + span.end) / 2
+    const reaches = Math.floor(anchor / HOUR) * HOUR <= last
     hours = all.filter((hour) => hour.t >= span.start && hour.t < span.end)
-    if (Math.floor(anchor / HOUR) * HOUR > last || hours.length === 0) {
+    if (hours.length === 0 || !(reaches || selected.isToday)) {
       notice = 'No forecast this far out.'
       hours = []
     }
@@ -2051,25 +2279,28 @@ export function weatherView(
   )
   const tempBounds = steppedBounds(values(all, ['tempF']), 10)
 
-  return {
-    notice,
-    wind: panel(windParts(at), windBounds, hours, at, [
-      ['wind', 'windMph'],
-      ['gust', 'gustMph'],
-    ]),
-    temp: panel(tempParts(at), tempBounds, hours, at, [['temp', 'tempF']]),
-    sky: panel(skyParts(at), [0, 100], hours, at, [
-      ['cloud', 'cloudPct'],
-      ['rain', 'rainPct'],
-    ]),
-  }
+  const wind = panel(windParts(at), windBounds, hours, at, [
+    ['wind', 'windMph'],
+    ['gust', 'gustMph'],
+  ])
+  const temp = panel(tempParts(at), tempBounds, hours, at, [['temp', 'tempF']])
+  const sky = panel(skyParts(at), [0, 100], hours, at, [
+    ['cloud', 'cloudPct'],
+    ['rain', 'rainPct'],
+  ])
+  // For a screen reader. Panels with nothing to say at the cursor say so
+  // once between them, not once each.
+  const said = [wind, temp, sky].map((one) => partsText(one.readout))
+  const words = notice ?? [...new Set(said)].join(', ')
+
+  return { notice, words, wind, temp, sky }
 }
 ```
 
 - [ ] **Step 4: Run them to see them pass**
 
 Run: `npx vitest run src/ui/weatherView.test.ts`
-Expected: PASS, 18 tests.
+Expected: PASS, 25 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -2077,7 +2308,7 @@ Expected: PASS, 18 tests.
 npm run format && npm run lint && npm test
 ```
 
-Expected: lint prints no problems; 346 tests pass.
+Expected: lint prints no problems; 356 tests pass.
 
 ```bash
 git add src/ui/weatherView.ts src/ui/weatherView.test.ts
@@ -2147,7 +2378,7 @@ Apply to `src/ui/captions.test.ts`:
  }
  
  describe('tideCaption', () => {
-@@ -70,4 +87,80 @@ describe('tideCaption', () => {
+@@ -70,4 +87,112 @@ describe('tideCaption', () => {
        `${STATION} Couldn't refresh. Showing predictions from Mon Oct 5, 1:33 AM. Observed level unavailable.`,
      )
    })
@@ -2167,7 +2398,7 @@ Apply to `src/ui/captions.test.ts`:
 +  test('says so when the highs and lows could not be refreshed', () => {
 +    const hilo: Loaded<TideExtreme[]> = { ...HILO, status: 'stale' }
 +    expect(caption(loaded('ready'), loaded('ready'), [READING], { hilo })).toBe(
-+      `${STATION} Couldn't refresh the high and low times. Observed through 2:06 PM, preliminary.`,
++      `${STATION} Couldn't refresh the high and low times. Showing those from 2:05 PM. Observed through 2:06 PM, preliminary.`,
 +    )
 +  })
 +
@@ -2178,6 +2409,31 @@ Apply to `src/ui/captions.test.ts`:
 +    expect(
 +      caption(loaded('ready'), loaded('unavailable', null), [], other),
 +    ).toBe(STATION)
++  })
++
++  test('still says the highs and lows are missing on a day other than today', () => {
++    const hilo: Loaded<TideExtreme[]> = {
++      data: null,
++      fetchedAt: null,
++      span: null,
++      status: 'unavailable',
++    }
++    expect(
++      caption(loaded('ready'), loaded('ready'), [], { hilo, isToday: false }),
++    ).toBe(`${STATION} High and low times unavailable.`)
++  })
++
++  test('names the day when the saved highs and lows are not from today', () => {
++    const hilo: Loaded<TideExtreme[]> = {
++      ...HILO,
++      fetchedAt: DAYS_AGO,
++      status: 'stale',
++    }
++    expect(
++      caption(loaded('ready'), loaded('ready'), [], { hilo, isToday: false }),
++    ).toBe(
++      `${STATION} Couldn't refresh the high and low times. Showing those from Mon Oct 5, 1:33 AM.`,
++    )
 +  })
 +
 +  test('still says the predictions are old ones on a day other than today', () => {
@@ -2217,6 +2473,13 @@ Apply to `src/ui/captions.test.ts`:
 +  test('says when the forecast on screen is a saved one that could not be refreshed', () => {
 +    expect(weatherCaption(CAMPUS_POINT, forecast('stale'), TODAY)).toBe(
 +      `${SOURCE}, updated 7:26 AM. Couldn't refresh. Showing the forecast from 2:05 PM.`,
++    )
++  })
++
++  test('names the day when the saved forecast is not from today', () => {
++    const old = forecast('stale', UPDATED, DAYS_AGO)
++    expect(weatherCaption(CAMPUS_POINT, old, TODAY)).toBe(
++      `${SOURCE}, updated 7:26 AM. Couldn't refresh. Showing the forecast from Mon Oct 5, 1:33 AM.`,
 +    )
 +  })
 +
@@ -2281,8 +2544,11 @@ export function tideCaption(spot: Spot, tide: TideSources): string {
   // short of the last days, with nothing to say why.
   if (hilo.status === 'unavailable') {
     parts.push('High and low times unavailable.')
-  } else if (hilo.status === 'stale') {
-    parts.push("Couldn't refresh the high and low times.")
+  } else if (hilo.status === 'stale' && hilo.fetchedAt !== null) {
+    const saved = when(hilo.fetchedAt, today, zone)
+    parts.push(
+      `Couldn't refresh the high and low times. Showing those from ${saved}.`,
+    )
   }
 
   if (!tide.isToday) return parts.join(' ')
@@ -2353,7 +2619,7 @@ to
 - [ ] **Step 5: Run them to see them pass**
 
 Run: `npx vitest run src/ui/captions.test.ts`
-Expected: PASS, 15 tests.
+Expected: PASS, 18 tests.
 
 - [ ] **Step 6: Commit**
 
@@ -2361,7 +2627,7 @@ Expected: PASS, 15 tests.
 npm run format && npm run lint && npm run build && npm test
 ```
 
-Expected: lint prints no problems; the build ends with `✓ built`; 354 tests pass.
+Expected: lint prints no problems; the build ends with `✓ built`; 367 tests pass.
 
 ```bash
 git add src/ui/captions.ts src/ui/captions.test.ts src/App.tsx
@@ -2697,7 +2963,7 @@ Expected: PASS, 13 tests.
 npm run format && npm run lint && npm test
 ```
 
-Expected: lint prints no problems; 367 tests pass.
+Expected: lint prints no problems; 380 tests pass.
 
 ```bash
 git add src/ui/dayList.ts src/ui/dayList.test.ts
@@ -2896,7 +3162,7 @@ interface DayListProps {
 export const DayList = memo(function DayList({ rows, onSelect }: DayListProps) {
   return (
     <section className="days">
-      <h2>Next 14 days</h2>
+      <h2>14 days</h2>
       <ol>
         {rows.map((row) => (
           <li key={row.date}>
@@ -2943,7 +3209,7 @@ export const DayList = memo(function DayList({ rows, onSelect }: DayListProps) {
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Panel } from './chart/Panel.tsx'
 import { PanelStack } from './chart/PanelStack.tsx'
-import { partsText, tideWords } from './chart/readout.ts'
+import { tideWords } from './chart/readout.ts'
 import { linearScale, wholeSteps } from './chart/scales.ts'
 import { useSpotData } from './data/useSpotData.ts'
 import { CAMPUS_POINT } from './spot.ts'
@@ -2992,7 +3258,11 @@ export default function App() {
   const dayTop = useRef<HTMLElement>(null)
   const selectDay = useCallback((date: string) => {
     setPickedDay(date)
-    // The panels are above the list, usually off screen.
+    // The cursor goes back to rest, on this day and on the one left behind.
+    setPick(null)
+    // The panels are above the list, usually off screen. The page jumps to
+    // them. A glide would move the list under a second tap and choose
+    // whichever row had arrived under the finger.
     dayTop.current?.scrollIntoView({ block: 'start' })
   }, [])
 
@@ -3004,14 +3274,12 @@ export default function App() {
     dots.push({ name: 'observed', v: tide.readout.observedFt })
   }
 
-  const cursorText = [cursorTime, words.predicted, words.observed]
-  if (weather.notice === null) {
-    cursorText.push(
-      partsText(weather.wind.readout),
-      partsText(weather.temp.readout),
-      partsText(weather.sky.readout),
-    )
-  }
+  const cursorText = [
+    cursorTime,
+    words.predicted,
+    words.observed,
+    weather.words,
+  ]
 
   return (
     <main>
@@ -3120,7 +3388,7 @@ export default function App() {
 }
 ```
 
-Two things here are deliberate. The tide panel always hands `Panel` two readout lines, the second one empty when there is no reading, so the plot stays where it is. And `dayRows` is given `pickedDay`, not `selected.index`: the lint rule for the React Compiler rejects a memo that depends on a property of an object worked out during the same draw.
+Four things here are deliberate. The tide panel always hands `Panel` two readout lines, the second one empty when there is no reading, so the plot stays where it is. `dayRows` is given `pickedDay`, not `selected.index`: the lint rule for the React Compiler rejects a memo that depends on a property of an object worked out during the same draw. Choosing a day clears the cursor's pick, so that coming back to a day finds the cursor at rest and not where it was once put. And the page jumps to the panels with no smooth scrolling anywhere in the styles: a glide moves the list under a second tap.
 
 - [ ] **Step 3: Add the styles**
 
@@ -3129,19 +3397,7 @@ Apply to `src/styles.css`:
 ```diff
 --- a/src/styles.css
 +++ b/src/styles.css
-@@ -47,14 +47,26 @@
-   }
- }
- 
-+/* Choosing a day from the list glides up to its panels, unless the reader
-+   has asked for less motion. */
-+@media (prefers-reduced-motion: no-preference) {
-+  html {
-+    scroll-behavior: smooth;
-+  }
-+}
-+
- body {
+@@ -51,10 +51,14 @@ body {
    margin: 0;
  }
  
@@ -3157,7 +3413,7 @@ Apply to `src/styles.css`:
      max(1rem, env(safe-area-inset-left));
  }
  
-@@ -93,6 +105,17 @@ h1 {
+@@ -93,6 +97,17 @@ h1 {
  .key-observed {
    --key: var(--observed);
  }
@@ -3175,7 +3431,7 @@ Apply to `src/styles.css`:
  
  /* Tonight */
  .tonight {
-@@ -125,6 +148,8 @@ h1 {
+@@ -125,6 +140,8 @@ h1 {
  /* The day and its panels */
  .day {
    margin-top: 2rem;
@@ -3184,7 +3440,7 @@ Apply to `src/styles.css`:
  }
  .day-head {
    display: flex;
-@@ -160,13 +185,24 @@ h1 {
+@@ -160,13 +177,24 @@ h1 {
    font-size: 1rem;
    font-weight: 600;
  }
@@ -3212,7 +3468,7 @@ Apply to `src/styles.css`:
  .panel-plot {
    display: block;
    margin-top: 0.5rem;
-@@ -191,6 +227,16 @@ h1 {
+@@ -191,6 +219,16 @@ h1 {
    stroke: var(--observed);
    stroke-width: 2.5;
  }
@@ -3229,7 +3485,7 @@ Apply to `src/styles.css`:
  
  /* Drawn in the text colour at low strength, so the rules show over both the
     background and the filled curve. */
-@@ -238,6 +284,15 @@ h1 {
+@@ -238,6 +276,15 @@ h1 {
  .dot-observed {
    fill: var(--observed);
  }
@@ -3245,7 +3501,7 @@ Apply to `src/styles.css`:
  
  .hours {
    position: relative;
-@@ -293,3 +348,68 @@ h1 {
+@@ -293,3 +340,68 @@ h1 {
    color: var(--muted);
    font-size: 0.8667rem;
  }
@@ -3322,7 +3578,7 @@ Then:
 npm run format && npm run lint && npm run build && npm test
 ```
 
-Expected: lint prints no problems; the build ends with `✓ built`; 367 tests pass.
+Expected: lint prints no problems; the build ends with `✓ built`; 380 tests pass.
 
 - [ ] **Step 4: Check the screen in a browser**
 
@@ -3335,14 +3591,15 @@ Pass, all of:
 4. The sunset line, the moonrise line when today has one, and the dashed current-time line each cross all four panels at the same place.
 5. Clicking in any panel moves one cursor in all four, and every readout changes to that time. A dot sits on each line where the cursor crosses it, at the height the words give.
 6. The second caption reads "Weather: NWS forecast for the 2.5 km cell at this spot, updated …" with a time.
-7. Under the captions is "Next 14 days" with 14 rows. The first is today and is tinted, with a bar down its left edge.
+7. Under the captions is "14 days" with 14 rows. The first is today and is tinted, with a bar down its left edge.
 8. A row shows its date, "Sunset" with a time, "Moon" with a percentage lit; then its highs and lows two to a line; then, on about the first eight rows only, "At sunset" followed by a temperature, the wind, and cloud and rain.
-9. Clicking the fourth row: the page moves up to the panels; the date above them is that row's; the row is the only tinted one; the time beside the date is within three minutes of that row's sunset; there is no dashed line; the tide readout has one line and says nothing of "observed"; the first caption says nothing of readings; the strip at the top still shows today's sunset.
-10. Clicking a row near the bottom: only the Tide panel is drawn, and under it is "No forecast this far out."
-11. Clicking the first row brings back all four panels and the dashed line.
-12. With the system set to light and then to dark, every weather line, dot and bar is clearly visible against the ground, and the tinted row's words are readable.
-13. At 320 px and at 800 px wide the page does not scroll sideways, and no row's words run outside its tint.
-14. The browser console has no errors or warnings.
+9. Clicking the fourth row: the page jumps up to the panels at once, with no glide; the date above them is that row's; the row is the only tinted one; the time beside the date is that row's sunset or up to five minutes before it; there is no dashed line; the tide readout has one line and says nothing of "observed"; the first caption says nothing of readings; the strip at the top still shows today's sunset.
+10. With the fourth row's day on screen, click in a panel to move the cursor, click the sixth row, then click the fourth row again: the time beside the date is back at that row's sunset, not where the cursor was put.
+11. Clicking the last row: only the Tide panel is drawn, and under it is "No forecast this far out." With the panels focused, the End key gives "at 12:00 AM" and the tide readout still gives a height "predicted", not "No prediction here". (Clear the site's saved data first if this browser has opened the page from an earlier version.)
+12. Clicking the first row brings back all four panels and the dashed line.
+13. With the system set to light and then to dark, every weather line, dot and bar is clearly visible against the ground, and the tinted row's words are readable.
+14. At 320 px and at 800 px wide the page does not scroll sideways, and no row's words run outside its tint.
+15. The browser console has no errors or warnings.
 
 Fail: any of these not holding. Fix the cause, not the symptom, and re-run from the top.
 
@@ -3354,6 +3611,7 @@ Pass, all of:
 1. A sideways drag that starts on the Wind panel moves the cursor, and the time beside the date changes.
 2. A swipe up that starts on the Temperature panel scrolls the page, and the time beside the date does not change.
 3. A tap on a row of the list puts that day on screen and moves the page up to the panels.
+4. Two taps on the same row a tenth of a second apart leave that row's day on screen, not another's.
 
 - [ ] **Step 6: Check failure**
 
@@ -3488,7 +3746,7 @@ ls dist
 node -e "JSON.parse(require('fs').readFileSync('dist/manifest.webmanifest','utf8')); console.log('manifest parses')"
 ```
 
-Expected: lint prints no problems; the build ends with `✓ built`; 367 tests pass; `dist` holds `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `icon.svg`, `manifest.webmanifest` and `index.html`; the last command prints "manifest parses".
+Expected: lint prints no problems; the build ends with `✓ built`; 380 tests pass; `dist` holds `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `icon.svg`, `manifest.webmanifest` and `index.html`; the last command prints "manifest parses".
 
 Run `npm run dev`, open the page, and confirm the browser tab shows the icon and the console has no errors about the manifest or the icons. Stop the dev server.
 
@@ -3547,7 +3805,7 @@ Early. The first spot is Campus Point in Santa Barbara, California. The live pag
 
 - [ ] **Step 3: Bring the spec in line with what was built**
 
-In `docs/superpowers/specs/2026-10-08-stage-1-campus-point-design.md`, make these five changes and no others.
+In `docs/superpowers/specs/2026-10-08-stage-1-campus-point-design.md`, make these changes and no others.
 
 After the line that begins "- **Sky (%).**", add a blank line and this paragraph:
 
@@ -3561,22 +3819,29 @@ Replace the sentence "Weather readouts use the forecast hour that contains the c
 Weather readouts use the forecast hour that contains the cursor. At the right-hand edge of the day, where the cursor is on the next day's midnight, they use the last hour drawn.
 ```
 
+Replace the sentence "On any other day it rests at sunset." with:
+
+```markdown
+On any other day it rests at sunset, on the 6-minute step that contains it, so that the weather under it is the hour of sunset's.
+```
+
 After the paragraph that begins "Line 3 uses the sunset hour", add a blank line and this paragraph:
 
 ```markdown
-Line 3 starts with the words "At sunset". Tapping a row also brings the panels into view. A chosen day stays chosen until it is no longer one of the 14, as happens to yesterday at midnight; then the day on screen is today.
+Line 3 starts with the words "At sunset". Tapping a row also jumps the page up to the panels and puts the cursor back to rest. A chosen day stays chosen until it is no longer one of the 14, as happens to yesterday at midnight; then the day on screen is today.
 ```
 
 Replace the sentence that begins "A day is "inside the forecast horizon"" with:
 
 ```markdown
-A day is "inside the forecast horizon" if the forecast reaches the hour of that day's sunset, that is, if its last record is at or after that hour. Today stays inside it after sunset, even when NWS issues a forecast that starts later than sunset did. A saved forecast whose every hour has passed counts as no forecast at all.
+A day is "inside the forecast horizon" if the forecast reaches the hour of that day's sunset, that is, if its last record is at or after that hour. Today is inside it for as long as the forecast has any of today left, so it keeps its panels after sunset even when NWS issues a forecast that starts later than sunset did. A saved forecast whose every hour has passed counts as no forecast at all.
 ```
 
 After the line "- Observed level: stale after 6 minutes.", add:
 
 ```markdown
 - A forecast or a reading stamped more than 5 minutes into the future is stale too. That is what a device leaves behind when its clock was ahead and has since been put right.
+- A source is fetched at most once for one reading of the clock, however stale the answer looks against that reading.
 ```
 
 In the code layout, replace the three lines for `ui/captions.ts`, `ui/tideView.ts` and `ui/TonightStrip.tsx` with:
@@ -3657,4 +3922,28 @@ Known and not handled here. Each should become an issue or be dropped when the o
 - NOAA's quality flags on observed readings are ignored.
 - A screen reader has not been tried on the cursor. It is exposed as a slider whose value text is the time and all four readouts.
 - A rule's label can sit on top of a line near the left edge of a panel. Its halo keeps it readable.
+- With a saved forecast whose every hour has passed and no way to refresh, the panels say "Forecast unavailable" while the caption says "Showing the forecast from" an old date. It is the twin of the tide case above.
+- After a row is chosen with the keyboard, focus stays on the row, which is by then off screen, and nothing announces the new day.
+- Where two values in a panel are close, such as wind 6 and gusts 7, one dot hides the other.
+- A second tap straight after choosing a row lands on the panels, which have jumped under the finger, and moves the cursor there.
+- In a time zone half an hour off the hour, the forecast's hours would not line up with the day's edges, and on a day with no sunset a row would have no weather line although its panels are drawn. Neither can happen at Campus Point or anywhere in the United States.
 - The words in the link preview (`index.html` and `docs/link-preview.svg`, if that pull request has merged) still say "sunset, tide and moon". They want "weather" added once this ships.
+
+## Review of this plan
+
+A fresh reviewer, given the spec, the first draft of this plan and a runnable copy of its code, read the code, tried 35 breakages of its own against the tests, and drove the page in a browser at several widths with touch, the keyboard and a fake clock. It found no crash, no wrong number on screen and no run of requests in normal use.
+
+Important, and fixed in the code above:
+
+1. **A second tap just after tapping a row chose a different day,** because the page glided and the list moved under the finger. The page now jumps. (Task 8)
+2. **A sunset at :57 to :59 put the resting cursor in the next hour,** so the weather under it was not the hour the day's row gives. The cursor now rests on the step that contains sunset. (Task 4)
+3. **A cursor put by hand came back when its day was chosen again.** Choosing a day now clears it. (Task 8)
+4. **The 14th day read "No prediction here" at its right-hand edge.** The predicted curve now keeps the instant its window ends at. (Task 4)
+5. **Seven breakages got past the tests:** temperature range worked out per day; the last forecast hour being the very hour of sunset; missing highs and lows on a day other than today; an old saved forecast named without its day; the wind range not starting at zero; a saved forecast counted as passed an hour early; and a no-sunset day decided by its start. Each has a test now. (Tasks 5 and 6)
+6. **Two "Expected" lines in this plan were wrong** about which tests fail before a step. They are corrected. (Tasks 2 and 4)
+
+Smaller things, also dealt with: today could read "No forecast this far out." with a nearly used-up saved forecast, and now keeps its panels; a device clock changed while a request was out could make every draw fetch until the next minute, and the loader now fetches once for one reading of the clock; the cursor's words for a screen reader said "No forecast here" three times and left out the notice; "Couldn't refresh the high and low times." did not say when they were saved; and the list was headed "Next 14 days" though it starts with today.
+
+Left as they are, and listed under "After this plan": the caption under a wholly passed saved forecast; keyboard focus after choosing a row; one dot hiding another; a second tap landing on the panels; and two cases that cannot happen in the United States.
+
+Not reviewed by anyone: a real iPhone, the home screen, a screen reader.
