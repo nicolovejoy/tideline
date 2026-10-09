@@ -110,7 +110,7 @@ describe('dayRows', () => {
     hilo: ready(events),
     forecast: ready(forecast),
   }
-  const rows = dayRows(data, null, ZONE)
+  const rows = dayRows(data, null, ZONE, true)
 
   test('one row for each of the 14 days, in order', () => {
     expect(rows).toHaveLength(14)
@@ -122,13 +122,17 @@ describe('dayRows', () => {
 
   test('the day on screen is marked, and only that one', () => {
     expect(rows.map((row) => row.selected).indexOf(true)).toBe(0)
-    const marks = dayRows(data, '2026-10-13', ZONE).map((row) => row.selected)
+    const marks = dayRows(data, '2026-10-13', ZONE, true).map(
+      (row) => row.selected,
+    )
     expect(marks.filter(Boolean)).toHaveLength(1)
     expect(marks[5]).toBe(true)
   })
 
   test('a tapped day that is no longer among the 14 marks today instead', () => {
-    const marks = dayRows(data, '2026-10-07', ZONE).map((row) => row.selected)
+    const marks = dayRows(data, '2026-10-07', ZONE, true).map(
+      (row) => row.selected,
+    )
     expect(marks.indexOf(true)).toBe(0)
     expect(marks.filter(Boolean)).toHaveLength(1)
   })
@@ -143,7 +147,7 @@ describe('dayRows', () => {
   test('a moonrise near sunset is flagged on its own row, with its time', () => {
     // 25 October 2026: sunset 6:13 PM, moonrise about 5:45 PM.
     const later = frameFor(CAMPUS_POINT, '2026-10-20')
-    const row = dayRows({ ...data, ...later }, null, ZONE)[5]
+    const row = dayRows({ ...data, ...later }, null, ZONE, true)[5]
     expect(row.date).toBe('2026-10-25')
     const moonrise = later.days[5].moonriseNearSunset
     expect(moonrise).not.toBeNull()
@@ -158,6 +162,13 @@ describe('dayRows', () => {
     ])
     expect(rows[1].tides).toEqual(['Low 12:00 AM -0.3 ft'])
     expect(rows[2].tides).toEqual([])
+  })
+
+  test('with the tide hidden, no row lists highs and lows, and the rest of the row stands', () => {
+    const hidden = dayRows(data, null, ZONE, false)
+    expect(hidden.every((row) => row.tides.length === 0)).toBe(true)
+    expect(hidden[0].sunset).toBe(rows[0].sunset)
+    expect(hidden[0].weather).toEqual(rows[0].weather)
   })
 
   test('inside the forecast, a row gives the forecast for the hour of sunset', () => {
@@ -186,7 +197,7 @@ describe('dayRows', () => {
     // The forecast's last record is the hour after tomorrow's sunset. Two
     // hours on from that, all of it is over.
     const over = sunsetHour(1) + 2 * HOUR
-    const stale = dayRows({ ...data, now: over }, null, ZONE)
+    const stale = dayRows({ ...data, now: over }, null, ZONE, true)
     expect(stale[0].weather).toBeNull()
     expect(stale[1].weather).toBeNull()
   })
@@ -194,7 +205,7 @@ describe('dayRows', () => {
   test("a forecast with any hour still to come keeps every row's weather", () => {
     // It is tomorrow's sunset hour. Today's sunset is long past, but the
     // forecast still has an hour to come, so today's row keeps its weather.
-    const evening = dayRows({ ...data, now: sunsetHour(1) }, null, ZONE)
+    const evening = dayRows({ ...data, now: sunsetHour(1) }, null, ZONE, true)
     expect(evening[0].weather).not.toBeNull()
   })
 
@@ -203,6 +214,7 @@ describe('dayRows', () => {
       { ...frame, now: NOW, hilo: none(), forecast: none() },
       null,
       ZONE,
+      true,
     )
     expect(bare).toHaveLength(14)
     expect(bare[0].sunset).toBe('Sunset 6:34 PM')

@@ -44,7 +44,12 @@ export default function App() {
   // again once a minute, with the clock.
   const rows = useMemo(
     () =>
-      dayRows({ now: data.now, days, spans, hilo, forecast }, pickedDay, zone),
+      dayRows(
+        { now: data.now, days, spans, hilo, forecast },
+        pickedDay,
+        zone,
+        true,
+      ),
     [data.now, days, spans, hilo, forecast, pickedDay, zone],
   )
 
