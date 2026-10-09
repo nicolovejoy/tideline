@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Stage 1 is built and checked on a phone. Stage 2 has begun: three spots are on a pull request.
+Stage 1 is built; its phone check is down to one item. Stage 2 has begun: three spots are on a pull request.
 
 - Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and tides hidden by default at La Cumbre.
 - Not built: everything after the three spots. It is tracked as GitHub issues.
@@ -113,7 +113,7 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 
 ## Next Steps
 
-- Stage 1 (Campus Point) is built. Before it is called done, the owner checks it on an iPhone against the list in the pull request for `stage-1/weather-and-days`: touch on the panels, the home-screen icon, and a reopen in airplane mode.
+- Stage 1 (Campus Point) is built. Items 1 to 6 of the phone check in the pull request for `stage-1/weather-and-days` passed on 2026-10-09; item 7 remains: a reopen with a connection draws at once from saved data and the captions update when the refresh lands.
 - The three-spots pull request (`stage-2/three-spots`, issue #2) waits for the owner's phone check and review; the install hint (#27) is a separate pull request that conflicts with it in `App.tsx` and `styles.css`, so whichever merges second needs a one-line resolution.
 - Not yet tried: a screen reader on the cursor.
 - The first user: confirm or correct the provisional decisions above, and answer the sharing question.
