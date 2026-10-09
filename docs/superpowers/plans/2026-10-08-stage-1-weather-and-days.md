@@ -64,7 +64,7 @@ Every code block below was built and run as a throwaway prototype before this pl
 - **Node 24 for every `npm`, `npx` and `node` command.** In a fresh shell run `source ~/.nvm/nvm.sh && nvm use` first.
 - **Public repo, no personal details.** Tracked files, commit messages and pull requests never name people. Write "the first user" and "the owner". Never copy anything out of `private/`.
 - **Commit identity.** `git config user.email` must end in `users.noreply.github.com`.
-- **Commit trailer.** End every commit message with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- **Commit trailer.** End every commit message with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
 - **Code style is the Vite template's:** no semicolons, single quotes, relative imports carry their `.ts` or `.tsx` extension, type-only imports use `import type`, no enums. Run `npm run format` before every commit.
 - **Lint must print no problems.** Warnings fail it.
 - **No new dependencies.** Not d3, not a charting library, not a date library.
@@ -249,7 +249,7 @@ Expected: PASS, every test in the file.
 ```bash
 npm run format
 git add src/time.ts src/time.test.ts
-git commit -m "Build each display formatter once and keep it" -m "The day list will ask for about a hundred times on every draw." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "Build each display formatter once and keep it" -m "The day list will ask for about a hundred times on every draw." -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 - [ ] **Step 6: Write the failing tests for stamps from the future**
@@ -464,7 +464,7 @@ Expected: lint prints no problems; 278 tests pass.
 
 ```bash
 git add src/data/cache.ts src/data/cache.test.ts src/data/load.ts src/data/load.test.ts
-git commit -m "Treat saved data stamped in the future as stale" -m "A device whose clock was ahead when it saved, and was put right afterwards, kept its forecast and readings until the clock caught up with the stamp. Five minutes are allowed for, because the page reads the clock once a minute and stamps an answer when it arrives. The loader also fetches at most once for one reading of the clock, so a clock changed while a request is out cannot set off a run of requests." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "Treat saved data stamped in the future as stale" -m "A device whose clock was ahead when it saved, and was put right afterwards, kept its forecast and readings until the clock caught up with the stamp. Five minutes are allowed for, because the page reads the clock once a minute and stamps an answer when it arrives. The loader also fetches at most once for one reading of the clock, so a clock changed while a request is out cannot set off a run of requests." -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -786,7 +786,7 @@ Expected: lint prints no problems; the build ends with `✓ built`; 294 tests pa
 
 ```bash
 git add src/data/nws.ts src/data/nws.test.ts src/data/useSpotData.ts src/data/useSpotData.test.ts
-git commit -m "Load the NWS forecast alongside the tide" -m "The hook has a fourth source, saved and checked like the others, and the frame gives the span of each of the 14 days." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "Load the NWS forecast alongside the tide" -m "The hook has a fourth source, saved and checked like the others, and the frame gives the span of each of the 14 days." -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1214,7 +1214,7 @@ Expected: lint prints no problems; 317 tests pass.
 
 ```bash
 git add src/chart/scales.ts src/chart/scales.test.ts src/chart/readout.ts src/chart/readout.test.ts
-git commit -m "Add a staircase path, round bounds and the weather in words" -m "An hourly value holds for its hour, so it is drawn level across it. The words for an hour leave out whatever the forecast does not have." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "Add a staircase path, round bounds and the weather in words" -m "An hourly value holds for its hour, so it is drawn level across it. The words for an hour leave out whatever the forecast does not have." -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1799,7 +1799,7 @@ Expected: lint prints no problems; the build ends with `✓ built`; 331 tests pa
 
 ```bash
 git add src/ui/selection.ts src/ui/selection.test.ts src/ui/tideView.ts src/ui/tideView.test.ts src/data/noaa.ts src/data/noaa.test.ts src/App.tsx
-git commit -m "Let the tide view show any of the 14 days" -m "A plain function says which day is on screen. On a day other than today there are no readings and the cursor rests on the step that holds sunset. The predicted curve keeps the instant its window ends at, so the last day reaches its right-hand edge. The page still shows today only." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "Let the tide view show any of the 14 days" -m "A plain function says which day is on screen. On a day other than today there are no readings and the cursor rests on the step that holds sunset. The predicted curve keeps the instant its window ends at, so the last day reaches its right-hand edge. The page still shows today only." -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2312,7 +2312,7 @@ Expected: lint prints no problems; 356 tests pass.
 
 ```bash
 git add src/ui/weatherView.ts src/ui/weatherView.test.ts
-git commit -m "Work out what the weather panels show" -m "The day's hours as one staircase per value, the hour under the cursor in words, one vertical range for every day, and a line to show instead when there is no forecast for the day." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "Work out what the weather panels show" -m "The day's hours as one staircase per value, the hour under the cursor in words, one vertical range for every day, and a line to show instead when there is no forecast for the day." -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2631,7 +2631,7 @@ Expected: lint prints no problems; the build ends with `✓ built`; 367 tests pa
 
 ```bash
 git add src/ui/captions.ts src/ui/captions.test.ts src/App.tsx
-git commit -m "Caption the forecast, and say when the highs and lows are missing" -m "The tide caption keeps quiet about readings on a day other than today." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "Caption the forecast, and say when the highs and lows are missing" -m "The tide caption keeps quiet about readings on a day other than today." -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2967,7 +2967,7 @@ Expected: lint prints no problems; 380 tests pass.
 
 ```bash
 git add src/ui/dayList.ts src/ui/dayList.test.ts
-git commit -m "Word the tonight strip and the rows of the 14-day list" -m "Each row gives its day's sunset and moon, its highs and lows, and the forecast for the hour of sunset as far as the forecast reaches." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "Word the tonight strip and the rows of the 14-day list" -m "Each row gives its day's sunset and moon, its highs and lows, and the forecast for the hour of sunset as far as the forecast reaches." -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -3634,7 +3634,7 @@ git status --short
 Expected: nothing left unstaged except files this plan did not create. Then:
 
 ```bash
-git commit -m "Show the weather panels and the 14-day list" -m "Wind, temperature and sky sit under the tide on the same axis and cursor. Tapping a row of the list puts its day in the panels and the table. Each source's part of the screen says so when it has nothing to show, and the rest carries on." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "Show the weather panels and the 14-day list" -m "Wind, temperature and sky sit under the tide on the same axis and cursor. Tapping a row of the list puts its day in the panels and the table. Each source's part of the screen says so when it has nothing to show, and the rest carries on." -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -3754,7 +3754,7 @@ Run `npm run dev`, open the page, and confirm the browser tab shows the icon and
 
 ```bash
 git add public/icon.svg public/icon-192.png public/icon-512.png public/apple-touch-icon.png public/manifest.webmanifest index.html
-git commit -m "Add the icon and the manifest for the home screen" -m "A tide crest crossed by the sunset line. No service worker." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "Add the icon and the manifest for the home screen" -m "A tide crest crossed by the sunset line. No service worker." -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -3861,7 +3861,7 @@ In the code layout, replace the three lines for `ui/captions.ts`, `ui/tideView.t
 ```bash
 npm run lint && npm run build && npm test
 git add CLAUDE.md README.md docs/superpowers/specs/2026-10-08-stage-1-campus-point-design.md
-git commit -m "Bring CLAUDE.md, the README and the spec in line with the finished stage" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "Bring CLAUDE.md, the README and the spec in line with the finished stage" -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 - [ ] **Step 5: Push and open the pull request**
