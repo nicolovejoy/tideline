@@ -15,6 +15,7 @@ import { steppedBounds, wholeSteps } from '../chart/scales.ts'
 import type { Loaded } from '../data/load.ts'
 import type { Forecast, ForecastHour } from '../data/nws.ts'
 import { HOUR } from '../time.ts'
+import { onDay } from './selection.ts'
 import type { Selected } from './selection.ts'
 
 const NOTHING_HERE: ReadoutPart[] = [{ key: null, text: 'No forecast here' }]
@@ -157,7 +158,7 @@ export function weatherView(
     // today left, whatever the hour.
     const last = all[all.length - 1].t
     const reaches = Math.floor(selected.anchor / HOUR) * HOUR <= last
-    hours = all.filter((hour) => hour.t >= span.start && hour.t < span.end)
+    hours = onDay(all, span)
     if (hours.length === 0 || !(reaches || selected.isToday)) {
       notice = 'No forecast this far out.'
       hours = []

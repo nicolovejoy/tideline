@@ -222,6 +222,17 @@ describe('parseGridpoint with gaps in the data', () => {
     expect(hours.map((h) => h.gustMph)).toEqual([null, null, null])
     expect(hours.every((h) => Number.isFinite(h.t))).toBe(true)
   })
+
+  test('a validTime with no duration at all is left out', () => {
+    const body = sample()
+    body.properties.windGust = {
+      uom: 'wmoUnit:km_h-1',
+      values: [{ validTime: '2026-10-08T08:00:00+00:00', value: 20 }],
+    }
+    const { hours } = parseGridpoint(body)
+    expect(hours).toHaveLength(3)
+    expect(hours.map((h) => h.gustMph)).toEqual([null, null, null])
+  })
 })
 
 describe('fetchForecast', () => {

@@ -225,7 +225,18 @@ describe('what the panel is given', () => {
     ])
   })
 
-  test('below the datum the rules read minus, and zero is never minus zero', () => {
+  test('just below the datum the first rule is zero, never minus zero', () => {
+    const near = ready([...curve, { t: START + 8 * DAY, ft: -0.3 }])
+    const first = tideView(data({ predictions: near }), TODAY, null)
+    expect(first.bounds).toEqual([-1, 7])
+    expect(Object.is(first.rules[0].v, 0)).toBe(true)
+    expect(first.rules.map((rule) => rule.label)).toEqual([
+      '0 ft',
+      '2 ft',
+      '4 ft',
+      '6 ft',
+    ])
+
     const low = ready([...curve, { t: START + 8 * DAY, ft: -1.5 }])
     const view = tideView(data({ predictions: low }), TODAY, null)
     expect(view.bounds).toEqual([-2, 7])
