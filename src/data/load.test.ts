@@ -329,6 +329,22 @@ describe('createLoader', () => {
     expect(fetch).toHaveBeenCalledTimes(2)
   })
 
+  test('a request that was given up on is tried again at the next minute, not the one after', async () => {
+    const fetch = vi.fn(() => new Promise<number[]>(() => {}))
+    const loader = createLoader(spec({ fetch }), NOW, clock)
+    loader.check(spec({ fetch }), NOW)
+
+    // The request is given up on 20 seconds in. The screen checks on the
+    // minute, which is 40 seconds after that.
+    time = NOW + TIMEOUT
+    await vi.advanceTimersByTimeAsync(TIMEOUT)
+    expect(loader.current().status).toBe('unavailable')
+
+    time = NOW + MINUTE
+    loader.check(spec({ fetch }), time)
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
   test('when the window moves, the next check fetches the new window', async () => {
     const fetch = vi.fn(async () => [1])
     const today = spec({ source: 'predictions', fetch })

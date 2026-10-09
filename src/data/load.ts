@@ -39,7 +39,7 @@ export interface SourceSpec<T> {
 
 /** How long to wait for an answer before giving up on a request. */
 export const TIMEOUT = 20_000
-/** How long to leave a source alone after a request for it has failed. */
+/** How long to leave a source alone after a check whose request failed. */
 export const RETRY_AFTER = 55_000
 
 const NOTHING = { data: null, fetchedAt: null, span: null } as const
@@ -107,7 +107,8 @@ export interface Loader<T> {
   /**
    * Fetch if what is on screen needs it. Safe to call as often as you like:
    * it does nothing while a request is in flight, and after a failure it
-   * leaves the source alone for RETRY_AFTER before trying again.
+   * leaves the source alone until RETRY_AFTER has passed since the check
+   * that made the failed request.
    */
   check: (spec: SourceSpec<T>, now: number) => void
   /** Calls `listener` whenever `current()` changes. Returns how to stop. */
@@ -142,7 +143,10 @@ export function createLoader<T>(
       busy = true
       void refresh(spec, loaded, clock).then((next) => {
         busy = false
-        failedAt = next.status === 'ready' ? null : clock()
+        // Counted from the check that made the request, not from when the
+        // request gave up. Checks come once a minute, so a request that took
+        // 20 seconds to fail is still retried at the next one.
+        failedAt = next.status === 'ready' ? null : now
         loaded = next
         for (const listener of listeners) listener()
       })
