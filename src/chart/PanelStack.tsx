@@ -5,10 +5,8 @@ import type { Outcome, Pointer, Press } from './gesture.ts'
 import { STEP, snap } from './readout.ts'
 import { linearScale } from './scales.ts'
 import type { Scale } from './scales.ts'
-import { hourMarks } from '../time.ts'
+import { HOUR, MINUTE, hourMarks } from '../time.ts'
 
-const MINUTE = 60_000
-const HOUR = 60 * MINUTE
 const HOUR_LABELS: Record<number, string> = {
   0: '12a',
   6: '6a',

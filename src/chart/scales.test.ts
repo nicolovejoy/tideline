@@ -5,7 +5,6 @@ import {
   linearScale,
   stepPath,
   steppedBounds,
-  wholeBounds,
   wholeSteps,
 } from './scales.ts'
 
@@ -34,24 +33,6 @@ describe('linearScale', () => {
     expect(scale.invert(168)).toBe(0)
     expect(scale.invert(14)).toBe(6)
     expect(scale.invert(91)).toBeCloseTo(3, 9)
-  })
-})
-
-describe('wholeBounds', () => {
-  test('rounds outward to whole numbers', () => {
-    expect(wholeBounds([0.189, 5.449, 3.1])).toEqual([0, 6])
-  })
-
-  test('goes below zero for a tide below the datum', () => {
-    expect(wholeBounds([-0.3, 4.2])).toEqual([-1, 5])
-  })
-
-  test('is never zero tall', () => {
-    expect(wholeBounds([2, 2])).toEqual([2, 3])
-  })
-
-  test('has a fallback when there are no values', () => {
-    expect(wholeBounds([])).toEqual([0, 1])
   })
 })
 
@@ -118,6 +99,13 @@ describe('steppedBounds', () => {
     expect(steppedBounds([-3, 12], 10)).toEqual([-10, 20])
     expect(Object.is(steppedBounds([-0.2, 4], 10)[0], -10)).toBe(true)
     expect(Object.is(steppedBounds([-0, 4], 10)[0], 0)).toBe(true)
+  })
+
+  test('with a step of 1 it is whole numbers, as the tide uses', () => {
+    expect(steppedBounds([0.189, 5.449, 3.1], 1)).toEqual([0, 6])
+    expect(steppedBounds([-0.3, 4.2], 1)).toEqual([-1, 5])
+    expect(steppedBounds([2, 2], 1)).toEqual([2, 3])
+    expect(steppedBounds([], 1)).toEqual([0, 1])
   })
 })
 

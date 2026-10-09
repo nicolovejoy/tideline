@@ -23,6 +23,18 @@ export interface Marker {
   t: number
 }
 
+/** A horizontal rule across the plot, and its label. */
+export interface Rule {
+  v: number
+  label: string
+}
+
+/** A dot where the cursor meets a value. Its class is `dot-<name>`. */
+export interface Dot {
+  name: string
+  v: number
+}
+
 interface PanelProps {
   title: string
   /** The values under the cursor, in words. */
@@ -32,13 +44,13 @@ interface PanelProps {
   x: Scale
   y: Scale
   /** Values to draw a horizontal rule and a label at. */
-  rules: { v: number; label: string }[]
+  rules: Rule[]
   series: Series[]
   /** Vertical lines at instants that matter, such as sunset. */
   markers: Marker[]
   cursor: number
   /** A dot is drawn where the cursor meets each of these values. */
-  dots: { name: string; v: number }[]
+  dots: Dot[]
 }
 
 /** One chart on the shared time axis: a title, a readout, and a plot. */

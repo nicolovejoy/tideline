@@ -69,6 +69,7 @@ function day(index: number, sunset: number | null): Selected {
       moonriseNearSunset: null,
     },
     isToday: index === 0,
+    anchor: sunset ?? START + index * DAY + DAY / 2,
   }
 }
 
@@ -211,5 +212,90 @@ describe('when there is no curve to draw', () => {
 
   test('with a curve there is no notice', () => {
     expect(tideView(data(), TODAY, null).notice).toBeNull()
+  })
+})
+
+describe('what the panel is given', () => {
+  test('a rule every 2 ft across the range, each with its label', () => {
+    const view = tideView(data(), TODAY, null)
+    expect(view.bounds).toEqual([3, 7])
+    expect(view.rules).toEqual([
+      { v: 4, label: '4 ft' },
+      { v: 6, label: '6 ft' },
+    ])
+  })
+
+  test('just below the datum the first rule is zero, never minus zero', () => {
+    const near = ready([...curve, { t: START + 8 * DAY, ft: -0.3 }])
+    const first = tideView(data({ predictions: near }), TODAY, null)
+    expect(first.bounds).toEqual([-1, 7])
+    expect(Object.is(first.rules[0].v, 0)).toBe(true)
+    expect(first.rules.map((rule) => rule.label)).toEqual([
+      '0 ft',
+      '2 ft',
+      '4 ft',
+      '6 ft',
+    ])
+
+    const low = ready([...curve, { t: START + 8 * DAY, ft: -1.5 }])
+    const view = tideView(data({ predictions: low }), TODAY, null)
+    expect(view.bounds).toEqual([-2, 7])
+    expect(view.rules.map((rule) => rule.label)).toEqual([
+      '-2 ft',
+      '0 ft',
+      '2 ft',
+      '4 ft',
+      '6 ft',
+    ])
+  })
+
+  test('the curve is filled, and the readings break at a gap longer than two steps', () => {
+    const view = tideView(data(), TODAY, null)
+    expect(view.series.map((series) => series.name)).toEqual([
+      'predicted',
+      'observed',
+    ])
+    expect(view.series[0].filled).toBe(true)
+    expect(view.series[0].points).toHaveLength(view.predicted.length)
+    expect(view.series[0].points[0]).toEqual({ t: START, v: 3 })
+    expect(view.series[1].maxGap).toBe(13 * MINUTE)
+    expect(view.series[1].points).toHaveLength(readings.length)
+  })
+
+  test('a dot for the prediction and one for the reading under the cursor', () => {
+    expect(tideView(data(), TODAY, null).dots).toEqual([
+      { name: 'predicted', v: 3 },
+      { name: 'observed', v: 4 },
+    ])
+  })
+
+  test('on another day there is no reading, so no dot for one', () => {
+    expect(tideView(data(), TOMORROW, null).dots).toEqual([
+      { name: 'predicted', v: 3 },
+    ])
+  })
+
+  test('the panel is named, and its words for a screen reader start with its name', () => {
+    const view = tideView(data(), TODAY, null)
+    expect(view.title).toBe('Tide')
+    expect(view.text).toEqual({
+      predicted: '3.0 ft predicted',
+      observed: '4.0 ft observed (+1.0)',
+    })
+    expect(view.words).toBe('Tide: 3.0 ft predicted, 4.0 ft observed (+1.0)')
+    expect(tideView(data(), TOMORROW, null).words).toBe(
+      'Tide: 3.0 ft predicted',
+    )
+  })
+
+  test('with no curve, the words are the notice', () => {
+    const view = tideView(
+      data({ predictions: none('unavailable') }),
+      TODAY,
+      null,
+    )
+    expect(view.words).toBe('Tide data unavailable')
+    expect(view.rules).toEqual([])
+    expect(view.dots).toEqual([])
   })
 })

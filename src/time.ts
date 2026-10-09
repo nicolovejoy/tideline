@@ -1,6 +1,10 @@
 // The only module that knows about time zones. Every other module works in
 // UTC instants (epoch milliseconds) and asks this one for anything local.
 
+export const MINUTE = 60_000
+export const HOUR = 60 * MINUTE
+export const DAY = 24 * HOUR
+
 const clockFormats = new Map<string, Intl.DateTimeFormat>()
 
 function clockFormat(timeZone: string): Intl.DateTimeFormat {
@@ -90,7 +94,7 @@ export function hourMarks(
   every: number,
 ): { t: number; hour: number }[] {
   const marks: { t: number; hour: number }[] = []
-  for (let t = start; t <= end; t += 3_600_000) {
+  for (let t = start; t <= end; t += HOUR) {
     const hour = localHour(t, timeZone)
     if (hour % every === 0) marks.push({ t, hour })
   }

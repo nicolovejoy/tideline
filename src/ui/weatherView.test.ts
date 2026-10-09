@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { Selected } from './selection.ts'
-import { weatherView } from './weatherView.ts'
+import { forecastHours, weatherView } from './weatherView.ts'
 import type { Loaded } from '../data/load.ts'
 import type { Forecast, ForecastHour } from '../data/nws.ts'
 
@@ -29,6 +29,7 @@ function day(index: number, sunset: number | null = SUNSET): Selected {
       moonriseNearSunset: null,
     },
     isToday: index === 0,
+    anchor: sunset === null ? start + DAY / 2 : start + sunset,
   }
 }
 
@@ -137,6 +138,34 @@ describe('what is drawn', () => {
     )
     expect(weatherView(breezy, day(0), NOW, NOW).wind.bounds).toEqual([0, 20])
   })
+
+  test('each panel is named, has a rule every so often with its unit, and draws staircases', () => {
+    const view = weatherView(week, day(0), NOW, NOW)
+    expect([view.wind.title, view.temp.title, view.sky.title]).toEqual([
+      'Wind',
+      'Temperature',
+      'Sky',
+    ])
+    expect(view.sky.rules).toEqual([
+      { v: 0, label: '0%' },
+      { v: 50, label: '50%' },
+      { v: 100, label: '100%' },
+    ])
+    expect(view.wind.rules).toEqual([
+      { v: 0, label: '0 mph' },
+      { v: 10, label: '10 mph' },
+      { v: 20, label: '20 mph' },
+    ])
+    expect(view.temp.rules[0]).toEqual({ v: 50, label: '50°F' })
+    const all = [...view.wind.series, ...view.temp.series, ...view.sky.series]
+    expect(all.every((series) => series.step === HOUR)).toBe(true)
+  })
+
+  test('a panel that is not drawn still has its name and its rules, so the layout does not depend on data', () => {
+    const view = weatherView(loaded(null, 'unavailable'), day(0), NOW, NOW)
+    expect(view.temp.title).toBe('Temperature')
+    expect(view.sky.rules).toHaveLength(3)
+  })
 })
 
 describe('what is read out', () => {
@@ -168,9 +197,20 @@ describe('what is read out', () => {
     ])
   })
 
-  test('says it all in one run of words, for a screen reader', () => {
+  test('says it all in one run of words, naming each panel, for a screen reader', () => {
     expect(weatherView(week, day(0), NOW, NOW).words).toBe(
-      '9 mph, gusts 12, from W, 65°F, 3% cloud, 0% rain',
+      'Wind: 9 mph, gusts 12, from W; Temperature: 65°F; Sky: 3% cloud, 0% rain',
+    )
+  })
+
+  test('a panel with nothing to say is still named, so the words are not left hanging', () => {
+    const patchy = loaded(
+      hourly(FIRST, 185, (hour) => {
+        hour.tempF = null
+      }),
+    )
+    expect(weatherView(patchy, day(0), NOW, NOW).words).toBe(
+      'Wind: 9 mph, gusts 12, from W; Temperature: No forecast here; Sky: 3% cloud, 0% rain',
     )
   })
 
@@ -318,5 +358,22 @@ describe('when the panels are not drawn', () => {
       'No forecast this far out.',
     )
     expect(weatherView(morning, day(6, null), NOW, NOW).notice).toBeNull()
+  })
+})
+
+describe('forecastHours', () => {
+  test('the hours of the forecast, while any of it is still to come', () => {
+    expect(forecastHours(week, NOW)).toHaveLength(185)
+  })
+
+  test('none once its last hour is over, to the minute', () => {
+    // The last record is for the 184th hour from 5 AM. It is over an hour on.
+    const over = FIRST + 185 * HOUR
+    expect(forecastHours(week, over)).toEqual([])
+    expect(forecastHours(week, over - MINUTE)).toHaveLength(185)
+  })
+
+  test('none with nothing saved', () => {
+    expect(forecastHours(loaded(null, 'loading'), NOW)).toEqual([])
   })
 })

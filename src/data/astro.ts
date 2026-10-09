@@ -10,7 +10,7 @@ import {
   SearchRiseSet,
 } from 'astronomy-engine'
 import type { Spot } from '../spot.ts'
-import { addDays, localDayStart } from '../time.ts'
+import { DAY, HOUR, MINUTE, addDays, localDayStart } from '../time.ts'
 
 export type PhaseName =
   | 'New Moon'
@@ -38,9 +38,6 @@ export interface DayAstro {
 
 type Place = Pick<Spot, 'lat' | 'lon' | 'timeZone'>
 
-const MINUTE = 60_000
-const HOUR = 60 * MINUTE
-const DAY = 24 * HOUR
 const RISE = 1
 const SET = -1
 const QUARTERS: PhaseName[] = [

@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Panel } from './chart/Panel.tsx'
 import { PanelStack } from './chart/PanelStack.tsx'
-import { tideWords } from './chart/readout.ts'
-import { linearScale, wholeSteps } from './chart/scales.ts'
+import { cursorText } from './chart/readout.ts'
+import { linearScale } from './chart/scales.ts'
 import { useSpotData } from './data/useSpotData.ts'
 import { CAMPUS_POINT } from './spot.ts'
 import { formatDay, formatTime } from './time.ts'
@@ -20,8 +20,6 @@ import { weatherView } from './ui/weatherView.ts'
 const TIDE_HEIGHT = 168
 /** Room above the highest tide for a rule's label. */
 const HEADROOM = 14
-/** Readings come every 6 minutes. A longer gap is an outage. */
-const OBSERVED_GAP = 13 * 60_000
 
 export default function App() {
   const spot = CAMPUS_POINT
@@ -34,8 +32,6 @@ export default function App() {
   const selected = selectedDay(data, pickedDay)
   const tide = tideView(data, selected, pick)
   const weather = weatherView(forecast, selected, tide.cursor, data.now)
-  const [low, high] = tide.bounds
-  const words = tideWords(tide.readout)
   const cursorTime = formatTime(tide.cursor, zone)
   const markers = dayMarkers(selected, data.now)
 
@@ -44,10 +40,12 @@ export default function App() {
     [days, data.now, zone],
   )
   // The rows do not depend on the cursor, so they are not worked out again,
-  // and the list is not drawn again, each time it moves.
+  // and the list is not drawn again, each time it moves. They are worked out
+  // again once a minute, with the clock.
   const rows = useMemo(
-    () => dayRows({ days, spans, hilo, forecast }, pickedDay, zone),
-    [days, spans, hilo, forecast, pickedDay, zone],
+    () =>
+      dayRows({ now: data.now, days, spans, hilo, forecast }, pickedDay, zone),
+    [data.now, days, spans, hilo, forecast, pickedDay, zone],
   )
 
   const dayTop = useRef<HTMLElement>(null)
@@ -60,21 +58,6 @@ export default function App() {
     // whichever row had arrived under the finger.
     dayTop.current?.scrollIntoView({ block: 'start' })
   }, [])
-
-  const dots: { name: string; v: number }[] = []
-  if (tide.readout.predictedFt !== null) {
-    dots.push({ name: 'predicted', v: tide.readout.predictedFt })
-  }
-  if (tide.readout.observedFt !== null) {
-    dots.push({ name: 'observed', v: tide.readout.observedFt })
-  }
-
-  const cursorText = [
-    cursorTime,
-    words.predicted,
-    words.observed,
-    weather.words,
-  ]
 
   return (
     <main>
@@ -92,7 +75,7 @@ export default function App() {
           end={selected.span.end}
           timeZone={zone}
           cursor={tide.cursor}
-          cursorText={cursorText.filter(Boolean).join(', ')}
+          cursorText={cursorText(cursorTime, [tide.words, weather.words])}
           onCursor={(t) =>
             setPick({ t, day: selected.date, shown: data.shown })
           }
@@ -105,48 +88,34 @@ export default function App() {
                 <p className="notice">{tide.notice}</p>
               ) : (
                 <Panel
-                  title="Tide"
+                  title={tide.title}
                   readout={
                     <>
                       <span className="key key-predicted">
-                        {words.predicted}
+                        {tide.text.predicted}
                       </span>
                       {/* Always there, so the plot does not move when the
                           reading comes and goes. */}
                       <span
                         className={
-                          words.observed === null
+                          tide.text.observed === null
                             ? undefined
                             : 'key key-observed'
                         }
                       >
-                        {words.observed}
+                        {tide.text.observed}
                       </span>
                     </>
                   }
                   width={width}
                   height={TIDE_HEIGHT}
                   x={x}
-                  y={linearScale([low, high], [TIDE_HEIGHT, HEADROOM])}
-                  rules={wholeSteps(low, high, 2).map((v) => ({
-                    v,
-                    label: `${v} ft`,
-                  }))}
-                  series={[
-                    {
-                      name: 'predicted',
-                      filled: true,
-                      points: tide.predicted.map((p) => ({ t: p.t, v: p.ft })),
-                    },
-                    {
-                      name: 'observed',
-                      maxGap: OBSERVED_GAP,
-                      points: tide.observed.map((p) => ({ t: p.t, v: p.ft })),
-                    },
-                  ]}
+                  y={linearScale(tide.bounds, [TIDE_HEIGHT, HEADROOM])}
+                  rules={tide.rules}
+                  series={tide.series}
                   markers={markers}
                   cursor={tide.cursor}
-                  dots={dots}
+                  dots={tide.dots}
                 />
               )}
               <WeatherPanels

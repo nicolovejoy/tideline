@@ -3,9 +3,10 @@
 import type { TidePoint } from '../data/noaa.ts'
 import { compassPoint } from '../data/nws.ts'
 import type { ForecastHour } from '../data/nws.ts'
+import { HOUR, MINUTE } from '../time.ts'
 
 /** NOAA's tide points sit on 6-minute steps, and so does the cursor. */
-export const STEP = 6 * 60_000
+export const STEP = 6 * MINUTE
 
 /** The nearest 6-minute step to an instant. */
 export function snap(t: number): number {
@@ -28,8 +29,6 @@ function nearest(
   }
   return best
 }
-
-const HOUR = 3_600_000
 
 /**
  * Where the cursor sits until someone moves it: on the latest observed
@@ -178,4 +177,13 @@ export function skyParts(hour: ForecastHour | null): ReadoutPart[] {
 /** A readout as one run of words, such as '9 mph, gusts 12, from W'. */
 export function partsText(parts: ReadoutPart[]): string {
   return parts.map((part) => part.text).join(', ')
+}
+
+/**
+ * Everything under the cursor as one run of words, for a screen reader: the
+ * time, then what each panel says. Panels are set apart by semicolons
+ * because the words within one are already set apart by commas.
+ */
+export function cursorText(time: string, panels: string[]): string {
+  return [time, ...panels].join('; ')
 }

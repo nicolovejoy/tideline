@@ -27,19 +27,6 @@ export function linearScale(
   return scale
 }
 
-/** Whole-number bounds that contain every value and are at least 1 apart. */
-export function wholeBounds(values: number[]): [number, number] {
-  let low = Infinity
-  let high = -Infinity
-  for (const value of values) {
-    if (value < low) low = value
-    if (value > high) high = value
-  }
-  if (low > high) return [0, 1]
-  const floor = Math.floor(low)
-  return [floor, Math.max(Math.ceil(high), floor + 1)]
-}
-
 /**
  * Bounds on multiples of `step` that contain every value and are at least one
  * step apart, such as 50 to 80 for temperatures between 52 and 78.

@@ -1,6 +1,8 @@
 // The NWS forecast for one 2.5 km grid cell, from the raw gridpoint endpoint.
 // That endpoint is used because /forecast/hourly has no gusts or cloud cover.
 
+import { HOUR } from '../time.ts'
+
 export interface ForecastHour {
   /** Start of the hour, UTC instant in epoch ms. */
   t: number
@@ -34,7 +36,6 @@ interface GridLayer {
   values?: { validTime: string; value?: number | null }[]
 }
 
-const HOUR = 3_600_000
 const KMH_TO_MPH = 0.621371
 const asIs = (value: number) => value
 
@@ -71,12 +72,15 @@ export function nwsUrl(office: string, gridX: number, gridY: number): string {
   return `https://api.weather.gov/gridpoints/${office}/${gridX},${gridY}`
 }
 
-/** Hours in an ISO 8601 duration made of days and hours, such as 'P2DT4H'. */
-export function parseDurationHours(duration: string): number {
+/**
+ * Hours in an ISO 8601 duration made of days and hours, such as 'P2DT4H'.
+ * Null for anything else, such as one with minutes. NWS sends whole hours;
+ * one odd value must not take the whole forecast down with it.
+ */
+export function parseDurationHours(duration: string): number | null {
   const match = /^P(?:(\d+)D)?(?:T(\d+)H)?$/.exec(duration)
   const hours = match ? Number(match[1] ?? 0) * 24 + Number(match[2] ?? 0) : 0
-  if (hours === 0) throw new Error(`NWS: unsupported duration ${duration}`)
-  return hours
+  return hours === 0 ? null : hours
 }
 
 function emptyHour(t: number): ForecastHour {
@@ -119,7 +123,9 @@ export function parseGridpoint(json: unknown): Forecast {
       // validTime is a start and a duration: '2026-10-08T08:00:00+00:00/PT3H'
       const [startText, duration] = validTime.split('/')
       const start = Date.parse(startText)
-      const span = parseDurationHours(duration)
+      const span = parseDurationHours(duration ?? '')
+      // A value that cannot be placed in time is left out. The rest stand.
+      if (Number.isNaN(start) || span === null) continue
       for (let i = 0; i < span; i++) {
         const t = start + i * HOUR
         let hour = byHour.get(t)
