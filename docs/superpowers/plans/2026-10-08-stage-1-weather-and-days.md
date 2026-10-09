@@ -2980,7 +2980,7 @@ export function dayRows(
 - [ ] **Step 4: Run them to see them pass**
 
 Run: `npx vitest run src/ui/dayList.test.ts`
-Expected: PASS, 13 tests.
+Expected: PASS, 15 tests.
 
 - [ ] **Step 5: Commit**
 
