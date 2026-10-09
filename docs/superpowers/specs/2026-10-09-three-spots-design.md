@@ -68,8 +68,8 @@ The single column is unchanged apart from these:
 1. **Header.** The spot's name, as now. Under it, a row of three buttons naming the spots, the current one marked (`aria-pressed`). Tapping one switches the whole screen to that spot: tonight strip, panels, table, captions and list. The chosen day and the cursor go back to rest, as they do at midnight.
 2. **Tide panel, spot with its own gauge** (Campus Point, and La Cumbre once shown): exactly as now.
 3. **Tide panel, spot with a separate gauge** (Gaviota): the spot's own predicted curve, with no observed series and no observed dot. The readout's second line, which at Campus Point reads "1.9 ft observed (+1.1)", instead reads the gauge's deviation at the cursor's step: "Santa Barbara gauge +1.2 ft vs its prediction". It is there on today only, when the gauge has a reading at that step and its own prediction at that step; otherwise the slot is blank, as the observed slot is now. The sign is always written: "+1.2 ft", "-0.3 ft", "0.0 ft" (never "-0.0"). The difference is taken between the two values rounded to a tenth, as the observed-minus-predicted number is now, so it agrees with what a station page would show. On today the cursor rests on the gauge's latest reading, as it rests on the latest reading at Campus Point.
-4. **Tide hidden** (La Cumbre by default): where the tide panel, the table and the tide caption would be, one line in the notice style: "Tides hidden. Nearest station: NOAA 9411340 Santa Barbara, 6.3 mi south." followed by a "Show tides" button. Showing them draws the panel, table and caption as for a spot with its own gauge, and puts a "Hide tides" button after the tide caption. The choice is remembered per spot on the device. While hidden, the tide sources are not fetched. The list's rows omit their tide line.
-5. **Weather caption.** Gains the cell's elevation. Campus Point: "Weather: NWS forecast for the 2.5 km cell at this spot, 3 ft above sea level, updated 7:26 AM." La Cumbre: "Weather: NWS forecast for the 2.5 km cell at this spot, which averages 3,258 ft above sea level; the peak is 3,997 ft. Updated 7:26 AM." The second form is used whenever the spot has its own elevation. Thousands get a comma.
+4. **Tide hidden** (La Cumbre by default): where the tide panel, the table and the tide caption would be, one line in the notice style: "Tides hidden. Nearest station: NOAA 9411340 Santa Barbara, 6.3 mi south." followed by a "Show tides" button, placed above the panel stack so the stack's cursor handling does not take its tap. Showing them draws the panel, table and caption as for a spot with its own gauge, and puts a "Hide tides" button after the tide caption. Only a spot that hides its tide by default offers "Hide tides". The choice is remembered per spot on the device. While hidden, the tide sources are not fetched. The list's rows omit their tide line.
+5. **Weather caption.** Gains the cell's elevation, and the update time becomes its own sentence. Campus Point: "Weather: NWS forecast for the 2.5 km cell at this spot, 3 ft above sea level. Updated 7:26 AM." La Cumbre: "Weather: NWS forecast for the 2.5 km cell at this spot, which averages 3,258 ft above sea level; the spot itself is at 3,997 ft. Updated 7:26 AM." The second form is used whenever the spot has its own elevation. Thousands get a comma.
 6. **Tide caption, separate gauge.** "Tide: NOAA 9411399 Gaviota State Park, 0.2 mi south, predictions only. Gauge: NOAA 9411340 Santa Barbara, 31 mi east, observed through 2:06 PM, preliminary." The failure sentences stay as they are, with "the observed level" meaning the gauge's.
 7. **Screen reader words.** The tide panel's run of words uses the same text as the readout: "Tide: 2.0 ft predicted, Santa Barbara gauge +1.2 ft vs its prediction". Hidden tides say the hidden line.
 
@@ -103,12 +103,12 @@ A plain module `src/ui/choices.ts`, wrapped like the cache so a browser without 
 
 ## Rules, in plain modules
 
-- `src/spot.ts`: the three spots and `spotById`.
-- `src/ui/choices.ts`: `readSpotId`, `writeSpotId`, `readTidesShown(spot)`, `writeTidesShown(spot, shown)`.
-- `src/data/useSpotData.ts`: `tideSpecs` gains the gauge-predictions spec and takes the observed station from `spot.gauge`; `useLoaded(spec, now, wanted)`.
+- `src/spot.ts`: `Station`, the three spots as `SPOTS`, `spotById`, `hasOwnGauge`.
+- `src/ui/choices.ts`: `readSpot()` (the remembered spot, by `spotById`), `writeSpot(spot)`, `readTidesShown(spot)`, `writeTidesShown(spot, shown)`.
+- `src/data/useSpotData.ts`: `tideSpecs` gains the gauge-predictions spec and takes the observed station from `spot.gauge`; `useLoaded(spec, now, wanted)`; `useSpotData(spot, tidesShown)`.
 - `src/data/cache.ts`: `Source` gains `'gauge-predictions'`, stale like predictions.
-- `src/chart/readout.ts`: `tideReadout` gains `gaugeFt: number | null` and `gaugePredictedFt: number | null`; `tideWords` gives `gauge: string | null` beside `observed`, with the sign rule above. The gauge's name goes in as an argument.
-- `src/ui/tideView.ts`: takes `spot`; draws the observed series only when the gauge is the tide station; `text.gauge`; `words` includes it; `hidden: { words: string } | null` when tides are hidden, and then no series, no rules, no events.
+- `src/chart/readout.ts`: `gaugeWords(name, aboveFt)`, with the sign rule above. The deviation itself is `tideReadout` run on the gauge's own prediction and its readings, so one rule serves both.
+- `src/ui/tideView.ts`: takes `{ spot, shown }`; draws the observed series only when the gauge is the tide station; `text.second` is the reading or the gauge line; `readings` is the gauge's readings for the caption; `hidden: string | null` when tides are hidden, and then no series, no rules, no events; `canHide`.
 - `src/ui/captions.ts`: `tideCaption` adds the "predictions only. Gauge: …" form; `weatherCaption` adds the elevation sentence.
 - `src/ui/dayList.ts`: `dayRows` takes `tidesShown` and leaves `tides` empty when false.
 - Components: `SpotSwitcher.tsx` (the row of buttons), `TidesHidden.tsx` (the one line and its button), and `App.tsx` split into `App` (which spot) and `SpotScreen` (everything for one spot). No arithmetic, rules or wording in any of them.
@@ -123,17 +123,16 @@ Fixtures recorded on 2026-10-09 and already in `src/data/__fixtures__/`:
 
 Tests, beside each module:
 
-- `spot.test.ts`: every spot's gauge is either its tide station or a different station; every id is unique; the three cells differ.
+- `spot.test.ts`: the three ids in order; the three cells differ; each cell's elevation is NWS's own from the fixture, in feet; Gaviota's gauge is Santa Barbara; defaults for tides shown; an unknown id is Campus Point.
 - `choices.test.ts`: each remembered choice round-trips, an unknown spot id falls back, and broken storage falls back.
 - `cache.test.ts`: gauge predictions are stale by coverage.
 - `useSpotData.test.ts`: `tideSpecs` fetches observed from the gauge; gauge predictions are wanted only for a separate gauge.
-- `readout.test.ts`: gauge readout and words, including "+1.2 ft", "-0.3 ft" and "0.0 ft".
+- `readout.test.ts`: `gaugeWords`, including "+1.2 ft", "-0.3 ft" and "0.0 ft".
 - `tideView.test.ts`: Gaviota draws no observed series; the readout shows the gauge deviation at the cursor on today and nothing on other days; hidden tides give no series and the hidden words; the cursor rests on the gauge's latest reading.
 - `captions.test.ts`: the three weather captions and the Gaviota tide caption.
 - `dayList.test.ts`: rows omit tides when hidden.
-- `nws.test.ts`: the two new fixtures parse, and `elevation` is read as feet.
 
-Checked in a browser with a fake clock at 2026-10-09 17:00 UTC and the fixtures served: each spot's screen, the switcher, the Gaviota readout reading "+1.2 ft", La Cumbre's hidden line and its toggle surviving a reload, and the captions.
+Checked in a browser against the live APIs: each spot's screen, the switcher, the Gaviota readout naming the Santa Barbara gauge with a signed number, La Cumbre's hidden line and its toggle surviving a reload, no tide entries saved while hidden, and the captions.
 
 ## Decisions this spec makes that the issue leaves open
 
