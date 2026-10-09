@@ -106,33 +106,42 @@ function partReader(
   return (type) => parts.find((p) => p.type === type)?.value ?? ''
 }
 
-/** A 12-hour clock time in a zone, such as '6:33 PM'. */
-export function formatTime(t: number, timeZone: string): string {
-  const part = partReader(
-    new Intl.DateTimeFormat('en-US', {
+// Building a formatter is slow, and the day list asks for about a hundred
+// times on every draw, so each one is built once and kept.
+const timeFormats = new Map<string, Intl.DateTimeFormat>()
+
+function timeFormat(timeZone: string): Intl.DateTimeFormat {
+  let format = timeFormats.get(timeZone)
+  if (!format) {
+    format = new Intl.DateTimeFormat('en-US', {
       timeZone,
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
-    }),
-    t,
-  )
+    })
+    timeFormats.set(timeZone, format)
+  }
+  return format
+}
+
+/** A 12-hour clock time in a zone, such as '6:33 PM'. */
+export function formatTime(t: number, timeZone: string): string {
+  const part = partReader(timeFormat(timeZone), t)
   // Assembled from parts, because browsers disagree on which kind of space
   // goes before AM/PM, and some use one that is invisible in source code.
   return `${part('hour')}:${part('minute')} ${part('dayPeriod')}`
 }
 
+const dayFormat = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'UTC',
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+})
+
 /** A calendar date for display, such as 'Thu Oct 8'. No zone is involved. */
 export function formatDay(date: string): string {
   const [year, month, day] = parseDate(date)
-  const part = partReader(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: 'UTC',
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    }),
-    Date.UTC(year, month - 1, day, 12),
-  )
+  const part = partReader(dayFormat, Date.UTC(year, month - 1, day, 12))
   return `${part('weekday')} ${part('month')} ${part('day')}`
 }

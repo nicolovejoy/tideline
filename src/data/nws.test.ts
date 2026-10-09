@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   compassPoint,
   fetchForecast,
+  isForecast,
   nwsUrl,
   parseDurationHours,
   parseGridpoint,
@@ -231,5 +232,51 @@ describe('compassPoint', () => {
     expect(compassPoint(348.75)).toBe('N')
     expect(compassPoint(360)).toBe('N')
     expect(compassPoint(-90)).toBe('W')
+  })
+})
+
+describe('isForecast', () => {
+  const hour = {
+    t: EIGHT,
+    tempF: 68,
+    windMph: 10,
+    gustMph: null,
+    windDeg: 260,
+    cloudPct: 3,
+    rainPct: 0,
+  }
+
+  test('a parsed forecast passes, real or empty', () => {
+    expect(isForecast(parseGridpoint(JSON.parse(realRaw)))).toBe(true)
+    expect(isForecast(parseGridpoint(sample()))).toBe(true)
+    expect(isForecast({ updatedAt: EIGHT, hours: [] })).toBe(true)
+  })
+
+  test('it survives being saved and read back', () => {
+    const forecast = parseGridpoint(sample())
+    expect(isForecast(JSON.parse(JSON.stringify(forecast)))).toBe(true)
+  })
+
+  test.each([
+    ['nothing', null],
+    ['a list, as the tide sources save', [{ t: EIGHT, ft: 3 }]],
+    ['no update time', { hours: [hour] }],
+    ['no hours', { updatedAt: EIGHT }],
+    ['hours that are not a list', { updatedAt: EIGHT, hours: {} }],
+    ['an hour that is not a record', { updatedAt: EIGHT, hours: [null] }],
+    [
+      'an hour with no time',
+      { updatedAt: EIGHT, hours: [{ ...hour, t: '8' }] },
+    ],
+    [
+      'an hour with a field left out, as an older version might have saved',
+      { updatedAt: EIGHT, hours: [{ t: EIGHT, tempF: 68 }] },
+    ],
+    [
+      'an hour with a value that is not a number',
+      { updatedAt: EIGHT, hours: [{ ...hour, windMph: '10' }] },
+    ],
+  ])('%s does not pass', (_name, data) => {
+    expect(isForecast(data)).toBe(false)
   })
 })

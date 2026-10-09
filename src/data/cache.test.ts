@@ -7,7 +7,7 @@ const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
 const NOW = Date.UTC(2026, 9, 8, 17)
 const WINDOW = { start: Date.UTC(2026, 9, 8, 7), end: Date.UTC(2026, 9, 22, 7) }
-const KEY = 'tideline:v1:campus-point:forecast'
+const KEY = 'tideline:v2:campus-point:forecast'
 
 // The checks a caller hands to readCache to say what its data looks like.
 const isNumbers = (data: unknown): data is number[] =>
@@ -188,4 +188,28 @@ describe('isStale', () => {
   test('predictions saved without a span are stale', () => {
     expect(isStale('predictions', at(NOW), NOW, WINDOW)).toBe(true)
   })
+
+  test.each(['forecast', 'observed'] as const)(
+    'a saved %s stamped well into the future is stale: the clock that stamped it was wrong',
+    (source) => {
+      expect(isStale(source, at(NOW + 6 * MINUTE), NOW, WINDOW)).toBe(true)
+      expect(isStale(source, at(NOW + 3 * DAY), NOW, WINDOW)).toBe(true)
+    },
+  )
+
+  test.each(['forecast', 'observed'] as const)(
+    'a saved %s stamped a little ahead is fresh: the caller reads the clock up to a minute late',
+    (source) => {
+      expect(isStale(source, at(NOW + 90_000), NOW, WINDOW)).toBe(false)
+      expect(isStale(source, at(NOW + 4 * MINUTE), NOW, WINDOW)).toBe(false)
+    },
+  )
+
+  test.each(['predictions', 'hilo'] as const)(
+    '%s do not go by their stamp at all, so one from the future changes nothing',
+    (source) => {
+      const entry = { fetchedAt: NOW + 3 * DAY, span: WINDOW, data: null }
+      expect(isStale(source, entry, NOW, WINDOW)).toBe(false)
+    },
+  )
 })

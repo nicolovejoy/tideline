@@ -1,6 +1,8 @@
 // The values under the cursor, and how they are worded. Plain functions.
 
 import type { TidePoint } from '../data/noaa.ts'
+import { compassPoint } from '../data/nws.ts'
+import type { ForecastHour } from '../data/nws.ts'
 
 /** NOAA's tide points sit on 6-minute steps, and so does the cursor. */
 export const STEP = 6 * 60_000
@@ -113,4 +115,67 @@ export function tideWords(readout: TideReadout): {
     observed:
       observedFt === null ? null : `${feet(observedFt)} observed${above}`,
   }
+}
+
+/** The forecast hour that contains an instant, if the forecast has it. */
+export function hourAt(hours: ForecastHour[], t: number): ForecastHour | null {
+  const start = Math.floor(t / HOUR) * HOUR
+  return hours.find((hour) => hour.t === start) ?? null
+}
+
+/** A whole number for display. */
+function whole(value: number): string {
+  return String(Math.round(value))
+}
+
+/** One piece of a weather readout, and the series it describes, if any. */
+export interface ReadoutPart {
+  /** Names the series, for its colour key: 'wind', 'gust' and so on. */
+  key: string | null
+  text: string
+}
+
+/**
+ * The wind in an hour, as '9 mph', 'gusts 12', 'from W'. Each part is there
+ * only if the forecast has it.
+ */
+export function windParts(hour: ForecastHour | null): ReadoutPart[] {
+  if (!hour) return []
+  const parts: ReadoutPart[] = []
+  if (hour.windMph !== null) {
+    parts.push({ key: 'wind', text: `${whole(hour.windMph)} mph` })
+  }
+  if (hour.gustMph !== null) {
+    // The unit is given once, by whichever number comes first.
+    const unit = hour.windMph === null ? ' mph' : ''
+    parts.push({ key: 'gust', text: `gusts ${whole(hour.gustMph)}${unit}` })
+  }
+  if (hour.windDeg !== null) {
+    parts.push({ key: null, text: `from ${compassPoint(hour.windDeg)}` })
+  }
+  return parts
+}
+
+/** The temperature in an hour, as '74°F'. */
+export function tempParts(hour: ForecastHour | null): ReadoutPart[] {
+  if (!hour || hour.tempF === null) return []
+  return [{ key: 'temp', text: `${whole(hour.tempF)}°F` }]
+}
+
+/** Cloud cover and the chance of rain in an hour: '3% cloud', '0% rain'. */
+export function skyParts(hour: ForecastHour | null): ReadoutPart[] {
+  if (!hour) return []
+  const parts: ReadoutPart[] = []
+  if (hour.cloudPct !== null) {
+    parts.push({ key: 'cloud', text: `${whole(hour.cloudPct)}% cloud` })
+  }
+  if (hour.rainPct !== null) {
+    parts.push({ key: 'rain', text: `${whole(hour.rainPct)}% rain` })
+  }
+  return parts
+}
+
+/** A readout as one run of words, such as '9 mph, gusts 12, from W'. */
+export function partsText(parts: ReadoutPart[]): string {
+  return parts.map((part) => part.text).join(', ')
 }

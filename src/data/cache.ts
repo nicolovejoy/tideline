@@ -19,11 +19,16 @@ export interface CacheEntry<T> {
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
+/**
+ * How far ahead of the clock a stamp may be and still be believed. The
+ * caller's reading of the clock can be a minute or so behind the one that
+ * stamped the entry, and a request can take 20 seconds to answer.
+ */
+const AHEAD = 5 * MINUTE
 
-// Bump the version when the shape of any saved data changes, so old entries
-// are ignored instead of misread.
+// Bump the version when the shape or coverage of a saved entry changes, so saved entries from an older build are not reused (v2: the predicted curve includes its end instant).
 function storageKey(spotId: string, source: Source): string {
-  return `tideline:v1:${spotId}:${source}`
+  return `tideline:v2:${spotId}:${source}`
 }
 
 function isSpan(value: unknown): value is Span {
@@ -96,6 +101,10 @@ export function isStale(
   needed: Span,
 ): boolean {
   if (!entry) return true
+  const age = now - entry.fetchedAt
+  // A stamp from the future means the device's clock was ahead when it saved
+  // and has been put right since, so there is no telling how old the data is.
+  const fromTheFuture = age < -AHEAD
   switch (source) {
     // Predictions for a date do not change, so they are good for as long as
     // they cover the window.
@@ -107,8 +116,8 @@ export function isStale(
         entry.span.end < needed.end
       )
     case 'forecast':
-      return now - entry.fetchedAt > HOUR
+      return age > HOUR || fromTheFuture
     case 'observed':
-      return now - entry.fetchedAt > 6 * MINUTE
+      return age > 6 * MINUTE || fromTheFuture
   }
 }

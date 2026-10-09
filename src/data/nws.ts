@@ -136,6 +136,27 @@ export function parseGridpoint(json: unknown): Forecast {
   return { updatedAt, hours }
 }
 
+/** Whether saved data has the shape of a parsed forecast. For the cache. */
+export function isForecast(data: unknown): data is Forecast {
+  if (typeof data !== 'object' || data === null) return false
+  const { updatedAt, hours } = data as Record<string, unknown>
+  return (
+    typeof updatedAt === 'number' &&
+    Array.isArray(hours) &&
+    hours.every((hour: unknown) => {
+      if (typeof hour !== 'object' || hour === null) return false
+      const record = hour as Record<string, unknown>
+      return (
+        typeof record.t === 'number' &&
+        Object.keys(LAYERS).every(
+          (field) =>
+            record[field] === null || typeof record[field] === 'number',
+        )
+      )
+    })
+  )
+}
+
 export async function fetchForecast(
   office: string,
   gridX: number,

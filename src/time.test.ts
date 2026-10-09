@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import {
   addDays,
   formatDay,
@@ -135,5 +135,28 @@ describe('formatDay', () => {
     expect(formatDay('2026-10-08')).toBe('Thu Oct 8')
     expect(formatDay('2026-11-01')).toBe('Sun Nov 1')
     expect(formatDay('2027-01-01')).toBe('Fri Jan 1')
+  })
+})
+
+describe('the display formatters', () => {
+  test('are built once and kept, because the day list asks for about a hundred times on every draw', () => {
+    // Asked for once, so that a zone no other test has used is ready.
+    formatTime(Date.UTC(2026, 9, 9, 1, 33), 'America/Denver')
+    formatDay('2026-10-08')
+
+    const built = vi.spyOn(Intl, 'DateTimeFormat')
+    try {
+      expect(formatTime(Date.UTC(2026, 9, 9, 1, 33), 'America/Denver')).toBe(
+        '7:33 PM',
+      )
+      expect(formatTime(Date.UTC(2026, 9, 9, 19, 5), 'America/Denver')).toBe(
+        '1:05 PM',
+      )
+      expect(formatDay('2026-10-08')).toBe('Thu Oct 8')
+      expect(formatDay('2026-10-21')).toBe('Wed Oct 21')
+      expect(built).not.toHaveBeenCalled()
+    } finally {
+      built.mockRestore()
+    }
   })
 })

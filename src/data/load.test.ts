@@ -91,6 +91,14 @@ describe('needsFetch', () => {
     expect(needsFetch(spec(), shown(NOW - 61 * MINUTE), NOW)).toBe(true)
   })
 
+  test('an answer stamped a moment after the clock was read is fresh, not a stamp from the future', () => {
+    // The page reads the clock once a minute, and an answer is stamped when
+    // it arrives, so the stamp is always a little later than the reading.
+    const observed = spec({ source: 'observed' })
+    expect(needsFetch(spec(), shown(NOW + 59_000), NOW)).toBe(false)
+    expect(needsFetch(observed, shown(NOW + 59_000), NOW)).toBe(false)
+  })
+
   test('predictions need fetching again only when the window moves', () => {
     const predictions = spec({ source: 'predictions' })
     expect(needsFetch(predictions, shown(NOW - 5 * DAY), NOW)).toBe(false)
@@ -254,6 +262,37 @@ describe('createLoader', () => {
     await settle()
     expect(fetch).toHaveBeenCalledTimes(2)
   })
+
+  test.each([
+    ['back', -20 * MINUTE],
+    ['forward', 20 * MINUTE],
+  ])(
+    'one answer is enough for one reading of the clock, even when the clock is put %s while the request is out',
+    async (_direction, jump) => {
+      const fetch = vi.fn(async () => [1, 2, 3])
+      const observed = spec({ fetch, source: 'observed' })
+      const loader = createLoader(observed, NOW, clock)
+
+      loader.check(observed, NOW)
+      time = NOW + jump
+      await settle()
+      // Against the reading it was asked on, the answer looks stale at once.
+      expect(loader.current().fetchedAt).toBe(NOW + jump)
+      expect(needsFetch(observed, loader.current(), NOW)).toBe(true)
+
+      // The page draws again, and again, on that same reading.
+      loader.check(observed, NOW)
+      await settle()
+      loader.check(observed, NOW)
+      await settle()
+      expect(fetch).toHaveBeenCalledTimes(1)
+
+      // The next reading agrees with the stamp, and nothing more is needed.
+      loader.check(observed, time + MINUTE)
+      await settle()
+      expect(fetch).toHaveBeenCalledTimes(1)
+    },
+  )
 
   test('makes one request however often it is checked while waiting', async () => {
     let answer: (data: number[]) => void = () => {}

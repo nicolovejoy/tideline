@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { areaPath, linePath } from './scales.ts'
+import { areaPath, linePath, stepPath } from './scales.ts'
 import type { Point, Scale } from './scales.ts'
 
 export interface Series {
@@ -10,6 +10,11 @@ export interface Series {
   filled?: boolean
   /** Break the line where neighbours are further apart in time than this. */
   maxGap?: number
+  /**
+   * Each value holds for this long, as an hourly forecast's does. The series
+   * is drawn as a staircase instead of a line from point to point.
+   */
+  step?: number
 }
 
 export interface Marker {
@@ -68,7 +73,14 @@ export function Panel({
             {one.filled && (
               <path className="fill" d={areaPath(one.points, x, y, height)} />
             )}
-            <path className="line" d={linePath(one.points, x, y, one.maxGap)} />
+            <path
+              className="line"
+              d={
+                one.step === undefined
+                  ? linePath(one.points, x, y, one.maxGap)
+                  : stepPath(one.points, x, y, one.step)
+              }
+            />
           </g>
         ))}
         {rules.map((rule) => (

@@ -51,10 +51,14 @@ body {
   margin: 0;
 }
 
+/* Opened from the home screen, the page runs under the status bar and the
+   home indicator, so each edge keeps clear of its safe area. */
 main {
   max-width: 30rem;
   margin: 0 auto;
-  padding: 1.25rem max(1rem, env(safe-area-inset-right)) 2.5rem
+  padding: max(1.25rem, env(safe-area-inset-top))
+    max(1rem, env(safe-area-inset-right))
+    calc(2.5rem + env(safe-area-inset-bottom))
     max(1rem, env(safe-area-inset-left));
 }
 
@@ -93,6 +97,17 @@ h1 {
 .key-observed {
   --key: var(--observed);
 }
+/* Weather stays quiet: the first value of a panel in the text colour, the
+   second in the muted one. */
+.key-wind,
+.key-temp,
+.key-cloud {
+  --key: var(--ink);
+}
+.key-gust,
+.key-rain {
+  --key: var(--muted);
+}
 
 /* Tonight */
 .tonight {
@@ -125,6 +140,8 @@ h1 {
 /* The day and its panels */
 .day {
   margin-top: 2rem;
+  /* Where the page stops when a day is chosen from the list. */
+  scroll-margin-top: 0.75rem;
 }
 .day-head {
   display: flex;
@@ -160,12 +177,23 @@ h1 {
   font-size: 1rem;
   font-weight: 600;
 }
+/* The panels of a day, one under another. */
+.panel + .panel,
+.panel + .notice,
+.notice + .panel {
+  margin-top: 1.25rem;
+}
 .panel-readout {
-  /* Always two lines tall, so the plot does not move when the second value
-     comes and goes as the cursor crosses the last reading. */
+  /* One line for each thing handed in, so the tide panel, which always hands
+     in two, does not move its plot when the second value comes and goes. */
   display: grid;
-  grid-template-rows: 1.4em 1.4em;
+  grid-auto-rows: 1.4em;
   font-family: var(--numerals);
+}
+.readout-row {
+  display: flex;
+  column-gap: 0.9em;
+  white-space: nowrap;
 }
 .panel-plot {
   display: block;
@@ -190,6 +218,16 @@ h1 {
 .series-observed .line {
   stroke: var(--observed);
   stroke-width: 2.5;
+}
+.series-wind .line,
+.series-temp .line,
+.series-cloud .line {
+  stroke: var(--ink);
+}
+.series-gust .line,
+.series-rain .line {
+  stroke: var(--muted);
+  stroke-width: 1.5;
 }
 
 /* Drawn in the text colour at low strength, so the rules show over both the
@@ -237,6 +275,15 @@ h1 {
 }
 .dot-observed {
   fill: var(--observed);
+}
+.dot-wind,
+.dot-temp,
+.dot-cloud {
+  fill: var(--ink);
+}
+.dot-gust,
+.dot-rain {
+  fill: var(--muted);
 }
 
 .hours {
@@ -292,4 +339,69 @@ h1 {
   margin-top: 1.25rem;
   color: var(--muted);
   font-size: 0.8667rem;
+}
+
+/* The 14 days */
+.days {
+  margin-top: 2.5rem;
+}
+.days h2 {
+  font-size: 1.1333rem;
+  font-weight: 600;
+}
+.days ol {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.day-row {
+  display: grid;
+  row-gap: 0.2rem;
+  /* Wider than the column by its own padding, so its words line up with
+     everything above while the marked row's tint has room around them. */
+  width: calc(100% + 1.2rem);
+  margin: 0 -0.6rem;
+  padding: 0.6rem;
+  border: 0;
+  border-top: 1px solid var(--rule);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.day-row[aria-pressed='true'] {
+  background: var(--sea-fill);
+  box-shadow: inset 0.2rem 0 0 var(--sea);
+}
+.day-row:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: -2px;
+}
+.day-row-head,
+.day-row-weather {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.9em;
+}
+.day-row-date {
+  min-width: 5.6em;
+  font-weight: 600;
+}
+.day-row-flag {
+  padding-left: 0.4rem;
+  border-left: 0.2rem solid var(--moon);
+  font-weight: 600;
+}
+.day-row-tides,
+.day-row-weather {
+  color: var(--muted);
+  font-family: var(--numerals);
+  font-size: 0.8667rem;
+}
+.day-row-tides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 0.9em;
 }

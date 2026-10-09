@@ -132,7 +132,10 @@ export async function fetchPredictions(
   end: number,
 ): Promise<TidePoint[]> {
   const json = await getJson(noaaUrl(stationId, 'predictions', start, end, '6'))
-  return within(parsePredictions(json), start, end)
+  // Unlike the others, the curve keeps the instant its window ends at. Each
+  // day's line is drawn up to the first point of the next day, and without
+  // this the last day would stop six minutes short of its right-hand edge.
+  return parsePredictions(json).filter((p) => p.t >= start && p.t <= end)
 }
 
 export async function fetchHiLo(

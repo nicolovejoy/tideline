@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { frameFor, tideSpecs } from './useSpotData.ts'
+import { forecastSpec, frameFor, tideSpecs } from './useSpotData.ts'
 import { CAMPUS_POINT } from '../spot.ts'
 
 const HOUR = 3_600_000
@@ -18,6 +18,28 @@ describe('frameFor', () => {
     expect(frame.days).toHaveLength(14)
     expect(frame.days[0].date).toBe('2026-10-08')
     expect(frame.days[13].date).toBe('2026-10-21')
+  })
+
+  test('each of the 14 days has its own span, end to end with no gaps', () => {
+    const frame = frameFor(CAMPUS_POINT, '2026-10-08')
+    expect(frame.spans).toHaveLength(14)
+    expect(frame.spans[0]).toEqual(frame.day)
+    expect(frame.spans[3]).toEqual({
+      start: Date.UTC(2026, 9, 11, 7),
+      end: Date.UTC(2026, 9, 12, 7),
+    })
+    for (let i = 1; i < 14; i++) {
+      expect(frame.spans[i].start).toBe(frame.spans[i - 1].end)
+    }
+    expect(frame.spans[13].end).toBe(frame.window.end)
+  })
+
+  test('the span of the day the clocks go back is 25 hours, wherever it falls in the 14', () => {
+    // 1 November 2026 is the eighth day from 25 October.
+    const frame = frameFor(CAMPUS_POINT, '2026-10-25')
+    const hours = frame.spans.map((span) => (span.end - span.start) / HOUR)
+    expect(hours[7]).toBe(25)
+    expect(hours.filter((length) => length === 24)).toHaveLength(13)
   })
 
   test('the day after is a different frame, which is what moves a phone left open past midnight on to the new day', () => {
@@ -79,5 +101,48 @@ describe('tideSpecs', () => {
       expect(url).toContain('station=9411340')
       expect(url).toContain('begin_date=20261008&end_date=20261009')
     }
+  })
+})
+
+describe('forecastSpec', () => {
+  const frame = frameFor(CAMPUS_POINT, '2026-10-08')
+  const spec = forecastSpec(CAMPUS_POINT, frame)
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  test("asks NWS for the spot's own forecast cell", async () => {
+    const body = JSON.stringify({
+      properties: { updateTime: '2026-10-08T14:26:58+00:00' },
+    })
+    const fetchMock = vi.fn(async (_url: string) => new Response(body))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const forecast = await spec.fetch(frame.window)
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      'https://api.weather.gov/gridpoints/LOX/100,71',
+    )
+    expect(forecast.updatedAt).toBe(Date.UTC(2026, 9, 8, 14, 26, 58))
+  })
+
+  test('is saved and checked as the forecast', () => {
+    expect(spec.source).toBe('forecast')
+    expect(spec.spotId).toBe('campus-point')
+    expect(spec.isData({ updatedAt: 1, hours: [] })).toBe(true)
+    expect(spec.isData([{ t: 1, ft: 3 }])).toBe(false)
+  })
+
+  test('a forecast with no hours in it is a failure, so it is never saved', () => {
+    expect(spec.isEmpty({ updatedAt: 1, hours: [] })).toBe(true)
+    const hour = {
+      t: 1,
+      tempF: 68,
+      windMph: 10,
+      gustMph: 12,
+      windDeg: 260,
+      cloudPct: 3,
+      rainPct: 0,
+    }
+    expect(spec.isEmpty({ updatedAt: 1, hours: [hour] })).toBe(false)
   })
 })

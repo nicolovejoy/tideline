@@ -2,12 +2,18 @@ import { describe, expect, test } from 'vitest'
 import {
   STEP,
   feet,
+  hourAt,
+  partsText,
   restingCursor,
   signedFeet,
+  skyParts,
   snap,
+  tempParts,
   tideReadout,
   tideWords,
+  windParts,
 } from './readout.ts'
+import type { ForecastHour } from '../data/nws.ts'
 
 const MINUTE = 60_000
 const NOON = Date.UTC(2026, 9, 8, 19) // 12:00 PM Pacific
@@ -135,5 +141,128 @@ describe('wording', () => {
     expect(
       tideWords({ predictedFt: null, observedFt: null, aboveFt: null }),
     ).toEqual({ predicted: 'No prediction here', observed: null })
+  })
+})
+
+describe('the weather under the cursor', () => {
+  const HOUR = 3_600_000
+
+  function hour(t: number, change: Partial<ForecastHour> = {}): ForecastHour {
+    return {
+      t,
+      tempF: 73.6,
+      windMph: 9.4,
+      gustMph: 11.5,
+      windDeg: 268,
+      cloudPct: 3,
+      rainPct: 0,
+      ...change,
+    }
+  }
+  const NOTHING = hour(NOON, {
+    tempF: null,
+    windMph: null,
+    gustMph: null,
+    windDeg: null,
+    cloudPct: null,
+    rainPct: null,
+  })
+
+  describe('hourAt', () => {
+    const hours = [hour(NOON), hour(NOON + HOUR), hour(NOON + 3 * HOUR)]
+
+    test('is the hour that contains the instant, from its first moment to its last', () => {
+      expect(hourAt(hours, NOON)).toBe(hours[0])
+      expect(hourAt(hours, NOON + 59 * MINUTE)).toBe(hours[0])
+      expect(hourAt(hours, NOON + HOUR)).toBe(hours[1])
+    })
+
+    test('is nothing where the forecast has no such hour', () => {
+      expect(hourAt(hours, NOON - MINUTE)).toBeNull()
+      expect(hourAt(hours, NOON + 2 * HOUR + 30 * MINUTE)).toBeNull()
+      expect(hourAt([], NOON)).toBeNull()
+    })
+  })
+
+  describe('windParts', () => {
+    test('speed, gusts and a compass point, in whole numbers', () => {
+      const parts = windParts(hour(NOON))
+      expect(parts).toEqual([
+        { key: 'wind', text: '9 mph' },
+        { key: 'gust', text: 'gusts 12' },
+        { key: null, text: 'from W' },
+      ])
+      expect(partsText(parts)).toBe('9 mph, gusts 12, from W')
+    })
+
+    test('leaves out what the forecast does not have', () => {
+      expect(partsText(windParts(hour(NOON, { gustMph: null })))).toBe(
+        '9 mph, from W',
+      )
+      expect(partsText(windParts(hour(NOON, { windDeg: null })))).toBe(
+        '9 mph, gusts 12',
+      )
+    })
+
+    test('gusts carry the unit when there is no speed to carry it', () => {
+      expect(partsText(windParts(hour(NOON, { windMph: null })))).toBe(
+        'gusts 12 mph, from W',
+      )
+    })
+
+    test('calm is 0 mph, not nothing', () => {
+      const calm = hour(NOON, { windMph: 0, gustMph: 0 })
+      expect(partsText(windParts(calm))).toBe('0 mph, gusts 0, from W')
+    })
+
+    test('no hour, or an hour with no wind at all, is no parts', () => {
+      expect(windParts(null)).toEqual([])
+      expect(windParts(NOTHING)).toEqual([])
+    })
+  })
+
+  describe('tempParts', () => {
+    test('a whole number of degrees', () => {
+      expect(tempParts(hour(NOON))).toEqual([{ key: 'temp', text: '74°F' }])
+    })
+
+    test('just below zero is 0, never -0', () => {
+      expect(partsText(tempParts(hour(NOON, { tempF: -0.4 })))).toBe('0°F')
+      expect(partsText(tempParts(hour(NOON, { tempF: -0.6 })))).toBe('-1°F')
+    })
+
+    test('zero degrees is a temperature, not a missing one', () => {
+      expect(partsText(tempParts(hour(NOON, { tempF: 0 })))).toBe('0°F')
+    })
+
+    test('no hour, or no temperature, is no parts', () => {
+      expect(tempParts(null)).toEqual([])
+      expect(tempParts(NOTHING)).toEqual([])
+    })
+  })
+
+  describe('skyParts', () => {
+    test('cloud cover and the chance of rain', () => {
+      const parts = skyParts(hour(NOON))
+      expect(parts).toEqual([
+        { key: 'cloud', text: '3% cloud' },
+        { key: 'rain', text: '0% rain' },
+      ])
+      expect(partsText(parts)).toBe('3% cloud, 0% rain')
+    })
+
+    test('leaves out what the forecast does not have', () => {
+      expect(partsText(skyParts(hour(NOON, { rainPct: null })))).toBe(
+        '3% cloud',
+      )
+      expect(partsText(skyParts(hour(NOON, { cloudPct: null })))).toBe(
+        '0% rain',
+      )
+    })
+
+    test('no hour, or neither value, is no parts', () => {
+      expect(skyParts(null)).toEqual([])
+      expect(skyParts(NOTHING)).toEqual([])
+    })
   })
 })

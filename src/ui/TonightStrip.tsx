@@ -1,10 +1,8 @@
-import type { DayAstro } from '../data/astro.ts'
-import { formatTime } from '../time.ts'
+import type { TonightWords } from './dayList.ts'
 
 interface TonightStripProps {
-  /** Today at the spot. */
-  day: DayAstro
-  timeZone: string
+  /** What to say about today at the spot. */
+  words: TonightWords
 }
 
 /**
@@ -12,34 +10,19 @@ interface TonightStripProps {
  * and "Moon" are the key to the vertical lines of the same colours in the
  * panels below.
  */
-export function TonightStrip({ day, timeZone }: TonightStripProps) {
-  const lit = Math.round(day.illumination * 100)
+export function TonightStrip({ words }: TonightStripProps) {
   return (
     <section className="tonight" aria-label="Tonight">
       <div className="tonight-sun">
         <h2 className="key key-sunset">Sunset</h2>
-        <p className="tonight-time">
-          {day.sunset === null
-            ? 'None today'
-            : formatTime(day.sunset, timeZone)}
-        </p>
+        <p className="tonight-time">{words.sunset}</p>
       </div>
       <div className="tonight-moon">
         <h2 className="key key-moonrise">Moon</h2>
-        <p>
-          {lit}% lit, {day.phase.toLowerCase()}
-        </p>
-        <p>
-          {day.moonrise === null
-            ? 'No moonrise today'
-            : `Rises ${formatTime(day.moonrise, timeZone)}`}
-        </p>
+        <p>{words.moon}</p>
+        <p>{words.moonrise}</p>
       </div>
-      {day.moonriseNearSunset !== null && (
-        <p className="tonight-flag">
-          Moonrise near sunset: {formatTime(day.moonriseNearSunset, timeZone)}
-        </p>
-      )}
+      {words.flag !== null && <p className="tonight-flag">{words.flag}</p>}
     </section>
   )
 }

@@ -186,7 +186,7 @@ describe('values that are not numbers', () => {
 })
 
 describe('fetching', () => {
-  test('fetchPredictions asks for the covering UTC dates and trims to the window', async () => {
+  test('fetchPredictions asks for the covering UTC dates and keeps the window, both ends included', async () => {
     const fetchMock = vi.fn(async (_url: string) => new Response(curveRaw))
     vi.stubGlobal('fetch', fetchMock)
 
@@ -196,9 +196,11 @@ describe('fetching', () => {
     const url = fetchMock.mock.calls[0][0]
     expect(url).toContain('product=predictions&interval=6')
     expect(url).toContain('begin_date=20261008&end_date=20261009')
-    expect(points).toHaveLength(240)
+    // The midnight that ends the window is kept, so the last day on screen
+    // has a point at its right-hand edge like every other day.
+    expect(points).toHaveLength(241)
     expect(points[0].t).toBe(OCT_8)
-    expect(points.at(-1)!.t).toBe(OCT_9 - 6 * MINUTE)
+    expect(points.at(-1)!.t).toBe(OCT_9)
   })
 
   test('fetchHiLo trims to the window', async () => {
@@ -207,6 +209,7 @@ describe('fetching', () => {
       vi.fn(async (_url: string) => new Response(hiloRaw)),
     )
     const events = await fetchHiLo('9411340', OCT_8, OCT_9)
+    expect(events.every((e) => e.t >= OCT_8 && e.t < OCT_9)).toBe(true)
     // Local 8 October: low 2:35 AM, high 8:52 AM, low 2:58 PM, high 8:58 PM.
     expect(events.map((e) => e.type)).toEqual(['L', 'H', 'L', 'H'])
     expect(events[0]).toEqual({

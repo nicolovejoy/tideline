@@ -2,7 +2,8 @@
 // is, and what went wrong if something did. Plain functions.
 
 import type { Loaded } from '../data/load.ts'
-import type { TidePoint } from '../data/noaa.ts'
+import type { TideExtreme, TidePoint } from '../data/noaa.ts'
+import type { Forecast } from '../data/nws.ts'
 import type { Spot } from '../spot.ts'
 import { formatDay, formatTime, localDate } from '../time.ts'
 
@@ -13,18 +14,21 @@ function when(t: number, today: string, timeZone: string): string {
   return day === today ? time : `${formatDay(day)}, ${time}`
 }
 
-/**
- * The tide caption. `observedToday` is the readings that fall in the day on
- * screen, in order, and `today` is that day's date at the spot.
- */
-export function tideCaption(
-  spot: Spot,
-  predictions: Loaded<TidePoint[]>,
-  observed: Loaded<TidePoint[]>,
-  observedToday: TidePoint[],
-  today: string,
-): string {
+export interface TideSources {
+  predictions: Loaded<TidePoint[]>
+  hilo: Loaded<TideExtreme[]>
+  observed: Loaded<TidePoint[]>
+  /** The readings that are drawn, in order. Only today has any. */
+  readings: TidePoint[]
+  /** Today's date at the spot. */
+  today: string
+  /** Whether the day on screen is today. Readings belong to today only. */
+  isToday: boolean
+}
+
+export function tideCaption(spot: Spot, tide: TideSources): string {
   const zone = spot.timeZone
+  const { predictions, hilo, observed, readings, today } = tide
   const { id, name, distanceMi, direction } = spot.tideStation
   const parts = [`Tide: NOAA ${id} ${name}, ${distanceMi} mi ${direction}.`]
 
@@ -33,7 +37,20 @@ export function tideCaption(
     parts.push(`Couldn't refresh. Showing predictions from ${saved}.`)
   }
 
-  const last = observedToday[observedToday.length - 1]
+  // Without this the table of highs and lows is simply missing, or stops
+  // short of the last days, with nothing to say why.
+  if (hilo.status === 'unavailable') {
+    parts.push('High and low times unavailable.')
+  } else if (hilo.status === 'stale' && hilo.fetchedAt !== null) {
+    const saved = when(hilo.fetchedAt, today, zone)
+    parts.push(
+      `Couldn't refresh the high and low times. Showing those from ${saved}.`,
+    )
+  }
+
+  if (!tide.isToday) return parts.join(' ')
+
+  const last = readings[readings.length - 1]
   if (last) {
     const through = formatTime(last.t, zone)
     parts.push(`Observed through ${through}, preliminary.`)
@@ -46,5 +63,24 @@ export function tideCaption(
     parts.push('No observed readings yet today.')
   }
 
+  return parts.join(' ')
+}
+
+/** The weather caption. `today` is today's date at the spot. */
+export function weatherCaption(
+  spot: Spot,
+  forecast: Loaded<Forecast>,
+  today: string,
+): string {
+  const zone = spot.timeZone
+  const source = 'Weather: NWS forecast for the 2.5 km cell at this spot'
+  if (forecast.data === null) return `${source}.`
+
+  const updated = when(forecast.data.updatedAt, today, zone)
+  const parts = [`${source}, updated ${updated}.`]
+  if (forecast.status === 'stale' && forecast.fetchedAt !== null) {
+    const saved = when(forecast.fetchedAt, today, zone)
+    parts.push(`Couldn't refresh. Showing the forecast from ${saved}.`)
+  }
   return parts.join(' ')
 }
