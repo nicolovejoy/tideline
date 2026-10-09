@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   STEP,
+  cursorText,
   feet,
   hourAt,
   partsText,
@@ -264,5 +265,13 @@ describe('the weather under the cursor', () => {
       expect(skyParts(null)).toEqual([])
       expect(skyParts(NOTHING)).toEqual([])
     })
+  })
+})
+
+describe('cursorText', () => {
+  test('the time, then each panel, set apart by semicolons', () => {
+    expect(
+      cursorText('3:36 PM', ['Tide: 3.0 ft predicted', 'Wind: 9 mph, from W']),
+    ).toBe('3:36 PM; Tide: 3.0 ft predicted; Wind: 9 mph, from W')
   })
 })
