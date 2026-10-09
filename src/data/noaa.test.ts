@@ -153,6 +153,36 @@ describe('parseWaterLevel', () => {
   })
 })
 
+describe('values that are not numbers', () => {
+  const rows = [
+    { t: '2026-10-08 00:00', v: '4.275', type: 'H' },
+    { t: '2026-10-08 00:06', v: ' ', type: 'L' },
+    { t: '2026-10-08 00:12', v: 'n/a', type: 'L' },
+    { t: '2026-10-08 00:18', v: '', type: 'L' },
+    // A low below the datum is a real reading and must survive.
+    { t: '2026-10-08 00:24', v: '-0.3', type: 'L' },
+  ]
+  const kept = [
+    { t: Date.UTC(2026, 9, 8, 0, 0), ft: 4.275 },
+    { t: Date.UTC(2026, 9, 8, 0, 24), ft: -0.3 },
+  ]
+
+  test('are dropped from the observed level, never read as 0 ft', () => {
+    expect(parseWaterLevel({ data: rows })).toEqual(kept)
+  })
+
+  test('are dropped from the predicted curve', () => {
+    expect(parsePredictions({ predictions: rows })).toEqual(kept)
+  })
+
+  test('are dropped from the highs and lows', () => {
+    expect(parseHiLo({ predictions: rows })).toEqual([
+      { ...kept[0], type: 'H' },
+      { ...kept[1], type: 'L' },
+    ])
+  })
+})
+
 describe('fetching', () => {
   test('fetchPredictions asks for the covering UTC dates and trims to the window', async () => {
     const fetchMock = vi.fn(async (_url: string) => new Response(curveRaw))
