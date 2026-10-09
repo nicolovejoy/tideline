@@ -164,6 +164,34 @@ h1 {
   outline-offset: 2px;
 }
 
+/* The hint to add the page to the home screen, under the spots. It stays
+   quiet, in the caption's colour, and goes when dismissed. */
+.install-hint {
+  display: flex;
+  align-items: baseline;
+  column-gap: 0.9em;
+  margin-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.8667rem;
+}
+.install-hint p {
+  flex: 1;
+}
+.install-hint-dismiss {
+  padding: 0.3rem 0;
+  border: 0;
+  background: none;
+  color: var(--sea);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.install-hint-dismiss:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 2px;
+}
+
 /* Tonight */
 .tonight {
   display: grid;
