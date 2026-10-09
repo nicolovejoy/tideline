@@ -3199,3 +3199,25 @@ Carried into that plan, in addition to the list at the end of the data-layer pla
 - Nothing listens for the browser coming back online; a source that failed while offline waits for the next one-minute check.
 - The top and bottom of the page do not yet allow for the safe areas of a phone in home-screen mode.
 - A screen reader has not been tried on the cursor. It is exposed as a slider whose value text is the time and the readout.
+
+Found by the review of the finished branch and not fixed:
+
+- Any mouse button moves the cursor, and a mouse release the page never hears leaves the cursor following the mouse. `PanelStack` should ignore buttons other than the first and drop a press when a move arrives with no button held.
+- The arrow keys move the cursor even with Cmd, Ctrl or Alt held, which swallows the browser's Back shortcut while the chart has focus.
+- With saved predictions too old to reach today and no way to refresh, the plot says "Tide data unavailable" while the caption says "Showing predictions from" an old date.
+- The last step of the day reads "at 12:00 AM" under the old date, both at 11:57 PM with no recent reading and after the End key.
+- "Rises 5:00 AM" in the tonight strip reads as upcoming when it is this morning's moonrise. Whether to reword it or show the next moonrise is a question for the first user.
+- `TonightStrip` words its own labels and rounds the moon's illumination, although components are meant to hold no wording and no arithmetic.
+- A reading with a gap on both sides draws nothing but the cursor's dot, because a line needs two points.
+- `refresh` swallows every error, so a parsing bug looks like an outage and leaves nothing in the console.
+- `formatTime` and `formatDay` build a new formatter on every call. That will cost more once the 14-day list is on the page.
+- Not confirmed on a phone: whether iOS Safari, like Chromium, sends the page a touch's first moves before it claims the touch for a scroll or a pinch; what a pen does; and whether a fetch fired the moment the page comes back fails before the network is up.
+
+### What changed after this plan was executed
+
+An independent review of the finished branch led to two changes, so the code blocks above for `gesture.ts`, `PanelStack.tsx`, `App.tsx` and `load.ts` are not the final code. The repository is.
+
+- A press is now followed by plain functions in `gesture.ts` (`pressDown`, `pressMove`, `pressUp`, `pressCancel`), with tests, and `PanelStack` applies what they decide. When the browser takes a touch over after it has begun to move the cursor, as it does when a swipe starts sideways and then turns up, or when a second finger goes down, the cursor goes back to where it was. Before, it stayed where the stray touch had left it.
+- The loader counts the wait after a failure from the check that made the request, not from when the request gave up. Before, a request that took more than five seconds to fail was retried after two minutes instead of one.
+
+The test totals above are also three higher than written, because a fix to `noaa.ts` merged to `main` after this plan was written and before it was executed. With the review's tests the suite is 268.

@@ -60,7 +60,7 @@ Vertical lines cross all four panels at sunset, at moonrise if it falls in the s
 
 ### Cursor and readouts
 
-- One cursor runs through all four panels. A tap on any panel moves it there, and a sideways drag moves it with the finger. A finger moves nothing until it has travelled 6 px sideways, so a swipe up or down that starts on a panel scrolls the page and leaves the cursor alone. A mouse moves the cursor while its button is held. The arrow keys move it one 6-minute step at a time, or an hour with Shift, and Home and End take it to the ends of the day.
+- One cursor runs through all four panels. A tap on any panel moves it there, and a sideways drag moves it with the finger. A finger moves nothing until it has travelled 6 px sideways, so a swipe up or down that starts on a panel scrolls the page and leaves the cursor alone. If the browser takes a touch over to scroll or zoom after it has begun to move the cursor, or a second finger goes down, the cursor goes back to where it was. A mouse moves the cursor while its button is held. The arrow keys move it one 6-minute step at a time, or an hour with Shift, and Home and End take it to the ends of the day.
 - The cursor snaps to 6-minute steps.
 - Each panel has a one-line readout above it showing its values at the cursor:
   - Tide: "0.8 ft predicted", plus "1.9 ft observed (+1.1)" when there is a reading at the cursor's own 6-minute step. The number in brackets is observed minus predicted, taken between the two numbers as they are shown, so the three always agree with each other. It can differ by 0.1 ft from a difference worked out at full precision.
@@ -145,13 +145,13 @@ Staleness rules:
 - Forecast: stale after 1 hour.
 - Observed level: stale after 6 minutes.
 
-When the page becomes visible again after being in the background, the same staleness check runs. While the page stays open and in view it also runs once a minute, which keeps the current-time line moving and picks up new readings. A request with no answer after 20 seconds is given up on. After a failure a source is left alone for about a minute and then tried again.
+When the page becomes visible again after being in the background, the same staleness check runs. While the page stays open and in view it also runs once a minute, which keeps the current-time line moving and picks up new readings. A request with no answer after 20 seconds is given up on. After a failure a source is left alone for about a minute, counted from when the failed request was made, and then tried again.
 
 ## Failure behaviour
 
 Each source loads and fails on its own.
 
-- If a refresh fails and saved data exists, the saved data stays on screen and its caption says "Couldn't refresh. Showing data from 2:05 PM."
+- If a refresh fails and saved data exists, the saved data stays on screen and its caption says so and gives the time it was saved: "Couldn't refresh. Showing predictions from 2:05 PM."
 - If a source fails and nothing is saved, its part of the screen says "Tide data unavailable" or "Forecast unavailable". The rest of the screen is unaffected.
 - Sun and moon cannot fail; they are computed.
 
