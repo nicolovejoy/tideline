@@ -109,6 +109,60 @@ h1 {
   --key: var(--muted);
 }
 
+/* The spots, in a row under the title. The one on screen is marked the way
+   the chosen day is marked in the list. */
+.spots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.spot-choice {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.spot-choice[aria-pressed='true'] {
+  border-color: var(--sea);
+  background: var(--sea-fill);
+  color: var(--ink);
+  font-weight: 600;
+}
+.spot-choice:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 2px;
+}
+
+/* Where the tide would be, when the spot hides it, and the control that
+   shows or hides it. */
+.tides-hidden {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.9em;
+  row-gap: 0.25rem;
+  margin-top: 0.75rem;
+}
+.tides-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sea);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tides-toggle:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 2px;
+}
+
 /* Tonight */
 .tonight {
   display: grid;
