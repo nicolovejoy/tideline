@@ -44,10 +44,12 @@ export default function App() {
     [days, data.now, zone],
   )
   // The rows do not depend on the cursor, so they are not worked out again,
-  // and the list is not drawn again, each time it moves.
+  // and the list is not drawn again, each time it moves. They are worked out
+  // again once a minute, with the clock.
   const rows = useMemo(
-    () => dayRows({ days, spans, hilo, forecast }, pickedDay, zone),
-    [days, spans, hilo, forecast, pickedDay, zone],
+    () =>
+      dayRows({ now: data.now, days, spans, hilo, forecast }, pickedDay, zone),
+    [data.now, days, spans, hilo, forecast, pickedDay, zone],
   )
 
   const dayTop = useRef<HTMLElement>(null)

@@ -13,6 +13,7 @@ import type { DayAstro } from '../data/astro.ts'
 import type { SpotData } from '../data/useSpotData.ts'
 import { formatDay, formatTime } from '../time.ts'
 import { onDay, selectedDay } from './selection.ts'
+import { forecastHours } from './weatherView.ts'
 
 /** How much of the moon is lit, such as '3% lit'. */
 function lit(day: DayAstro): string {
@@ -39,7 +40,7 @@ export function tonightWords(
 ): TonightWords {
   const time = (t: number) => formatTime(t, timeZone)
   return {
-    sunset: day.sunset === null ? 'None today' : time(day.sunset),
+    sunset: day.sunset === null ? 'No sunset today' : time(day.sunset),
     moon: `${lit(day)}, ${day.phase.toLowerCase()}`,
     moonrise:
       day.moonrise === null
@@ -70,7 +71,7 @@ export interface DayRow {
   weather: string[] | null
 }
 
-type Inputs = Pick<SpotData, 'days' | 'spans' | 'hilo' | 'forecast'>
+type Inputs = Pick<SpotData, 'now' | 'days' | 'spans' | 'hilo' | 'forecast'>
 
 /**
  * One row for each of the 14 days. `picked` is the date of the row last
@@ -84,7 +85,7 @@ export function dayRows(
   const selected = selectedDay(data, picked).index
   const time = (t: number) => formatTime(t, timeZone)
   const events = data.hilo.data ?? []
-  const hours = data.forecast.data?.hours ?? []
+  const hours = forecastHours(data.forecast, data.now)
 
   return data.days.map((day, i) => {
     const span = data.spans[i]

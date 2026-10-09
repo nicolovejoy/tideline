@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { Selected } from './selection.ts'
-import { weatherView } from './weatherView.ts'
+import { forecastHours, weatherView } from './weatherView.ts'
 import type { Loaded } from '../data/load.ts'
 import type { Forecast, ForecastHour } from '../data/nws.ts'
 
@@ -319,5 +319,22 @@ describe('when the panels are not drawn', () => {
       'No forecast this far out.',
     )
     expect(weatherView(morning, day(6, null), NOW, NOW).notice).toBeNull()
+  })
+})
+
+describe('forecastHours', () => {
+  test('the hours of the forecast, while any of it is still to come', () => {
+    expect(forecastHours(week, NOW)).toHaveLength(185)
+  })
+
+  test('none once its last hour is over, to the minute', () => {
+    // The last record is for the 184th hour from 5 AM. It is over an hour on.
+    const over = FIRST + 185 * HOUR
+    expect(forecastHours(week, over)).toEqual([])
+    expect(forecastHours(week, over - MINUTE)).toHaveLength(185)
+  })
+
+  test('none with nothing saved', () => {
+    expect(forecastHours(loaded(null, 'loading'), NOW)).toEqual([])
   })
 })

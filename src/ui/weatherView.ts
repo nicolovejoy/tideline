@@ -40,6 +40,19 @@ export interface WeatherView {
   sky: WeatherPanelView
 }
 
+/**
+ * The saved forecast's hours, or none when every one of them has passed: a
+ * forecast that old counts as no forecast, in the panels and the list alike.
+ */
+export function forecastHours(
+  forecast: Loaded<Forecast>,
+  now: number,
+): ForecastHour[] {
+  const all = forecast.data?.hours ?? []
+  const last = all.length > 0 ? all[all.length - 1].t : null
+  return last === null || last + HOUR <= now ? [] : all
+}
+
 type Field = Exclude<keyof ForecastHour, 't'>
 
 function panel(
@@ -85,12 +98,11 @@ export function weatherView(
   now: number,
 ): WeatherView {
   const { span } = selected
-  const all = forecast.data?.hours ?? []
-  const last = all.length > 0 ? all[all.length - 1].t : null
+  const all = forecastHours(forecast, now)
 
   let notice: string | null = null
   let hours: ForecastHour[] = []
-  if (last === null || last + HOUR <= now) {
+  if (all.length === 0) {
     // Nothing saved, or a saved forecast so old that all of it is in the
     // past and nothing has replaced it.
     notice =
@@ -99,8 +111,9 @@ export function weatherView(
         : 'Forecast unavailable'
   } else {
     // A day is inside the forecast if the forecast reaches the hour of its
-    // sunset, the moment the rest of the screen is about. Today is inside it
-    // for as long as the forecast has any of today left, whatever the hour.
+    // anchor. Today is inside it for as long as the forecast has any of
+    // today left, whatever the hour.
+    const last = all[all.length - 1].t
     const reaches = Math.floor(selected.anchor / HOUR) * HOUR <= last
     hours = all.filter((hour) => hour.t >= span.start && hour.t < span.end)
     if (hours.length === 0 || !(reaches || selected.isToday)) {

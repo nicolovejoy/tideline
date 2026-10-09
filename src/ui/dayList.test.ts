@@ -66,7 +66,7 @@ describe('tonightWords', () => {
       morning,
       ZONE,
     )
-    expect(words.sunset).toBe('None today')
+    expect(words.sunset).toBe('No sunset today')
     expect(words.moonrise).toBe('No moonrise today')
   })
 })
@@ -104,7 +104,12 @@ describe('dayRows', () => {
       hour(sunsetHour(1) + HOUR),
     ],
   }
-  const data = { ...frame, hilo: ready(events), forecast: ready(forecast) }
+  const data = {
+    ...frame,
+    now: NOW,
+    hilo: ready(events),
+    forecast: ready(forecast),
+  }
   const rows = dayRows(data, null, ZONE)
 
   test('one row for each of the 14 days, in order', () => {
@@ -177,9 +182,23 @@ describe('dayRows', () => {
     expect(rows[13].weather).toBeNull()
   })
 
+  test('a saved forecast whose every hour has passed gives no weather, as the panels give none', () => {
+    // The forecast's last record is the hour after tomorrow's sunset. Two
+    // hours on from that, all of it is over.
+    const over = sunsetHour(1) + 2 * HOUR
+    const stale = dayRows({ ...data, now: over }, null, ZONE)
+    expect(stale[0].weather).toBeNull()
+    expect(stale[1].weather).toBeNull()
+  })
+
+  test("today's sunset having passed does not take its weather away while the forecast runs on", () => {
+    const evening = dayRows({ ...data, now: sunsetHour(1) }, null, ZONE)
+    expect(evening[0].weather).not.toBeNull()
+  })
+
   test('with nothing loaded yet the rows still give the sun and the moon', () => {
     const bare = dayRows(
-      { ...frame, hilo: none(), forecast: none() },
+      { ...frame, now: NOW, hilo: none(), forecast: none() },
       null,
       ZONE,
     )
