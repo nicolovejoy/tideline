@@ -3817,7 +3817,7 @@ In the `## Stack` section, replace the bullet that begins "Components hold no ar
 In the `## Next Steps` section, replace the first two bullets (the ones that begin "Stage 1 (Campus Point)" and "Not yet checked on the tide screen") with:
 
 ```markdown
-- Stage 1 (Campus Point) is built. Before it is called done, the owner checks it on an iPhone against the list in the pull request for `stage-1/weather-and-days`: touch on the panels, the home-screen icon, and a reopen in airplane mode.
+- Stage 1 (Campus Point) is built. Before it is called done, the owner checks it on an iPhone against the list in the pull request for `stage-1/weather-and-days`: touch on the panels, the home-screen icon, and a reopen that draws the saved data before it refreshes.
 - Not yet tried: a screen reader on the cursor.
 ```
 
@@ -3919,7 +3919,7 @@ Pass, all of:
 4. Tapping the first row brings today back.
 5. The wind, temperature and sky for this evening are about what the weather site you normally use says for Campus Point.
 6. Share, then Add to Home Screen, shows the icon: a pale green wave crossed by an orange line on dark blue. Opened from that icon, the page has no Safari bars, and nothing is hidden under the clock at the top or the bar at the bottom.
-7. In airplane mode, opening it again draws everything at once, and the captions say what could not be refreshed.
+7. Opening it again, with a connection, draws everything at once from what was saved, and the captions update when the refresh lands. (The first version of this item asked for airplane mode. Checked on an iPhone on 2026-10-09: Safari cannot open the page offline, because only the data is saved on the device, not the page. The owner decided that working offline is not a Stage 1 goal.)
 
 Fail: any of these not holding. Say which.
 

@@ -212,7 +212,7 @@ Vitest. The logic lives in pure functions, so the tests need no DOM. The compone
 Before Stage 1 is called done, checked by hand on an iPhone:
 - The high/low table matches the NOAA station page for the same day.
 - Sunset and moonrise match the Naval Observatory.
-- A second open draws immediately; in airplane mode it shows the saved data with its times.
+- A second open draws immediately from the saved data, with its times, before the refresh lands. Working offline is not a Stage 1 goal (decided 2026-10-09): the data is saved on the device, the page itself is not.
 - The page works from the home screen icon.
 
 ## Tooling

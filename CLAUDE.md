@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Stage 1 is built and waiting for its checks on a phone.
+Stage 1 is built. Pull request 22 passed the owner's phone checks on 2026-10-09 and waits for merge.
 
 - Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons.
 - Not built: everything after Stage 1. It is tracked as GitHub issues.
@@ -63,7 +63,7 @@ In every tracked file, commit message, issue, and pull request, that person is "
 ## Stack (approved 2026-10-08)
 
 - Static single-page app with no server: Vite, React, strict TypeScript, plain CSS. Hosted on Vercel.
-- The browser calls NOAA, NWS and Open-Meteo directly. Sun and moon are computed on the device.
+- The browser calls NOAA and NWS directly. Sun and moon are computed on the device.
 - Charts are hand-written SVG: stacked panels on one time axis with one shared cursor. The arithmetic is in `src/chart/scales.ts`. No charting library and no d3.
 - Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/selection.ts`, `src/ui/tideView.ts`, `src/ui/weatherView.ts`, `src/ui/dayList.ts`, `src/data/load.ts`), and the components are checked in a browser.
 - Weather is drawn as staircases, level across the hour each value is forecast for, so the line, the cursor's dot and the words always agree.
@@ -76,14 +76,17 @@ Settled:
 - Audience is the first user and friends, non-commercial.
 - Units: feet above MLLW, °F, mph, 12-hour clock.
 
-Provisional. Nico gave these on the first user's behalf; the first user has not confirmed them:
-- Stage 1 spot is Campus Point, UCSB.
-- Forecast horizon: add a second source for days 8 to 10 rather than stopping at 7.
-- Weather: temperature, wind, gusts, direction, cloud cover, rain chance, each with a way to dig in.
-- Where a spot's tide station has no gauge, show the nearest gauge's deviation from its own prediction. Do not redraw the spot's curve with that deviation applied.
-- Inland spots: tides hidden by default.
-- Sun and moon times should account for the spot's elevation, but after launch.
-- Sharing (is share-by-link enough?) is still unanswered.
+- Stage 1 spot is Campus Point, UCSB. (Confirmed by the first user, 2026-10-09.)
+- Weather: NWS only, 7 days. Days past the forecast say so in the list. The first user asked for NWS alone; the second source for days 8 to 10 was dropped (issue 1 closed).
+- Weather values: temperature, wind, gusts, direction, cloud cover, rain chance, drawn for the full day. A way to dig in is issue 8.
+- Where a spot's tide station has no gauge, show the nearest gauge's deviation from its own prediction. Do not redraw the spot's curve with that deviation applied. (Confirmed.)
+- Inland spots: tides hidden by default. (Confirmed.)
+- Sun and moon times should account for the spot's elevation, after launch. (Confirmed; issue 9.)
+- Sharing: a link to chosen friends is enough. No accounts (issue 12 closed; issue 7 stays). Not this stage.
+- The cursor rests on the latest gauge reading today. (Confirmed.)
+- Working offline is not a Stage 1 goal (decided 2026-10-09). The data is saved on the device; the page itself is not.
+
+Still open with the first user: whether the forecast at the hour of sunset is the right moment for a day's row; and the wording of the moon line, which he wants as "Moonrise 5:00 AM".
 
 Display convention: times and calendar days are shown in the spot's own time zone (returned by NWS `/points`), not the viewer's. Never derive a day from a UTC ISO string; use `Intl.DateTimeFormat` with an explicit `timeZone`.
 
@@ -107,16 +110,19 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 - A 14-day predicted curve at 6-minute resolution is one request: 136 KB as JSON, 20 KB gzipped.
 - Responses carry `cache-control: no-store`, so any caching of tide data is ours to do. Predictions for a given date do not change.
 
-**Open-Meteo** — second source for days 8 to 10. Its `ncep_nbm_conus` model (NOAA National Blend, 2.5 km) returns 11 days. Free for non-commercial use with attribution.
+**Open-Meteo** — not used. Kept as a reference: its `ncep_nbm_conus` model (NOAA National Blend, 2.5 km) returned 11 days when checked on 2026-10-08. Free for non-commercial use with attribution.
 
 **Sun and moon** — computed locally with `astronomy-engine`. The USNO API (`aa.usno.navy.mil/api/rstt/oneday`) is the reference to test computed values against.
 
 ## Next Steps
 
-- Stage 1 (Campus Point) is built. Before it is called done, the owner checks it on an iPhone against the list in the pull request for `stage-1/weather-and-days`: touch on the panels, the home-screen icon, and a reopen in airplane mode.
-- Not yet tried: a screen reader on the cursor.
-- The first user: confirm or correct the provisional decisions above, and answer the sharing question.
-- Everything after Stage 1 is tracked as GitHub issues, in provisional order.
+Pull request 22 (`stage-1/weather-and-days`) is reviewed, phone-checked and mergeable. Nico merges it. Then, in phases, each its own pull request, each approved by Nico before it is built:
+
+- **Phase A, small fixes from the first user's reaction to the tide screen.** The moon line reads "Moonrise 5:00 AM". Label the sunset and moonrise lines on the tide chart (he read them as sunrise and sunset; no sunrise line unless Nico says so). The "2 ft" and "0 ft" axis labels sit under the curves at the left edge. Issue 23. One short plan, one pull request.
+- **Phase B, the status for the first user's next brief,** in the same format as the last one (see `private/`). It carries two facts to settle: NWS reaches 7 days, not the 10 he expects (verified against the live API on 2026-10-08, so no second source is added); and how different the NWS forecast is for Campus Point and La Cumbre Peak at the same hour, with real numbers, since he cares that weather is specific to the spot. Nico puts the two open questions above to him.
+- **Phase C, the next feature stage,** picked by Nico after Phase B. Candidates in current order: three spots with a switcher (issue 2), which also exercises nearest-station disclosure and spot-specific weather; the month view (issue 3); the home-screen hint (issue 6). Issues 24 and 25 are housekeeping to fold into whichever comes first.
+- Not yet tried: a screen reader on the cursor (issue 24).
+- Everything else after Stage 1 is tracked as GitHub issues, in provisional order.
 
 <!-- SHARED-CONVENTIONS:BEGIN v=28022362f01b — auto-managed, do not edit here; source: prompt-lab/workflow/claude-md-shared.md (edit + re-sync) -->
 ## Shared conventions
