@@ -3,6 +3,7 @@ import {
   STEP,
   cursorText,
   feet,
+  gaugeWords,
   hourAt,
   partsText,
   restingCursor,
@@ -273,5 +274,25 @@ describe('cursorText', () => {
     expect(
       cursorText('3:36 PM', ['Tide: 3.0 ft predicted', 'Wind: 9 mph, from W']),
     ).toBe('3:36 PM; Tide: 3.0 ft predicted; Wind: 9 mph, from W')
+  })
+})
+
+describe('gaugeWords', () => {
+  test('names the gauge and signs its deviation from its own prediction', () => {
+    expect(gaugeWords('Santa Barbara', 1.18)).toBe(
+      'Santa Barbara gauge +1.2 ft vs its prediction',
+    )
+    expect(gaugeWords('Santa Barbara', -0.3)).toBe(
+      'Santa Barbara gauge -0.3 ft vs its prediction',
+    )
+  })
+
+  test('a deviation that rounds to nothing is 0.0, never -0.0', () => {
+    expect(gaugeWords('Santa Barbara', 0)).toBe(
+      'Santa Barbara gauge 0.0 ft vs its prediction',
+    )
+    expect(gaugeWords('Santa Barbara', -0.04)).toBe(
+      'Santa Barbara gauge 0.0 ft vs its prediction',
+    )
   })
 })

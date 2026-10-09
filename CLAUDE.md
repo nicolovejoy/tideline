@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Stage 1 is built and waiting for its checks on a phone.
+Stage 1 is built; its phone check is down to one item. Stage 2 has begun: three spots are on a pull request.
 
-- Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons.
-- Not built: everything after Stage 1. It is tracked as GitHub issues.
+- Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and tides hidden by default at La Cumbre.
+- Not built: everything after the three spots. It is tracked as GitHub issues.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
 
@@ -93,7 +93,7 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 
 **NWS (`api.weather.gov`)** — `/points/{lat},{lon}` returns the grid cell, IANA time zone, and forecast URLs.
 - Horizon is 7 days: `/forecast` has 14 twelve-hour periods, `/forecast/hourly` has 156 hours, raw grid data covers `P7DT17H`.
-- The grid is 2.5 km. Campus Point, Leadbetter Beach, Gaviota State Park, and La Cumbre Peak resolve to four different cells (LOX 100,71 / 105,70 / 87,76 / 105,74).
+- The grid is 2.5 km. Campus Point, Leadbetter Beach, Gaviota State Park, and La Cumbre Peak resolve to four different cells (Campus Point LOX 100,71, Leadbetter Beach LOX 105,70, Gaviota State Park LOX 87,76, La Cumbre Peak LOX 105,74).
 - Cell elevation is a cell average, not the spot: 3 ft for Campus Point, 157 ft for the Leadbetter cell, 3,258 ft for La Cumbre (summit is 3,997 ft).
 - `/forecast/hourly` has no wind gust or sky cover. The raw `/gridpoints/{wfo}/{x},{y}` endpoint has both, but in SI units with ISO 8601 `validTime` intervals of varying length.
 - Responses carry `cache-control: public, max-age` of about an hour.
@@ -101,7 +101,7 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 **NOAA CO-OPS (`api.tidesandcurrents.noaa.gov`)** — data at `/api/prod/datagetter`, station metadata at `/mdapi/prod/webapi`.
 - 3,502 prediction stations, 302 water-level (observing) stations, 238 that are both. Most prediction stations have no observed data.
 - 2,242 prediction stations are subordinate (`type: "S"`): they return high/low only, and a 6-minute request returns an error. A curve for these has to be interpolated and labeled as such.
-- 9411340 Santa Barbara is harmonic and observing, and is the nearest station of both kinds to Campus Point (8.6 mi). 9411399 Gaviota State Park is harmonic with no observations; its nearest observing station is Santa Barbara, 31 mi away.
+- 9411340 Santa Barbara is harmonic and observing, and is the nearest station of both kinds to Campus Point (8.6 mi) and to La Cumbre Peak (6.3 mi south). 9411399 Gaviota State Park is harmonic with no observations, 0.2 mi from the beach; its nearest observing station is Santa Barbara, 31 mi east.
 - Three months of high/low is one 18 KB request; one month at 6-minute resolution is 7,440 points.
 - Observed data is preliminary (`q: "p"`). Use `datum=MLLW`, `units=english`, `time_zone=gmt` for both products so they are comparable. Request GMT and convert for display: station-local timestamps (`lst_ldt`) carry no offset and are ambiguous in the repeated hour of a clock change.
 - A 14-day predicted curve at 6-minute resolution is one request: 136 KB as JSON, 20 KB gzipped.
@@ -113,7 +113,8 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 
 ## Next Steps
 
-- Stage 1 (Campus Point) is built. Before it is called done, the owner checks it on an iPhone against the list in the pull request for `stage-1/weather-and-days`: touch on the panels, the home-screen icon, and a reopen in airplane mode.
+- Stage 1 (Campus Point) is built. Items 1 to 6 of the phone check in the pull request for `stage-1/weather-and-days` passed on 2026-10-09; item 7 remains: a reopen with a connection draws at once from saved data and the captions update when the refresh lands.
+- The three-spots pull request (`stage-2/three-spots`, issue #2) waits for the owner's phone check and review; the install hint (#27) is a separate pull request that conflicts with it in `App.tsx` and `styles.css`, so whichever merges second needs a one-line resolution.
 - Not yet tried: a screen reader on the cursor.
 - The first user: confirm or correct the provisional decisions above, and answer the sharing question.
 - Everything after Stage 1 is tracked as GitHub issues, in provisional order.

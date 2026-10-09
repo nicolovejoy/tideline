@@ -3,6 +3,7 @@ import type { Selected } from './selection.ts'
 import { tideView } from './tideView.ts'
 import type { Loaded } from '../data/load.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
+import { CAMPUS_POINT, spotById } from '../spot.ts'
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
@@ -18,6 +19,19 @@ function ready<T>(data: T): Loaded<T> {
 
 function none<T>(status: Loaded<T>['status']): Loaded<T> {
   return { data: null, fetchedAt: null, span: null, status }
+}
+
+const OWN = { spot: CAMPUS_POINT, shown: true }
+const GAVIOTA = { spot: spotById('gaviota'), shown: true }
+const LA_CUMBRE = { spot: spotById('la-cumbre-peak'), shown: false }
+
+/** The view at Campus Point, which has its own gauge and shows its tide. */
+function own(
+  data: Parameters<typeof tideView>[0],
+  selected: Selected,
+  pick: Parameters<typeof tideView>[2],
+) {
+  return tideView(data, selected, pick, OWN)
 }
 
 // A flat 3 ft curve every 6 minutes from the day before to two days after,
@@ -48,6 +62,7 @@ function data(overrides = {}) {
     shown: 0,
     day: { start: START, end: END },
     predictions: ready(curve),
+    gaugePredictions: ready(curve),
     hilo: ready(events),
     observed: ready(readings),
     ...overrides,
@@ -79,14 +94,14 @@ const TOMORROW = day(1, END + 18 * HOUR + 32 * MINUTE)
 
 describe('what is drawn', () => {
   test('the curve covers the day and reaches both edges of the plot', () => {
-    const { predicted } = tideView(data(), TODAY, null)
+    const { predicted } = own(data(), TODAY, null)
     expect(predicted[0].t).toBe(START)
     expect(predicted.at(-1)!.t).toBe(END)
     expect(predicted).toHaveLength(241)
   })
 
   test('a high or low at midnight belongs to the day it starts', () => {
-    const view = tideView(data(), TODAY, null)
+    const view = own(data(), TODAY, null)
     expect(view.events.map((event) => event.t)).toEqual([
       START,
       START + 6 * HOUR,
@@ -95,72 +110,72 @@ describe('what is drawn', () => {
 
   test("the vertical range covers all 14 days and today's readings", () => {
     // The curve is 3 ft today but reaches 6.5 ft next week.
-    expect(tideView(data(), TODAY, null).bounds).toEqual([3, 7])
+    expect(own(data(), TODAY, null).bounds).toEqual([3, 7])
     const high = [...readings, { t: NOW, ft: 8.2 }]
-    const view = tideView(data({ observed: ready(high) }), TODAY, null)
+    const view = own(data({ observed: ready(high) }), TODAY, null)
     expect(view.bounds).toEqual([3, 9])
   })
 })
 
 describe('another day', () => {
   test('has its own curve and its own highs and lows', () => {
-    const view = tideView(data(), TOMORROW, null)
+    const view = own(data(), TOMORROW, null)
     expect(view.predicted[0].t).toBe(END)
     expect(view.predicted.at(-1)!.t).toBe(END + DAY)
     expect(view.events.map((event) => event.t)).toEqual([END, END + 9 * HOUR])
   })
 
   test("has no readings: today's are not drawn on it or read out", () => {
-    const view = tideView(data(), TOMORROW, null)
+    const view = own(data(), TOMORROW, null)
     expect(view.observed).toEqual([])
     expect(view.readout.observedFt).toBeNull()
   })
 
   test('keeps the vertical range that today has, readings included, so the scale does not jump', () => {
     const high = [...readings, { t: NOW, ft: 8.2 }]
-    const view = tideView(data({ observed: ready(high) }), TOMORROW, null)
+    const view = own(data({ observed: ready(high) }), TOMORROW, null)
     expect(view.bounds).toEqual([3, 9])
   })
 })
 
 describe('where the cursor is', () => {
   test('at rest today it sits on the latest reading', () => {
-    const view = tideView(data(), TODAY, null)
+    const view = own(data(), TODAY, null)
     expect(view.cursor).toBe(START + 15 * HOUR + 24 * MINUTE)
     expect(view.readout).toEqual({ predictedFt: 3, observedFt: 4, aboveFt: 1 })
   })
 
   test('at rest on another day it sits at sunset, on the step that contains it', () => {
-    const view = tideView(data(), TOMORROW, null)
+    const view = own(data(), TOMORROW, null)
     expect(view.cursor).toBe(END + 18 * HOUR + 30 * MINUTE)
   })
 
   test('a sunset just before the hour does not tip the cursor into the next hour', () => {
     // 4:59 PM. The nearest step is 5:00 PM, where the weather is another
     // hour's and no longer what the day's row in the list gives.
-    const view = tideView(data(), day(1, END + 16 * HOUR + 59 * MINUTE), null)
+    const view = own(data(), day(1, END + 16 * HOUR + 59 * MINUTE), null)
     expect(view.cursor).toBe(END + 16 * HOUR + 54 * MINUTE)
   })
 
   test('where the sun does not set it rests in the middle of the day', () => {
-    const view = tideView(data(), day(1, null), null)
+    const view = own(data(), day(1, null), null)
     expect(view.cursor).toBe(END + 12 * HOUR)
   })
 
   test('it stays where it was put', () => {
     const pick = { t: START + 9 * HOUR, day: '2026-10-08', shown: 0 }
-    expect(tideView(data(), TODAY, pick).cursor).toBe(START + 9 * HOUR)
+    expect(own(data(), TODAY, pick).cursor).toBe(START + 9 * HOUR)
   })
 
   test('it goes back to rest when the page is put away and brought back', () => {
     const pick = { t: START + 9 * HOUR, day: '2026-10-08', shown: 0 }
-    const view = tideView(data({ shown: 1 }), TODAY, pick)
+    const view = own(data({ shown: 1 }), TODAY, pick)
     expect(view.cursor).toBe(START + 15 * HOUR + 24 * MINUTE)
   })
 
   test('it goes back to rest when another day is put on screen', () => {
     const pick = { t: START + 9 * HOUR, day: '2026-10-08', shown: 0 }
-    const view = tideView(data(), TOMORROW, pick)
+    const view = own(data(), TOMORROW, pick)
     expect(view.cursor).toBe(END + 18 * HOUR + 30 * MINUTE)
   })
 
@@ -173,28 +188,24 @@ describe('where the cursor is', () => {
     })
     const today = { ...day(1, null), isToday: true }
     // 12:05 AM with no readings yet: the clock, to the nearest step.
-    expect(tideView(tomorrow, today, pick).cursor).toBe(END + 6 * MINUTE)
+    expect(own(tomorrow, today, pick).cursor).toBe(END + 6 * MINUTE)
   })
 
   test('it cannot be put outside the day', () => {
     const pick = { t: END + 3 * HOUR, day: '2026-10-08', shown: 0 }
-    expect(tideView(data(), TODAY, pick).cursor).toBe(END)
+    expect(own(data(), TODAY, pick).cursor).toBe(END)
   })
 })
 
 describe('when there is no curve to draw', () => {
   test('nothing saved and a request on its way: loading', () => {
-    const view = tideView(data({ predictions: none('loading') }), TODAY, null)
+    const view = own(data({ predictions: none('loading') }), TODAY, null)
     expect(view.notice).toBe('Loading tides')
     expect(view.predicted).toEqual([])
   })
 
   test('nothing saved and the request failed: unavailable', () => {
-    const view = tideView(
-      data({ predictions: none('unavailable') }),
-      TODAY,
-      null,
-    )
+    const view = own(data({ predictions: none('unavailable') }), TODAY, null)
     expect(view.notice).toBe('Tide data unavailable')
   })
 
@@ -205,19 +216,19 @@ describe('when there is no curve to draw', () => {
       span: null,
       status: 'stale',
     }
-    expect(tideView(data({ predictions: old }), TODAY, null).notice).toBe(
+    expect(own(data({ predictions: old }), TODAY, null).notice).toBe(
       'Tide data unavailable',
     )
   })
 
   test('with a curve there is no notice', () => {
-    expect(tideView(data(), TODAY, null).notice).toBeNull()
+    expect(own(data(), TODAY, null).notice).toBeNull()
   })
 })
 
 describe('what the panel is given', () => {
   test('a rule every 2 ft across the range, each with its label', () => {
-    const view = tideView(data(), TODAY, null)
+    const view = own(data(), TODAY, null)
     expect(view.bounds).toEqual([3, 7])
     expect(view.rules).toEqual([
       { v: 4, label: '4 ft' },
@@ -227,7 +238,7 @@ describe('what the panel is given', () => {
 
   test('just below the datum the first rule is zero, never minus zero', () => {
     const near = ready([...curve, { t: START + 8 * DAY, ft: -0.3 }])
-    const first = tideView(data({ predictions: near }), TODAY, null)
+    const first = own(data({ predictions: near }), TODAY, null)
     expect(first.bounds).toEqual([-1, 7])
     expect(Object.is(first.rules[0].v, 0)).toBe(true)
     expect(first.rules.map((rule) => rule.label)).toEqual([
@@ -238,7 +249,7 @@ describe('what the panel is given', () => {
     ])
 
     const low = ready([...curve, { t: START + 8 * DAY, ft: -1.5 }])
-    const view = tideView(data({ predictions: low }), TODAY, null)
+    const view = own(data({ predictions: low }), TODAY, null)
     expect(view.bounds).toEqual([-2, 7])
     expect(view.rules.map((rule) => rule.label)).toEqual([
       '-2 ft',
@@ -250,7 +261,7 @@ describe('what the panel is given', () => {
   })
 
   test('the curve is filled, and the readings break at a gap longer than two steps', () => {
-    const view = tideView(data(), TODAY, null)
+    const view = own(data(), TODAY, null)
     expect(view.series.map((series) => series.name)).toEqual([
       'predicted',
       'observed',
@@ -263,39 +274,153 @@ describe('what the panel is given', () => {
   })
 
   test('a dot for the prediction and one for the reading under the cursor', () => {
-    expect(tideView(data(), TODAY, null).dots).toEqual([
+    expect(own(data(), TODAY, null).dots).toEqual([
       { name: 'predicted', v: 3 },
       { name: 'observed', v: 4 },
     ])
   })
 
   test('on another day there is no reading, so no dot for one', () => {
-    expect(tideView(data(), TOMORROW, null).dots).toEqual([
+    expect(own(data(), TOMORROW, null).dots).toEqual([
       { name: 'predicted', v: 3 },
     ])
   })
 
   test('the panel is named, and its words for a screen reader start with its name', () => {
-    const view = tideView(data(), TODAY, null)
+    const view = own(data(), TODAY, null)
     expect(view.title).toBe('Tide')
     expect(view.text).toEqual({
       predicted: '3.0 ft predicted',
-      observed: '4.0 ft observed (+1.0)',
+      second: { words: '4.0 ft observed (+1.0)', key: 'observed' },
     })
     expect(view.words).toBe('Tide: 3.0 ft predicted, 4.0 ft observed (+1.0)')
-    expect(tideView(data(), TOMORROW, null).words).toBe(
-      'Tide: 3.0 ft predicted',
-    )
+    expect(own(data(), TOMORROW, null).words).toBe('Tide: 3.0 ft predicted')
   })
 
   test('with no curve, the words are the notice', () => {
-    const view = tideView(
-      data({ predictions: none('unavailable') }),
-      TODAY,
-      null,
-    )
+    const view = own(data({ predictions: none('unavailable') }), TODAY, null)
     expect(view.words).toBe('Tide data unavailable')
     expect(view.rules).toEqual([])
     expect(view.dots).toEqual([])
+  })
+})
+
+describe('a spot whose gauge is another station', () => {
+  // The gauge's own curve runs 0.5 ft below the spot's, so its readings,
+  // which are 4 ft, stand 1.5 ft above it.
+  const gaugeCurve = curve.map((point) => ({ ...point, ft: point.ft - 0.5 }))
+  const gauge = () => data({ gaugePredictions: ready(gaugeCurve) })
+
+  test("draws the spot's own curve and no readings on it", () => {
+    const view = tideView(gauge(), TODAY, null, GAVIOTA)
+    expect(view.predicted[0]).toEqual({ t: START, ft: 3 })
+    expect(view.observed).toEqual([])
+    expect(view.series.map((series) => series.name)).toEqual(['predicted'])
+    expect(view.dots).toEqual([{ name: 'predicted', v: 3 }])
+  })
+
+  test("reads the gauge's deviation from its own prediction at the cursor, without a colour key", () => {
+    const view = tideView(gauge(), TODAY, null, GAVIOTA)
+    expect(view.text).toEqual({
+      predicted: '3.0 ft predicted',
+      second: {
+        words: 'Santa Barbara gauge +1.5 ft vs its prediction',
+        key: null,
+      },
+    })
+    expect(view.words).toBe(
+      'Tide: 3.0 ft predicted, Santa Barbara gauge +1.5 ft vs its prediction',
+    )
+  })
+
+  test("at rest the cursor sits on the gauge's latest reading", () => {
+    const view = tideView(gauge(), TODAY, null, GAVIOTA)
+    expect(view.cursor).toBe(START + 15 * HOUR + 24 * MINUTE)
+  })
+
+  test('past the last reading the second line is blank', () => {
+    const pick = { t: START + 16 * HOUR, day: '2026-10-08', shown: 0 }
+    expect(tideView(gauge(), TODAY, pick, GAVIOTA).text.second).toBeNull()
+  })
+
+  test("without the gauge's own prediction there is no deviation", () => {
+    const view = tideView(
+      data({ gaugePredictions: none('loading') }),
+      TODAY,
+      null,
+      GAVIOTA,
+    )
+    expect(view.text.second).toBeNull()
+    expect(view.words).toBe('Tide: 3.0 ft predicted')
+  })
+
+  test('on another day the gauge says nothing', () => {
+    const view = tideView(gauge(), TOMORROW, null, GAVIOTA)
+    expect(view.text.second).toBeNull()
+    expect(view.observed).toEqual([])
+    expect(view.words).toBe('Tide: 3.0 ft predicted')
+  })
+
+  test("the gauge's readings are kept for the caption, though not drawn", () => {
+    const view = tideView(gauge(), TODAY, null, GAVIOTA)
+    expect(view.readings).toHaveLength(readings.length)
+    expect(view.observed).toEqual([])
+  })
+
+  test("the vertical range does not count the gauge's readings, which are not drawn", () => {
+    const high = [...readings, { t: NOW, ft: 8.2 }]
+    const view = tideView(
+      data({ observed: ready(high), gaugePredictions: ready(gaugeCurve) }),
+      TODAY,
+      null,
+      GAVIOTA,
+    )
+    expect(view.bounds).toEqual([3, 7])
+  })
+
+  test('the hide control is not offered where the tide is shown by default', () => {
+    expect(tideView(gauge(), TODAY, null, GAVIOTA).canHide).toBe(false)
+    expect(tideView(data(), TODAY, null, OWN).canHide).toBe(false)
+  })
+})
+
+describe('a spot whose tide is hidden', () => {
+  test('gives one line naming the nearest station, and nothing to draw', () => {
+    const view = tideView(data(), TODAY, null, LA_CUMBRE)
+    expect(view.hidden).toBe(
+      'Tides hidden. Nearest station: NOAA 9411340 Santa Barbara, 6.3 mi south.',
+    )
+    expect(view.words).toBe(view.hidden)
+    expect(view.notice).toBeNull()
+    expect(view.predicted).toEqual([])
+    expect(view.observed).toEqual([])
+    expect(view.events).toEqual([])
+    expect(view.series).toEqual([])
+    expect(view.rules).toEqual([])
+    expect(view.dots).toEqual([])
+    expect(view.text.second).toBeNull()
+  })
+
+  test('with the tide hidden the cursor rests on the clock today, and at sunset on other days', () => {
+    const view = tideView(data(), TODAY, null, LA_CUMBRE)
+    expect(view.cursor).toBe(NOW)
+    expect(tideView(data(), TOMORROW, null, LA_CUMBRE).cursor).toBe(
+      END + 18 * HOUR + 30 * MINUTE,
+    )
+  })
+
+  test('once shown it is drawn like any spot with its own gauge, with the hide control offered', () => {
+    const shown = { ...LA_CUMBRE, shown: true }
+    const view = tideView(data(), TODAY, null, shown)
+    expect(view.hidden).toBeNull()
+    expect(view.canHide).toBe(true)
+    expect(view.series.map((series) => series.name)).toEqual([
+      'predicted',
+      'observed',
+    ])
+    expect(view.text.second).toEqual({
+      words: '4.0 ft observed (+1.0)',
+      key: 'observed',
+    })
   })
 })

@@ -18,6 +18,7 @@ import {
 import type { TideExtreme, TidePoint } from './noaa.ts'
 import { fetchForecast, isForecast } from './nws.ts'
 import type { Forecast } from './nws.ts'
+import { hasOwnGauge } from '../spot.ts'
 import type { Spot } from '../spot.ts'
 import { MINUTE, addDays, localDate, localDayStart } from '../time.ts'
 
@@ -39,6 +40,12 @@ export interface SpotData {
   predictions: Loaded<TidePoint[]>
   hilo: Loaded<TideExtreme[]>
   observed: Loaded<TidePoint[]>
+  /**
+   * The gauge station's own predicted curve for today, so its reading can be
+   * set against its own prediction. For a spot whose gauge is its tide
+   * station this is `predictions` itself.
+   */
+  gaugePredictions: Loaded<TidePoint[]>
   forecast: Loaded<Forecast>
 }
 
@@ -72,8 +79,10 @@ export function tideSpecs(
   predictions: SourceSpec<TidePoint[]>
   hilo: SourceSpec<TideExtreme[]>
   observed: SourceSpec<TidePoint[]>
+  gaugePredictions: SourceSpec<TidePoint[]>
 } {
   const station = spot.tideStation.id
+  const gauge = spot.gauge.id
   const noPoints = (data: unknown[]) => data.length === 0
   return {
     predictions: {
@@ -98,9 +107,19 @@ export function tideSpecs(
       isData: isTidePoints,
       // Readings are only drawn for today, so only today is asked for.
       needed: frame.day,
-      fetch: (needed) => fetchWaterLevel(station, needed.start, needed.end),
+      fetch: (needed) => fetchWaterLevel(gauge, needed.start, needed.end),
       // Just after midnight there are no readings yet, and that is fine.
       isEmpty: () => false,
+    },
+    // Only fetched where the gauge is another station. Its readings are
+    // set against its own prediction, not the spot's.
+    gaugePredictions: {
+      spotId: spot.id,
+      source: 'gauge-predictions',
+      isData: isTidePoints,
+      needed: frame.day,
+      fetch: (needed) => fetchPredictions(gauge, needed.start, needed.end),
+      isEmpty: noPoints,
     },
   }
 }
@@ -144,26 +163,55 @@ function useClock(): Pick<SpotData, 'now' | 'shown'> {
   return clock
 }
 
-function useLoaded<T>(spec: SourceSpec<T>, now: number): Loaded<T> {
+/**
+ * One source over time. The loader is always made, so the hooks are called
+ * in one order, but it fetches nothing while `wanted` is false: a hidden
+ * tide is not loaded, and a gauge's own prediction is not loaded where the
+ * gauge is the spot's own station.
+ */
+function useLoaded<T>(
+  spec: SourceSpec<T>,
+  now: number,
+  wanted: boolean,
+): Loaded<T> {
   const [loader] = useState(() => createLoader(spec, now))
   // After every render. The loader decides whether anything needs fetching,
   // and guards against asking twice or retrying a failure too soon.
-  useEffect(() => loader.check(spec, now))
+  useEffect(() => {
+    if (wanted) loader.check(spec, now)
+  })
   return useSyncExternalStore(loader.subscribe, loader.current)
 }
 
-export function useSpotData(spot: Spot): SpotData {
+export function useSpotData(spot: Spot, tidesShown: boolean): SpotData {
   const { now, shown } = useClock()
   const today = localDate(now, spot.timeZone)
   // Recomputed only when the date at the spot changes, such as at midnight
   // on a phone left open.
   const frame = useMemo(() => frameFor(spot, today), [spot, today])
   const specs = tideSpecs(spot, frame)
+  const ownGauge = hasOwnGauge(spot)
 
-  const predictions = useLoaded(specs.predictions, now)
-  const hilo = useLoaded(specs.hilo, now)
-  const observed = useLoaded(specs.observed, now)
-  const forecast = useLoaded(forecastSpec(spot, frame), now)
+  const predictions = useLoaded(specs.predictions, now, tidesShown)
+  const hilo = useLoaded(specs.hilo, now, tidesShown)
+  const observed = useLoaded(specs.observed, now, tidesShown)
+  const gaugeOwn = useLoaded(
+    specs.gaugePredictions,
+    now,
+    tidesShown && !ownGauge,
+  )
+  const gaugePredictions = ownGauge ? predictions : gaugeOwn
+  const forecast = useLoaded(forecastSpec(spot, frame), now, true)
 
-  return { now, shown, today, ...frame, predictions, hilo, observed, forecast }
+  return {
+    now,
+    shown,
+    today,
+    ...frame,
+    predictions,
+    hilo,
+    observed,
+    gaugePredictions,
+    forecast,
+  }
 }
