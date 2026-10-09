@@ -73,17 +73,66 @@ export function addDays(date: string, days: number): string {
   ].join('-')
 }
 
+/** The hour of the day, 0 to 23, in a zone at instant t. */
+export function localHour(t: number, timeZone: string): number {
+  return wallClock(t, timeZone).hour
+}
+
+/**
+ * The instants between start and end, inclusive, that fall on a local hour
+ * divisible by `every`. Stepping hour by hour keeps this right on days when
+ * the clocks change.
+ */
+export function hourMarks(
+  start: number,
+  end: number,
+  timeZone: string,
+  every: number,
+): { t: number; hour: number }[] {
+  const marks: { t: number; hour: number }[] = []
+  for (let t = start; t <= end; t += 3_600_000) {
+    const hour = localHour(t, timeZone)
+    if (hour % every === 0) marks.push({ t, hour })
+  }
+  return marks
+}
+
+/** Looks up one named part of a formatted date, or '' if it is absent. */
+function partReader(
+  format: Intl.DateTimeFormat,
+  t: number,
+): (type: Intl.DateTimeFormatPartTypes) => string {
+  const parts = format.formatToParts(t)
+  return (type) => parts.find((p) => p.type === type)?.value ?? ''
+}
+
 /** A 12-hour clock time in a zone, such as '6:33 PM'. */
 export function formatTime(t: number, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  }).formatToParts(t)
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((p) => p.type === type)?.value ?? ''
+  const part = partReader(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }),
+    t,
+  )
   // Assembled from parts, because browsers disagree on which kind of space
   // goes before AM/PM, and some use one that is invisible in source code.
   return `${part('hour')}:${part('minute')} ${part('dayPeriod')}`
+}
+
+/** A calendar date for display, such as 'Thu Oct 8'. No zone is involved. */
+export function formatDay(date: string): string {
+  const [year, month, day] = parseDate(date)
+  const part = partReader(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'UTC',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    }),
+    Date.UTC(year, month - 1, day, 12),
+  )
+  return `${part('weekday')} ${part('month')} ${part('day')}`
 }
