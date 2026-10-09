@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Stage 1 is in progress.
+Stage 1 is built and waiting for its checks on a phone.
 
-- Built: the scaffold, tooling and CI; the data layer; and the first screen, which shows tonight's sunset and moon, today's tide curve with the observed level and a cursor, and the high/low table.
-- Not built: the three weather panels, the 14-day list, and the manifest and icons. They are pull request 4 of Stage 1 and need their own plan.
+- Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons.
+- Not built: everything after Stage 1. It is tracked as GitHub issues.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
 
@@ -65,7 +65,8 @@ In every tracked file, commit message, issue, and pull request, that person is "
 - Static single-page app with no server: Vite, React, strict TypeScript, plain CSS. Hosted on Vercel.
 - The browser calls NOAA, NWS and Open-Meteo directly. Sun and moon are computed on the device.
 - Charts are hand-written SVG: stacked panels on one time axis with one shared cursor. The arithmetic is in `src/chart/scales.ts`. No charting library and no d3.
-- Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/tideView.ts`, `src/data/load.ts`), and the components are checked in a browser.
+- Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/selection.ts`, `src/ui/tideView.ts`, `src/ui/weatherView.ts`, `src/ui/dayList.ts`, `src/data/load.ts`), and the components are checked in a browser.
+- Weather is drawn as staircases, level across the hour each value is forecast for, so the line, the cursor's dot and the words always agree.
 - Data modules (NOAA, NWS, astronomy) are framework-free TypeScript so they can move behind a server function unchanged. Tested with Vitest against recorded real responses.
 - Caching is on the device in Stage 1: draw from the last saved data, refresh behind it, show each source's "as of" time. A server cache is deferred to an issue.
 
@@ -112,8 +113,8 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 
 ## Next Steps
 
-- Stage 1 (Campus Point): pull requests 1 to 3 of 4 are built (scaffold, data layer, tide screen). Pull request 4 is the weather panels, the 14-day list, the manifest and icons. Its plan is written and has been reviewed by a fresh reviewer: `docs/superpowers/plans/2026-10-08-stage-1-weather-and-days.md`, on branch `stage-1/weather-and-days`. Next: Nico reads the decisions at the top of the plan and approves it or changes it. Then build it on that branch with subagent-driven development.
-- Not yet checked on the tide screen: touch on a real iPhone, and a screen reader on the cursor.
+- Stage 1 (Campus Point) is built. Before it is called done, the owner checks it on an iPhone against the list in the pull request for `stage-1/weather-and-days`: touch on the panels, the home-screen icon, and a reopen in airplane mode.
+- Not yet tried: a screen reader on the cursor.
 - The first user: confirm or correct the provisional decisions above, and answer the sharing question.
 - Everything after Stage 1 is tracked as GitHub issues, in provisional order.
 

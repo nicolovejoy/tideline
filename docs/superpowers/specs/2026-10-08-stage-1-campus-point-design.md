@@ -56,6 +56,8 @@ All four panels share one horizontal axis: the selected day from midnight to mid
 - **Temperature (°F).** One line.
 - **Sky (%).** Cloud cover and chance of rain as two lines on a 0 to 100 scale.
 
+Each weather value is drawn as a staircase, level across the hour it is forecast for, so the line, the cursor's dot and the readout always agree. Wind and temperature keep one vertical range across every day of the forecast, on multiples of 10. Weather uses no colours of its own: the first value in a panel is in the text colour and the second in the muted one.
+
 Vertical lines cross all four panels at sunset, at moonrise if it falls in the selected day, and at the current time when the selected day is today. The lines carry no labels: the coloured bars beside "Sunset" and "Moon" in the tonight strip are their key, and the current-time line is dashed.
 
 ### Cursor and readouts
@@ -67,8 +69,8 @@ Vertical lines cross all four panels at sunset, at moonrise if it falls in the s
   - Wind: "9 mph, gusts 12, from W"
   - Temperature: "74°F"
   - Sky: "3% cloud, 0% rain"
-- Weather readouts use the forecast hour that contains the cursor.
-- The cursor is always present, so the readouts show useful values before anything is touched. When the selected day is today it rests on the latest observed reading, if there is one from the past hour, and otherwise on the current time. NOAA publishes readings about ten minutes late, so a cursor resting on the current time would never have a reading under it. On any other day it rests at sunset. A cursor put somewhere by hand stays there until the day changes or the page is put away and brought back; then it goes back to rest, so reopening the app shows the latest reading.
+- Weather readouts use the forecast hour that contains the cursor. At the right-hand edge of the day, where the cursor is on the next day's midnight, they use the last hour drawn.
+- The cursor is always present, so the readouts show useful values before anything is touched. When the selected day is today it rests on the latest observed reading, if there is one from the past hour, and otherwise on the current time. NOAA publishes readings about ten minutes late, so a cursor resting on the current time would never have a reading under it. On any other day it rests at sunset, on the 6-minute step that contains it, so that the weather under it is the hour of sunset's. A cursor put somewhere by hand stays there until the day changes or the page is put away and brought back; then it goes back to rest, so reopening the app shows the latest reading.
 - On a day beyond the forecast horizon, the three weather panels are replaced by one line: "No forecast this far out."
 
 ### Day list rows
@@ -80,6 +82,8 @@ Each row has up to three lines:
 - Line 3, only inside the forecast horizon: the forecast at the hour of sunset, as temperature, wind and gusts with direction, cloud cover, and chance of rain.
 
 Line 3 uses the sunset hour, not a daily high and low, because sunset is the moment the rest of the row describes. This is a design choice to check against the first user's reaction.
+
+Line 3 starts with the words "At sunset". Tapping a row also jumps the page up to the panels and puts the cursor back to rest. A chosen day stays chosen until it is no longer one of the 14, as happens to yesterday at midnight; then the day on screen is today.
 
 ## Data
 
@@ -107,7 +111,7 @@ Layers used: `temperature`, `windSpeed`, `windGust`, `windDirection`, `skyCover`
 
 Parsed form: an array of hourly records `{ t, tempF, windMph, gustMph, windDeg, cloudPct, rainPct }`, where any field may be `null` if its layer has no value for that hour. NWS sends a layer it has no data for as an empty list with no unit; that leaves the field `null` and does not fail the forecast. `updateTime` from the response is kept for the caption.
 
-The forecast runs about 7 days and 17 hours. A day is "inside the forecast horizon" if the forecast has a record for that day's sunset hour.
+The forecast runs about 7 days and 17 hours. A day is "inside the forecast horizon" if the forecast reaches the hour of that day's sunset, that is, if its last record is at or after that hour. Today is inside it for as long as the forecast has any of today left, so it keeps its panels after sunset even when NWS issues a forecast that starts later than sunset did. A saved forecast whose every hour has passed counts as no forecast at all.
 
 ### Sun and moon
 
@@ -144,6 +148,8 @@ Staleness rules:
 - Predicted curve and highs/lows: stale when the saved data no longer covers the 14-day window. In practice that is one refetch per day.
 - Forecast: stale after 1 hour.
 - Observed level: stale after 6 minutes.
+- A forecast or a reading stamped more than 5 minutes into the future is stale too. That is what a device leaves behind when its clock was ahead and has since been put right.
+- A source is fetched at most once for one reading of the clock, however stale the answer looks against that reading.
 
 When the page becomes visible again after being in the background, the same staleness check runs. While the page stays open and in view it also runs once a minute, which keeps the current-time line moving and picks up new readings. A request with no answer after 20 seconds is given up on. After a failure a source is left alone for about a minute, counted from when the failed request was made, and then tried again.
 
@@ -175,8 +181,12 @@ src/
   chart/Panel.tsx       one generic line panel
   chart/PanelStack.tsx  the four panels, shared cursor, vertical markers
   ui/captions.ts        the small print under the panels
+  ui/selection.ts       which of the 14 days is on screen
   ui/tideView.ts        what the tide part of the screen shows
+  ui/weatherView.ts     what the three weather panels show
+  ui/dayList.ts         the words for the tonight strip and the rows of the list
   ui/TonightStrip.tsx
+  ui/WeatherPanels.tsx
   ui/HiLoTable.tsx
   ui/DayList.tsx
   App.tsx
