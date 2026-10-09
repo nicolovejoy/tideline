@@ -116,6 +116,14 @@ export function tideWords(readout: TideReadout): {
   }
 }
 
+/**
+ * A gauge elsewhere, set against its own prediction: 'Santa Barbara gauge
+ * +1.2 ft vs its prediction'. For a spot whose tide station has no gauge.
+ */
+export function gaugeWords(name: string, aboveFt: number): string {
+  return `${name} gauge ${signedFeet(aboveFt)} ft vs its prediction`
+}
+
 /** The forecast hour that contains an instant, if the forecast has it. */
 export function hourAt(hours: ForecastHour[], t: number): ForecastHour | null {
   const start = Math.floor(t / HOUR) * HOUR
