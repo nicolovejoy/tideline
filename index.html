@@ -6,8 +6,24 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <!-- No icon yet. This stops the browser asking for /favicon.ico. -->
-    <link rel="icon" href="data:," />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <!-- For the iPhone home screen: the icon, and opening without Safari's
+         bars. The bar colours follow the page's light and dark grounds. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Tideline" />
+    <meta
+      name="theme-color"
+      content="#eef2f3"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#0f1d28"
+      media="(prefers-color-scheme: dark)"
+    />
     <title>Tideline</title>
     <meta
       name="description"
