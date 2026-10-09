@@ -12,6 +12,8 @@ Stage 1 is in progress.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
 
+Live: https://tideline-inky.vercel.app (production, deploys from `main`, public). Pull request previews need a Vercel sign-in. https://tideline.vercel.app is someone else's site, not this project.
+
 ## Commands
 
 Node 24 (`.nvmrc`). In a fresh shell: `source ~/.nvm/nvm.sh && nvm use`.
@@ -110,6 +112,6 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 
 ## Next Steps
 
-- Stage 1 (Campus Point): design approved 2026-10-08. Spec is `docs/superpowers/specs/2026-10-08-stage-1-campus-point-design.md`; the implementation plan is under `docs/superpowers/plans/`. Nico reviews both before any code, then Stage 1 is built as four pull requests.
+- Stage 1 (Campus Point): pull requests 1 and 2 of 4 are merged (scaffold, data layer). Next is the screen, pull requests 3 and 4. Write its plan against `docs/superpowers/specs/2026-10-08-stage-1-campus-point-design.md`, have the plan's code reviewed by a fresh reviewer, get Nico's approval, then build.
 - The first user: confirm or correct the provisional decisions above, and answer the sharing question.
 - Everything after Stage 1 is tracked as GitHub issues, in provisional order.
