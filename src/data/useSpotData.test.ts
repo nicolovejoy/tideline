@@ -60,6 +60,22 @@ describe('frameFor', () => {
     const frame = frameFor(CAMPUS_POINT, '2026-10-25')
     expect(frame.window.end).toBe(Date.UTC(2026, 10, 8, 8))
   })
+
+  test('the highs and lows run to the end of the third month after this one', () => {
+    // From 8 October 2026: October, November, December, January. February
+    // starts at 08:00 UTC, in standard time.
+    const frame = frameFor(CAMPUS_POINT, '2026-10-08')
+    expect(frame.ahead).toEqual({
+      start: Date.UTC(2026, 9, 8, 7),
+      end: Date.UTC(2027, 1, 1, 8),
+    })
+  })
+
+  test('the span ahead crosses the end of the year', () => {
+    const frame = frameFor(CAMPUS_POINT, '2026-11-15')
+    expect(frame.ahead.start).toBe(Date.UTC(2026, 10, 15, 8))
+    expect(frame.ahead.end).toBe(Date.UTC(2027, 2, 1, 8))
+  })
 })
 
 describe('tideSpecs', () => {
@@ -68,9 +84,23 @@ describe('tideSpecs', () => {
 
   afterEach(() => vi.unstubAllGlobals())
 
-  test('predictions and highs and lows are needed for all 14 days', () => {
+  test('predictions are needed for the 14 days, and highs and lows for the months ahead', () => {
     expect(specs.predictions.needed).toEqual(frame.window)
-    expect(specs.hilo.needed).toEqual(frame.window)
+    expect(specs.hilo.needed).toEqual(frame.ahead)
+  })
+
+  test('the highs and lows are one request, to the last day of the last month', async () => {
+    const fetchMock = vi.fn(
+      async (_url: string) => new Response('{"predictions":[]}'),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    await specs.hilo.fetch(frame.ahead)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    // The end date is the UTC date holding the span's last instant: local
+    // midnight on 1 February is 08:00 UTC that day.
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      'begin_date=20261008&end_date=20270201',
+    )
   })
 
   test('readings are needed for today only', () => {
