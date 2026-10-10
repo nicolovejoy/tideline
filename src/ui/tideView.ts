@@ -127,11 +127,10 @@ export function tideView(
   // Where the cursor sits until someone moves it. Today that is the latest
   // reading, or the clock. With no tide nothing on screen justifies resting
   // on a reading, and none is loaded, so the cursor rests on the clock. Any
-  // other day it is the
-  // day's anchor. It is the step that contains the anchor, never the one
-  // after: a sunset at 4:59 PM must not tip the cursor into the 5 PM hour,
-  // or the weather under it would not be the hour that the day's row in the
-  // list gives.
+  // other day it is the day's anchor. It is the step that contains the
+  // anchor, never the one after: a sunset at 4:59 PM must not tip the cursor
+  // into the 5 PM hour, or the weather under it would not be the hour that
+  // the day's row in the list gives.
   const rest = selected.isToday
     ? restingCursor(data.now, tidal ? readings : [])
     : Math.floor(selected.anchor / STEP) * STEP

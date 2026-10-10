@@ -207,8 +207,8 @@ function useClock(): Pick<SpotData, 'now' | 'shown'> {
 /**
  * One source over time. The loader is always made, so the hooks are called
  * in one order, but it fetches nothing while `wanted` is false: at a spot
- * with no tide none is loaded, a gauge's own prediction is not loaded where the
- * gauge is the spot's own station, and a curve is not loaded where the
+ * with no tide none is loaded, a gauge's own prediction is not loaded where
+ * the gauge is the spot's own station, and a curve is not loaded where the
  * station publishes none.
  */
 function useLoaded<T>(

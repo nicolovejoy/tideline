@@ -163,13 +163,12 @@ export function weatherCaption(
   // average is well below it; where it is a beach under hills, well above.
   // Saying so stops the forecast looking wrong. Where the two are close
   // the spot's own height adds nothing.
+  const own = spot.elevationFt
   const apart =
-    spot.elevationFt !== null &&
-    Math.abs(spot.elevationFt - spot.nws.elevationFt) >= HEIGHTS_APART_FT
-  const height =
-    spot.elevationFt !== null && apart
-      ? `which averages ${cell} above sea level; the spot itself is at ${feetHigh(spot.elevationFt)}`
-      : `${cell} above sea level`
+    own !== null && Math.abs(own - spot.nws.elevationFt) >= HEIGHTS_APART_FT
+  const height = apart
+    ? `which averages ${cell} above sea level; the spot itself is at ${feetHigh(own)}`
+    : `${cell} above sea level`
   const source = `Weather: NWS forecast for the 2.5 km cell at this spot, ${height}.`
   if (forecast.data === null) return source
 

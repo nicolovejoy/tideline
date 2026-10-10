@@ -20,7 +20,7 @@ export interface ResolveIo {
     gridX: number,
     gridY: number,
   ) => Promise<number>
-  /** The point's own height in feet. The one request that may fail. */
+  /** The point's own height in feet. A failure here does not fail the spot. */
   fetchPointElevationFt: (lat: number, lon: number) => Promise<number>
   stations: StationRow[]
 }
