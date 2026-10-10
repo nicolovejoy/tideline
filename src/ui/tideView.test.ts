@@ -24,6 +24,22 @@ function none<T>(status: Loaded<T>['status']): Loaded<T> {
 const OWN = { spot: CAMPUS_POINT, shown: true }
 const GAVIOTA = { spot: spotById('gaviota'), shown: true }
 const LA_CUMBRE = { spot: spotById('la-cumbre-peak'), shown: false }
+// A spot whose station publishes highs and lows only. Its gauge is elsewhere,
+// as Gaviota's is.
+const VENTURA = {
+  spot: {
+    ...spotById('gaviota'),
+    id: 'ventura-test',
+    tideStation: {
+      id: '9411189',
+      name: 'Ventura',
+      distanceMi: 33,
+      direction: 'east',
+      type: 'subordinate' as const,
+    },
+  },
+  shown: true,
+}
 
 /** The view at Campus Point, which has its own gauge and shows its tide. */
 function own(
@@ -422,5 +438,23 @@ describe('a spot whose tide is hidden', () => {
       words: '4.0 ft observed (+1.0)',
       key: 'observed',
     })
+  })
+})
+
+describe('at a spot whose station publishes highs and lows only', () => {
+  test('the readout and the spoken words say interpolated, and the curve is drawn as any other', () => {
+    const view = tideView(data(), TODAY, null, VENTURA)
+    expect(view.text.predicted).toBe('3.0 ft interpolated')
+    expect(view.words).toContain('3.0 ft interpolated')
+    expect(view.words).not.toContain('predicted')
+    expect(view.predicted).toHaveLength(241)
+    expect(view.series[0].name).toBe('predicted')
+    expect(view.dots).toEqual([{ name: 'predicted', v: 3 }])
+    expect(view.notice).toBeNull()
+  })
+
+  test('a harmonic station still says predicted', () => {
+    const view = tideView(data(), TODAY, null, GAVIOTA)
+    expect(view.text.predicted).toBe('3.0 ft predicted')
   })
 })

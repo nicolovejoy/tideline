@@ -15,7 +15,7 @@ import type { TideReadout } from '../chart/readout.ts'
 import { steppedBounds, wholeSteps } from '../chart/scales.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
 import type { SpotData } from '../data/useSpotData.ts'
-import { hasOwnGauge } from '../spot.ts'
+import { hasOwnCurve, hasOwnGauge } from '../spot.ts'
 import type { Spot } from '../spot.ts'
 import { MINUTE } from '../time.ts'
 import { onDay } from './selection.ts'
@@ -172,7 +172,10 @@ export function tideView(
   }
 
   const readout = tideReadout(predicted, observed, cursor)
-  const text = tideWords(readout)
+  const text = tideWords(
+    readout,
+    hasOwnCurve(spot) ? 'predicted' : 'interpolated',
+  )
   // The second line: this station's reading, or a gauge elsewhere set
   // against its own prediction for the same step.
   let second: SecondLine | null = null
