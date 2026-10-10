@@ -130,10 +130,10 @@ All four HTTP APIs below send `access-control-allow-origin: *`, need no key, and
 ## Next Steps
 
 - Stage 1 (Campus Point) is built. Items 1 to 6 of the phone check in the pull request for `stage-1/weather-and-days` passed on 2026-10-09; item 7 remains: a reopen with a connection draws at once from saved data and the captions update when the refresh lands.
-- Own spots and place search (pull requests 37 and 40) are merged and live. The owner tried them on 2026-10-10, added several spots and said they work well. Issue #4 is still open though both halves of it are merged.
+- Own spots and place search (pull requests 37 and 40) are merged and live. The owner tried them on 2026-10-10, added several spots and said they work well, and issue #4 is closed.
 - Three things from that try are on `fix/phone-check-findings`, waiting for the owner's review and phone check: tides only at the coast, a spot's own height from USGS (a new data source, which that pull request puts to him), and one message for every pin outside the US.
 - Spots saved before that change have no height of their own. One in a forecast cell that averages 300 ft or more shows no tide until it is removed and added again.
-- Place search takes Nominatim's first answer wherever it is: "Ventura" gives the county, "Summerland Beach" a place in Ohio, "Rincon Point" one in Utah. Not yet an issue.
+- Place search takes Nominatim's first answer wherever it is: "Ventura" gives the county, "Summerland Beach" a place in Ohio, "Rincon Point" one in Utah. Issue #42; sending the map's view as Nominatim's `viewbox` fixed all three when tried by hand.
 - Not yet tried: a screen reader on the cursor.
 - The first user: the two questions still open under Decisions (the sunset-hour row, the moon line wording).
 - Everything after Stage 1 is tracked as GitHub issues, in provisional order.
