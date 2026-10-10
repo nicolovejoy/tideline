@@ -30,8 +30,10 @@ const AHEAD = 5 * MINUTE
 // Bump the version when the shape or coverage of a saved entry changes, so
 // saved entries from an older build are not reused. v2: the predicted curve
 // includes its end instant.
+const PREFIX = 'tideline:v2:'
+
 function storageKey(spotId: string, source: Source): string {
-  return `tideline:v2:${spotId}:${source}`
+  return `${PREFIX}${spotId}:${source}`
 }
 
 function isSpan(value: unknown): value is Span {
@@ -81,15 +83,49 @@ export function readCache<T>(
   }
 }
 
+/**
+ * Saves the entry. Storage is shared by every spot ever viewed and a site
+ * gets about 5 MB, so when a write fails the other spots' entries go to
+ * make room, and the write is tried once more. If it still fails, storage
+ * is disabled or too full even so: carry on without a cache.
+ */
 export function writeCache<T>(
   spotId: string,
   source: Source,
   entry: CacheEntry<T>,
 ): void {
+  const key = storageKey(spotId, source)
+  const text = JSON.stringify(entry)
   try {
-    localStorage.setItem(storageKey(spotId, source), JSON.stringify(entry))
+    localStorage.setItem(key, text)
   } catch {
-    // Storage is full or disabled. Carry on without a cache.
+    evictCache(spotId)
+    try {
+      localStorage.setItem(key, text)
+    } catch {
+      // Storage is full or disabled. Carry on without a cache.
+    }
+  }
+}
+
+/**
+ * Drops every cache entry, or every one but a spot's own. Nothing else in
+ * storage is touched: the saved spots and the user's choices are small and
+ * are not cache.
+ */
+export function evictCache(keepSpotId?: string): void {
+  try {
+    const keep = keepSpotId === undefined ? null : `${PREFIX}${keepSpotId}:`
+    const doomed: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key === null || !key.startsWith(PREFIX)) continue
+      if (keep !== null && key.startsWith(keep)) continue
+      doomed.push(key)
+    }
+    for (const key of doomed) localStorage.removeItem(key)
+  } catch {
+    // Storage is disabled. There was nothing to drop.
   }
 }
 

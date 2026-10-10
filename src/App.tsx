@@ -20,6 +20,8 @@ export default function App() {
   const [saved, setSaved] = useState<Spot[]>(readSavedSpots)
   const [spot, setSpot] = useState<Spot>(() => readSpot(allSpots(saved)))
   const [adding, setAdding] = useState(false)
+  // The id of a spot that could not be kept on the device, said on its screen.
+  const [notKept, setNotKept] = useState<string | null>(null)
   const spots = allSpots(saved)
 
   const selectSpot = (next: Spot) => {
@@ -27,7 +29,7 @@ export default function App() {
     setSpot(next)
   }
   const saveSpot = (next: Spot) => {
-    addSpot(next)
+    setNotKept(addSpot(next) ? null : next.id)
     setSaved([...saved, next])
     selectSpot(next)
     setAdding(false)
@@ -65,6 +67,11 @@ export default function App() {
         onAdd={() => setAdding(true)}
       />
       <InstallHint />
+      {notKept === spot.id && (
+        <p className="notice" role="status">
+          {WORDS.notKept}
+        </p>
+      )}
       {/* Keyed, so a switch mounts the screen afresh, as a first open does. */}
       <SpotScreen
         key={spot.id}

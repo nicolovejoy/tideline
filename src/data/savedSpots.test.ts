@@ -26,11 +26,34 @@ function fakeStorage(initial: Record<string, string> = {}): Storage {
     setItem: (key: string, value: string) => void items.set(key, value),
     removeItem: (key: string) => void items.delete(key),
     clear: () => items.clear(),
-    key: () => null,
+    key: (index: number) => [...items.keys()][index] ?? null,
     get length() {
       return items.size
     },
   }
+}
+
+/** A storage with room for `bytes` of values in all, as a full one behaves. */
+function fullStorage(bytes: number, initial: Record<string, string> = {}) {
+  const items = new Map(Object.entries(initial))
+  const used = () => [...items.values()].reduce((n, v) => n + v.length, 0)
+  const storage: Storage = {
+    getItem: (key: string) => items.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      const without = used() - (items.get(key)?.length ?? 0)
+      if (without + value.length > bytes) {
+        throw new DOMException('full', 'QuotaExceededError')
+      }
+      items.set(key, value)
+    },
+    removeItem: (key: string) => void items.delete(key),
+    clear: () => items.clear(),
+    key: (index: number) => [...items.keys()][index] ?? null,
+    get length() {
+      return items.size
+    },
+  }
+  return { storage, items }
 }
 
 function brokenStorage(): Storage {
@@ -77,11 +100,36 @@ describe('readSavedSpots', () => {
     vi.stubGlobal('localStorage', fakeStorage({ [SAVED_KEY]: 'not json' }))
     expect(readSavedSpots()).toEqual([])
   })
-  test('with storage disabled there is nothing saved and adding does not throw', () => {
+  test('with storage disabled there is nothing saved and adding says so', () => {
     vi.stubGlobal('localStorage', brokenStorage())
     expect(readSavedSpots()).toEqual([])
-    expect(() => addSpot(LEADBETTER)).not.toThrow()
+    expect(addSpot(LEADBETTER)).toBe(false)
     expect(() => removeSpot('spot-abc')).not.toThrow()
+  })
+})
+
+describe('addSpot', () => {
+  test('says the spot was kept', () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    expect(addSpot(LEADBETTER)).toBe(true)
+  })
+  test('in a full storage, drops the cache to make room and keeps the spot', () => {
+    const one = JSON.stringify([LEADBETTER]).length
+    const { storage, items } = fullStorage(one + 100, {
+      'tideline:v2:campus-point:predictions': 'x'.repeat(80),
+      'tideline:v2:elsewhere:forecast': 'y'.repeat(80),
+      'tideline:spot': 'campus-point',
+    })
+    vi.stubGlobal('localStorage', storage)
+    expect(addSpot(LEADBETTER)).toBe(true)
+    expect(readSavedSpots()).toEqual([LEADBETTER])
+    expect([...items.keys()].sort()).toEqual(['tideline:spot', SAVED_KEY])
+  })
+  test('when there is no room even then, says the spot was not kept', () => {
+    const { storage } = fullStorage(10)
+    vi.stubGlobal('localStorage', storage)
+    expect(addSpot(LEADBETTER)).toBe(false)
+    expect(readSavedSpots()).toEqual([])
   })
 })
 

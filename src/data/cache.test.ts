@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { forgetSpot, isStale, readCache, writeCache } from './cache.ts'
+import {
+  evictCache,
+  forgetSpot,
+  isStale,
+  readCache,
+  writeCache,
+} from './cache.ts'
 import type { CacheEntry } from './cache.ts'
 
 const MINUTE = 60_000
@@ -22,11 +28,32 @@ function fakeStorage(initial: Record<string, string> = {}): Storage {
     setItem: (key: string, value: string) => void items.set(key, value),
     removeItem: (key: string) => void items.delete(key),
     clear: () => items.clear(),
-    key: () => null,
+    key: (index: number) => [...items.keys()][index] ?? null,
     get length() {
       return items.size
     },
   }
+}
+
+/** A storage that holds `room` entries and throws on one more, as a full one does. */
+function fullStorage(room: number, initial: Record<string, string> = {}) {
+  const items = new Map(Object.entries(initial))
+  const storage: Storage = {
+    getItem: (key: string) => items.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      if (!items.has(key) && items.size >= room) {
+        throw new DOMException('full', 'QuotaExceededError')
+      }
+      items.set(key, value)
+    },
+    removeItem: (key: string) => void items.delete(key),
+    clear: () => items.clear(),
+    key: (index: number) => [...items.keys()][index] ?? null,
+    get length() {
+      return items.size
+    },
+  }
+  return { storage, items }
 }
 
 function brokenStorage(): Storage {
@@ -143,6 +170,61 @@ describe('readCache and writeCache', () => {
         data: 1,
       }),
     ).not.toThrow()
+  })
+})
+
+describe('a full storage', () => {
+  const entry = { fetchedAt: NOW, span: null, data: 'x' }
+  const elsewhere = {
+    'tideline:v2:elsewhere:forecast': '{"fetchedAt":1,"span":null,"data":"e"}',
+    'tideline:v2:elsewhere:hilo': '{"fetchedAt":1,"span":null,"data":"e"}',
+  }
+  const own = {
+    'tideline:v2:campus-point:hilo': '{"fetchedAt":1,"span":null,"data":"o"}',
+  }
+  const choice = { 'tideline:spot': 'campus-point' }
+
+  test("a write that fails for want of room evicts other spots' entries and goes in", () => {
+    const { storage, items } = fullStorage(4, {
+      ...elsewhere,
+      ...own,
+      ...choice,
+    })
+    vi.stubGlobal('localStorage', storage)
+    writeCache('campus-point', 'forecast', entry)
+    expect(readCache('campus-point', 'forecast', isText)?.data).toBe('x')
+    // The spot's own entries and what is not cache stay.
+    expect(readCache('campus-point', 'hilo', isText)?.data).toBe('o')
+    expect(items.get('tideline:spot')).toBe('campus-point')
+    expect(readCache('elsewhere', 'forecast', isText)).toBeNull()
+  })
+
+  test('a write that still fails after evicting does nothing', () => {
+    const { storage } = fullStorage(1, choice)
+    vi.stubGlobal('localStorage', storage)
+    expect(() => writeCache('campus-point', 'forecast', entry)).not.toThrow()
+    expect(readCache('campus-point', 'forecast', isText)).toBeNull()
+  })
+
+  test('evictCache drops every cache entry but the kept spot, and nothing else', () => {
+    const { storage, items } = fullStorage(10, {
+      ...elsewhere,
+      ...own,
+      ...choice,
+    })
+    vi.stubGlobal('localStorage', storage)
+    evictCache('campus-point')
+    expect([...items.keys()].sort()).toEqual([
+      'tideline:spot',
+      'tideline:v2:campus-point:hilo',
+    ])
+    evictCache()
+    expect([...items.keys()]).toEqual(['tideline:spot'])
+  })
+
+  test('evictCache with storage disabled does not throw', () => {
+    vi.stubGlobal('localStorage', brokenStorage())
+    expect(() => evictCache()).not.toThrow()
   })
 })
 
