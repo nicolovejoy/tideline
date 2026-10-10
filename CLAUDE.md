@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Stage 1 is built; its phone check is down to one item. Stage 2 has begun: three spots, the month view, the interpolated curve, own spots from a map and place search by name are merged and live.
 
-- Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and tides hidden by default at La Cumbre; then the month view (this month and the next three, sunset, moon and highs and lows per day); then a curve interpolated from the highs and lows for stations that publish only those, labelled "interpolated" (a saved spot at a subordinate station uses it); then your own spots: a pin on a map (Leaflet, OpenStreetMap tiles) or the device's location, named and saved on the device, with the NWS cell, nearest tide station and nearest gauge worked out from a baked station list (`scripts/bake-stations.mjs`, `src/data/stations.json`); then a place name typed on the add screen, looked up with OpenStreetMap's Nominatim (`src/data/geocode.ts`), which pans the map there and drops the pin.
+- Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and no tides at La Cumbre; then the month view (this month and the next three, sunset, moon and highs and lows per day); then a curve interpolated from the highs and lows for stations that publish only those, labelled "interpolated" (a saved spot at a subordinate station uses it); then your own spots: a pin on a map (Leaflet, OpenStreetMap tiles) or the device's location, named and saved on the device, with the NWS cell, the spot's own height from USGS, and the nearest tide station and nearest gauge worked out from a baked station list (`scripts/bake-stations.mjs`, `src/data/stations.json`); then a place name typed on the add screen, looked up with OpenStreetMap's Nominatim (`src/data/geocode.ts`), which pans the map there and drops the pin.
 - Not built: everything after place search. It is tracked as GitHub issues.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
@@ -56,6 +56,7 @@ In every tracked file, commit message, issue, and pull request, that person is "
 - Moon phase per day; if moonrise is within 2 hours of sunset, flag it and show the time.
 - Default view is the forecast window; extended view is a month at a time, up to 3 months out, tide/sun/moon only.
 - Spots are named and saved by the user, shareable publicly or with specific friends.
+- Tides only at the coast: a spot has a tide when a tide station is within 25 mi and the spot itself is under 300 ft. It is a fact of the spot, with no switch. Where there is none the screen says why.
 - Nearest tide station is picked automatically and disclosed.
 - Any US location; responsive web app that prompts iPhone users to add it to the home screen.
 - Not in the first version: per-spot photo catalog.
@@ -65,9 +66,9 @@ In every tracked file, commit message, issue, and pull request, that person is "
 - Static single-page app with no server: Vite, React, strict TypeScript, plain CSS. Hosted on Vercel.
 - The browser calls NOAA and NWS directly. Sun and moon are computed on the device.
 - Charts are hand-written SVG: stacked panels on one time axis with one shared cursor. The arithmetic is in `src/chart/scales.ts`. No charting library and no d3.
-- Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/selection.ts`, `src/ui/tideView.ts`, `src/ui/weatherView.ts`, `src/ui/dayList.ts`, `src/ui/monthView.ts`, `src/data/load.ts`, `src/data/interpolate.ts`, `src/data/geo.ts`, `src/data/geocode.ts`, `src/data/stations.ts`, `src/data/resolve.ts`, `src/data/savedSpots.ts`, `src/ui/addSpotView.ts`), and the components are checked in a browser.
+- Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/selection.ts`, `src/ui/tideView.ts`, `src/ui/weatherView.ts`, `src/ui/dayList.ts`, `src/ui/monthView.ts`, `src/data/load.ts`, `src/data/interpolate.ts`, `src/data/geo.ts`, `src/data/geocode.ts`, `src/data/stations.ts`, `src/data/resolve.ts`, `src/data/tideRule.ts`, `src/data/usgs.ts`, `src/data/savedSpots.ts`, `src/ui/addSpotView.ts`), and the components are checked in a browser.
 - Weather is drawn as staircases, level across the hour each value is forecast for, so the line, the cursor's dot and the words always agree.
-- Data modules (NOAA, NWS, astronomy) are framework-free TypeScript so they can move behind a server function unchanged. Tested with Vitest against recorded real responses.
+- Data modules (NOAA, NWS, USGS, astronomy) are framework-free TypeScript so they can move behind a server function unchanged. Tested with Vitest against recorded real responses.
 - The map is Leaflet on OpenStreetMap tiles, loaded only with the add screen. No key. Changing the tile provider is one URL, `MAP.tiles` in `src/ui/addSpotView.ts`. Place search is OpenStreetMap's Nominatim, called from the browser on submit only, one query at a time, with answers remembered for the page; its usage policy is linked in `src/data/geocode.ts`, and changing provider is that one file. Pull request 40 put that policy to the owner as his decision, and he merged it on 2026-10-10.
 - Caching is on the device in Stage 1: draw from the last saved data, refresh behind it, show each source's "as of" time. When a write finds the device's storage full, the cache entries of the other spots are dropped and the write tried once more; saved spots and the user's choices are never dropped, and a new spot that could not be kept says so on its screen. A server cache is deferred to an issue.
 
@@ -82,11 +83,13 @@ The first user confirmed these on 2026-10-09 (recorded by Nico on `stage-1/weath
 - Weather: NWS only, 7 days. Days past the forecast say so in the list. The first user asked for NWS alone; the second source for days 8 to 10 was dropped (issue 1 closed).
 - Weather values: temperature, wind, gusts, direction, cloud cover, rain chance, drawn for the full day. A way to dig in is issue 8.
 - Where a spot's tide station has no gauge, show the nearest gauge's deviation from its own prediction. Do not redraw the spot's curve with that deviation applied.
-- Inland spots: tides hidden by default.
+- Inland spots: tides hidden by default. Changed by the owner on 2026-10-10 to no tides inland at all, with no switch (see below).
 - Sun and moon times should account for the spot's elevation, after launch (issue 9).
 - Sharing: a link to chosen friends is enough. No accounts (issue 12 closed; issue 7 stays).
 - The cursor rests on the latest gauge reading today.
 - Working offline is not a Stage 1 goal (decided 2026-10-09). The data is saved on the device; the page itself is not.
+
+Decided by the owner on 2026-10-10, after trying own spots on a phone: tides only at the coast. A tick could show a tide curve on La Cumbre Peak, which means nothing there, and it could not be undone. The rule is in `src/data/tideRule.ts` and `hasTides` in `src/spot.ts`; a spot's height is its own, from USGS, because the NWS cell's average puts beaches under hills hundreds of feet up. The first user had confirmed the default it replaces and has not been told.
 
 Still open with the first user, as of 2026-10-09: whether the forecast at the hour of sunset is the right moment for a day's row; and the wording of the moon line, which he wants as "Moonrise 5:00 AM".
 
@@ -94,7 +97,7 @@ Display convention: times and calendar days are shown in the spot's own time zon
 
 ## Data sources (verified against the live APIs on 2026-10-08)
 
-All three HTTP APIs below send `access-control-allow-origin: *`, need no key, and can be called from a browser.
+All four HTTP APIs below send `access-control-allow-origin: *`, need no key, and can be called from a browser.
 
 **NWS (`api.weather.gov`)** — `/points/{lat},{lon}` returns the grid cell, IANA time zone, and forecast URLs.
 - Horizon is 7 days: `/forecast` has 14 twelve-hour periods, `/forecast/hourly` has 156 hours, raw grid data covers `P7DT17H`.
@@ -102,7 +105,7 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 - Cell elevation is a cell average, not the spot: 3 ft for Campus Point, 157 ft for the Leadbetter cell, 3,258 ft for La Cumbre (summit is 3,997 ft).
 - `/forecast/hourly` has no wind gust or sky cover. The raw `/gridpoints/{wfo}/{x},{y}` endpoint has both, but in SI units with ISO 8601 `validTime` intervals of varying length.
 - Responses carry `cache-control: public, max-age` of about an hour.
-- `/points` answers 404 outside its grids and, for some open-ocean points inside them, HTTP 500 (seen at 20°N 115°W on 2026-10-10).
+- `/points` answers 404 for land outside the US (Mexico, Canada, Europe, Australia) and for the mid-Atlantic and mid-Pacific, but HTTP 500 for open water in the tropics: off Oaxaca, off southern Baja, in the Caribbean and at 20°N 115°W on 2026-10-10. It answers 200 for the Gulf of Mexico and for water off California. A 500 cannot be told from an outage, so the app reads any failure outside a set of loose boxes round the US (`inUsBounds` in `src/data/geo.ts`) as "no forecast here".
 
 **NOAA CO-OPS (`api.tidesandcurrents.noaa.gov`)** — data at `/api/prod/datagetter`, station metadata at `/mdapi/prod/webapi`.
 - 3,502 prediction stations, 302 water-level (observing) stations, 238 that are both. Most prediction stations have no observed data.
@@ -114,6 +117,12 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 - A 14-day predicted curve at 6-minute resolution is one request: 136 KB as JSON, 20 KB gzipped.
 - Responses carry `cache-control: no-store`, so any caching of tide data is ours to do. Predictions for a given date do not change.
 
+**USGS Elevation Point Query Service (`epqs.nationalmap.gov/v1/json`)** — a point's own height, asked once when a spot is added (`src/data/usgs.ts`). Verified on 2026-10-10.
+- `?x={lon}&y={lat}&wkid=4326&units=Feet&includeDate=false` returns `{"value": 20.77, …}` in 0.2 to 1 second. The request has an 8 second limit; without an answer the spot is saved with no height of its own and the rule falls back to the cell's average.
+- Why it is needed: the NWS cell's elevation is an average over 2.5 km. El Capitan State Beach is at 21 ft in a cell that averages 640 ft; Solvang, inland, is at 490 ft in a cell that averages 453 ft. No bar on the cell's average tells the two apart.
+- For a point it has no data for (15°N 96°W) it answers with plain text, not JSON.
+- A place found by name can sit well off the shore: Nominatim's point for El Capitan State Beach is the middle of the park, 2 mi inland at 583 ft. The add screen then says there is no tide and that the pin can be put on the shore.
+
 **Open-Meteo** — not used. Kept as a reference: its `ncep_nbm_conus` model (NOAA National Blend, 2.5 km) returned 11 days when checked on 2026-10-08. Free for non-commercial use with attribution.
 
 **Sun and moon** — computed locally with `astronomy-engine`. The USNO API (`aa.usno.navy.mil/api/rstt/oneday`) is the reference to test computed values against.
@@ -121,7 +130,10 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 ## Next Steps
 
 - Stage 1 (Campus Point) is built. Items 1 to 6 of the phone check in the pull request for `stage-1/weather-and-days` passed on 2026-10-09; item 7 remains: a reopen with a connection draws at once from saved data and the captions update when the refresh lands.
-- Own spots and place search (pull requests 37 and 40) are merged and live. The owner tried them on 2026-10-10, added several spots and said they work well. The itemised phone checks in those two pull requests have not been gone through step by step. Issue #4 is still open though both halves of it are merged.
+- Own spots and place search (pull requests 37 and 40) are merged and live. The owner tried them on 2026-10-10, added several spots and said they work well. Issue #4 is still open though both halves of it are merged.
+- Three things from that try are on `fix/phone-check-findings`, waiting for the owner's review and phone check: tides only at the coast, a spot's own height from USGS (a new data source, which that pull request puts to him), and one message for every pin outside the US.
+- Spots saved before that change have no height of their own. One in a forecast cell that averages 300 ft or more shows no tide until it is removed and added again.
+- Place search takes Nominatim's first answer wherever it is: "Ventura" gives the county, "Summerland Beach" a place in Ohio, "Rincon Point" one in Utah. Not yet an issue.
 - Not yet tried: a screen reader on the cursor.
 - The first user: the two questions still open under Decisions (the sunset-hour row, the moon line wording).
 - Everything after Stage 1 is tracked as GitHub issues, in provisional order.
