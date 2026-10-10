@@ -1369,7 +1369,7 @@ Closes #3. Spec: `docs/superpowers/specs/2026-10-10-month-view-design.md`. Plan:
 
 A second view of a spot for planning past the forecast. "Months ahead", in the 14-day list's heading, replaces the forecast with one calendar month at a time: this month from today, and the next three in full. Each row is a day's sunset, moon with its phase, moonrise-near-sunset flag and NOAA's highs and lows. No weather, no curve, no cursor. "Back to forecast" returns to tonight.
 
-- **One longer fetch.** The highs and lows the forecast already fetched for 14 days are fetched to the end of the third month ahead instead: one 22 KB request a month rather than a 2 KB one every two weeks, and no new source, loader or cache entry.
+- **One longer fetch.** The highs and lows the forecast already fetched for 14 days are fetched to the end of the third month ahead instead: one 22 KB request a month rather than a 2 KB one every day, and no new source, loader or cache entry.
 - **Hidden tides** behave as on the forecast view: no tide lines, the hidden line with Show tides, Hide tides after the caption where the spot hides by default.
 - **Midnight** moves the rows on; on the first of a month the month that ended drops off and the current one takes its place.
 

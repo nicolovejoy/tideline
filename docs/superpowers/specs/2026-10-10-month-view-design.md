@@ -63,7 +63,7 @@ Checked in a browser against the live APIs, with the fake clock where a date mat
 
 1. **A list, not a calendar grid.** Seven columns at phone width leave no room for a time and a height per high and low. The list reads like the 14-day list continued.
 2. **No tide curve and no cursor in the month view.** The issue suggests a coarser curve or a day's curve on demand. A month of highs and lows with their times is what a planner needs, and a curve would bring back the panels, the cursor and a second fetch per day. A day inside the next two weeks has its curve on the forecast view already.
-3. **The forecast's highs-and-lows fetch is lengthened rather than a second source added.** One 22 KB request a month instead of a 2 KB one every two weeks, and one loader, one cache entry and one failure story.
+3. **The forecast's highs-and-lows fetch is lengthened rather than a second source added.** One 22 KB request a month instead of a 2 KB one every day, and one loader, one cache entry and one failure story.
 4. **The month view replaces the forecast view** instead of sitting below the 14-day list, so the page does not become two screens tall and the month's rows start at the top.
 5. **The current month starts at today.** Past days are not shown anywhere in the app.
 6. **Rows are not buttons.** Most days in the month have nothing more to show. Tapping a row to open a day in the forecast view would work for the first 14 days only, which is a surprise rather than a feature.

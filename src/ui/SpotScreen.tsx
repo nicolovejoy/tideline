@@ -30,8 +30,9 @@ interface SpotScreenProps {
 
 /**
  * Everything for one spot: tonight, the day's panels, its highs and lows,
- * the captions and the 14 days, or the month view in their place. Mounted afresh for each spot, so a switch
- * starts from saved data, today and a resting cursor, as a first open does.
+ * the captions and the 14 days, or the month view in their place. Mounted
+ * afresh for each spot, so a switch starts from saved data, today and a
+ * resting cursor, as a first open does.
  */
 export function SpotScreen({ spot }: SpotScreenProps) {
   const zone = spot.timeZone

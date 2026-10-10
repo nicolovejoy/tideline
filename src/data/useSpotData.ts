@@ -64,7 +64,10 @@ export interface SpotData {
   forecast: Loaded<Forecast>
 }
 
-/** The spans of time, and the sun and moon, for the 14 days from `today`. */
+/**
+ * The spans of time, and the sun and moon, for the 14 days from `today`, and
+ * `ahead`, which runs to the end of the third month ahead.
+ */
 export function frameFor(
   spot: Spot,
   today: string,
@@ -119,7 +122,8 @@ export function tideSpecs(
       source: 'hilo',
       isData: isTideExtremes,
       // The month view lists highs and lows months ahead. They never change,
-      // so one longer request a month costs less than a shorter one a week.
+      // so one longer request a month costs less than a shorter one every day
+      // (the old 14-day window's end moved daily).
       needed: frame.ahead,
       fetch: (needed) => fetchHiLo(station, needed.start, needed.end),
       isEmpty: noPoints,

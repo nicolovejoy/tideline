@@ -50,7 +50,7 @@ export function MonthView({
   return (
     <section className="month" aria-label={nav.title}>
       <button type="button" className="text-button month-back" onClick={onBack}>
-        ‹ Back to forecast
+        <span aria-hidden="true">‹</span> Back to forecast
       </button>
       <header className="month-head">
         <button

@@ -118,6 +118,8 @@ describe('monthRows', () => {
     expect(rows[15].date).toBe('2026-10-25')
     expect(rows[15].moon).toMatch(/^Moon \d+% lit, full moon$/)
     expect(rows[0].sunset).toMatch(/^Sunset 6:\d\d PM$/)
+    expect(rows[12].date).toBe('2026-10-22')
+    expect(rows[12].flag).toBe('Moonrise 4:17 PM')
     for (const row of rows) {
       expect(
         row.flag === null || /^Moonrise \d+:\d\d [AP]M$/.test(row.flag),
@@ -145,10 +147,17 @@ describe('monthRows', () => {
   })
 
   test('the day the clocks go back is 25 hours long and keeps all its highs and lows', () => {
+    // No recorded event falls in the 25th hour (07:00 to 08:00 UTC), so add one.
+    const late: TideExtreme = {
+      t: Date.UTC(2026, 10, 2, 7, 30),
+      ft: 1.5,
+      type: 'H',
+    }
+    const events = [...EVENTS, late].sort((a, b) => a.t - b.t)
     const rows = monthRows(
       CAMPUS_POINT,
       '2026-11',
-      { today: TODAY, hilo: HILO },
+      { today: TODAY, hilo: loaded(events) },
       true,
     )
     expect(rows[0].date).toBe('2026-11-01')
@@ -157,8 +166,10 @@ describe('monthRows', () => {
       'Low 8:22 AM 3.3 ft',
       'High 2:13 PM 5.1 ft',
       'Low 9:57 PM -0.1 ft',
+      'High 11:30 PM 1.5 ft',
     ])
-    expect(rows[1].tides[0]).not.toBe('Low 9:57 PM -0.1 ft')
+    expect(rows[1].tides).not.toContain('High 11:30 PM 1.5 ft')
+    expect(rows[1].tides[0]).toBe('High 5:05 AM 4.3 ft')
   })
 
   test('rows past the saved highs and lows have no tide lines', () => {

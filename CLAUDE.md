@@ -65,7 +65,7 @@ In every tracked file, commit message, issue, and pull request, that person is "
 - Static single-page app with no server: Vite, React, strict TypeScript, plain CSS. Hosted on Vercel.
 - The browser calls NOAA, NWS and Open-Meteo directly. Sun and moon are computed on the device.
 - Charts are hand-written SVG: stacked panels on one time axis with one shared cursor. The arithmetic is in `src/chart/scales.ts`. No charting library and no d3.
-- Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/selection.ts`, `src/ui/tideView.ts`, `src/ui/weatherView.ts`, `src/ui/dayList.ts`, `src/data/load.ts`), and the components are checked in a browser.
+- Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/selection.ts`, `src/ui/tideView.ts`, `src/ui/weatherView.ts`, `src/ui/dayList.ts`, `src/ui/monthView.ts`, `src/data/load.ts`), and the components are checked in a browser.
 - Weather is drawn as staircases, level across the hour each value is forecast for, so the line, the cursor's dot and the words always agree.
 - Data modules (NOAA, NWS, astronomy) are framework-free TypeScript so they can move behind a server function unchanged. Tested with Vitest against recorded real responses.
 - Caching is on the device in Stage 1: draw from the last saved data, refresh behind it, show each source's "as of" time. A server cache is deferred to an issue.
