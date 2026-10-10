@@ -1,20 +1,14 @@
-// What a pin on the map becomes: the NWS cell and zone, the nearest
-// stations, and whether the tide is shown to start with. The requests are
-// handed in, so this can be tested without a network.
+// What a pin on the map becomes: the NWS cell and zone, the spot's own
+// height and the nearest stations. Whether it has a tide follows from
+// those, in spot.ts. The requests are handed in, so this can be tested
+// without a network.
 
 import { inUsBounds, wrapLon } from './geo.ts'
 import { NwsOutsideError } from './nws.ts'
 import type { NwsCell } from './nws.ts'
 import { nearestStations } from './stations.ts'
 import type { StationRow } from './stations.ts'
-import { defaultTidesShown } from './tideDefault.ts'
 import type { Spot } from '../spot.ts'
-
-export {
-  TIDES_WITHIN_MI,
-  TIDES_BELOW_FT,
-  defaultTidesShown,
-} from './tideDefault.ts'
 
 /** Everything a spot has apart from what the user gives it. */
 export type SpotFacts = Omit<Spot, 'id' | 'name'>
@@ -74,7 +68,6 @@ export async function resolveSpot(
         },
         tideStation,
         gauge,
-        tidesShown: defaultTidesShown(tideStation.distanceMi, elevationFt),
       },
     }
   } catch (error) {

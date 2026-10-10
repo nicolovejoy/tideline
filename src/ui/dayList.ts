@@ -109,17 +109,17 @@ type Inputs = Pick<SpotData, 'now' | 'days' | 'spans' | 'hilo' | 'forecast'>
 
 /**
  * One row for each of the 14 days. `picked` is the date of the row last
- * tapped, if any, and decides which row is marked. With the tide hidden the
+ * tapped, if any, and decides which row is marked. At a spot with no tide the
  * rows list no highs and lows.
  */
 export function dayRows(
   data: Inputs,
   picked: string | null,
   timeZone: string,
-  tidesShown: boolean,
+  tidal: boolean,
 ): DayRow[] {
   const selected = selectedDay(data, picked).index
-  const events = tidesShown ? (data.hilo.data ?? []) : []
+  const events = tidal ? (data.hilo.data ?? []) : []
   const hours = forecastHours(data.forecast, data.now)
 
   return data.days.map((day, i) => {

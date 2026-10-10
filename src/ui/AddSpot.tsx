@@ -20,7 +20,6 @@ import {
   failureWords,
   searchLine,
   suggestedName,
-  tidesOffReason,
 } from './addSpotView.ts'
 import type { SearchState } from './addSpotView.ts'
 import { SpotMap } from './SpotMap.tsx'
@@ -37,8 +36,8 @@ export interface AddSpotProps {
 
 /**
  * A pin on a map or the device's position, a name, and what the pin gets:
- * its forecast cell, its stations and whether the tide starts shown. Loaded
- * only when opened, with Leaflet and the station list.
+ * its forecast cell, its height, and its stations or why it has no tide.
+ * Loaded only when opened, with Leaflet and the station list.
  */
 export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
   const [pin, setPin] = useState<LatLon | null>(null)
@@ -51,12 +50,10 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
   const [stationsAttempt, setStationsAttempt] = useState(0)
   const [result, setResult] = useState<ResolveResult | null>(null)
   const [attempt, setAttempt] = useState(0)
-  const [tidesShown, setTidesShown] = useState<boolean | null>(null)
   const [locating, setLocating] = useState<'idle' | 'finding' | 'failed'>(
     'idle',
   )
   const nameId = useId()
-  const tidesId = useId()
   const placeId = useId()
 
   // A search that answers after the screen is gone sets nothing.
@@ -96,9 +93,7 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
       fetchPointElevationFt,
       stations,
     }).then((answer) => {
-      if (gone) return
-      setResult(answer)
-      if (answer.ok) setTidesShown(answer.facts.tidesShown)
+      if (!gone) setResult(answer)
     })
     return () => {
       gone = true
@@ -108,7 +103,6 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
   const dropPin = (at: LatLon) => {
     setPin(at)
     setResult(null)
-    setTidesShown(null)
   }
   const tryAgain = () => {
     setResult(null)
@@ -166,16 +160,10 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
 
   const save = () => {
     if (!pin || !result?.ok) return
-    onSave({
-      ...result.facts,
-      id: newSpotId(),
-      name: cleanName(name),
-      tidesShown: tidesShown ?? result.facts.tidesShown,
-    })
+    onSave({ ...result.facts, id: newSpotId(), name: cleanName(name) })
   }
 
-  const facts = result?.ok ? factsLines(result.facts) : null
-  const reason = result?.ok ? tidesOffReason(result.facts) : null
+  const facts = result?.ok ? factsLines(result.facts) : []
 
   return (
     <section className="add-spot">
@@ -261,24 +249,11 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
             )}
           </>
         ) : (
-          <>
-            <p className="caption">{facts?.weather}</p>
-            <p className="caption">{facts?.tide}</p>
-            <p className="caption">{facts?.gauge}</p>
-            <p className="field field-check">
-              <input
-                id={tidesId}
-                type="checkbox"
-                checked={tidesShown ?? false}
-                onChange={(event) => setTidesShown(event.target.checked)}
-              />
-              <label htmlFor={tidesId}>{WORDS.showTides}</label>
-              {/* Ticking the box answers the reason, so it goes. */}
-              {tidesShown === false && reason && (
-                <span className="caption">{reason}</span>
-              )}
+          facts.map((line) => (
+            <p className="caption" key={line}>
+              {line}
             </p>
-          </>
+          ))
         )}
       </div>
 

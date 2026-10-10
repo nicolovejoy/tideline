@@ -4,7 +4,8 @@
 import type { Loaded } from '../data/load.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
 import type { Forecast } from '../data/nws.ts'
-import { hasOwnCurve, hasOwnGauge } from '../spot.ts'
+import { TIDES_WITHIN_MI } from '../data/tideRule.ts'
+import { hasOwnCurve, hasOwnGauge, hasTides } from '../spot.ts'
 import type { Spot, Station } from '../spot.ts'
 import { formatDay, formatTime, localDate } from '../time.ts'
 
@@ -27,6 +28,26 @@ const HEIGHTS_APART_FT = 100
 /** A height in whole feet with a thousands comma: '3,258 ft'. */
 function feetHigh(ft: number): string {
   return `${Math.round(ft).toLocaleString('en-US')} ft`
+}
+
+/**
+ * Why a spot has no tide, or null where it has one. Said in place of the
+ * tide on the spot's screen, and on the add screen before it is saved.
+ * Where the station is far and the spot is high, the distance: a far
+ * station is the plainer fact.
+ */
+export function noTidesWords(
+  spot: Pick<Spot, 'elevationFt' | 'nws' | 'tideStation'>,
+): string | null {
+  if (hasTides(spot)) return null
+  const { id, name, distanceMi } = spot.tideStation
+  const why =
+    distanceMi > TIDES_WITHIN_MI
+      ? `the nearest station, NOAA ${id} ${name}, is ${distanceMi} mi away`
+      : spot.elevationFt !== null
+        ? `the spot is ${feetHigh(spot.elevationFt)} above sea level`
+        : `the forecast cell averages ${feetHigh(spot.nws.elevationFt)} above sea level`
+  return `Tides are not shown here: ${why}.`
 }
 
 /** What is wrong with the highs and lows, if anything. */

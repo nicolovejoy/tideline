@@ -38,8 +38,7 @@ export function isSpot(value: unknown): value is Spot {
     typeof nws.gridY === 'number' &&
     typeof nws.elevationFt === 'number' &&
     isStation(s.tideStation) &&
-    isStation(s.gauge) &&
-    typeof s.tidesShown === 'boolean'
+    isStation(s.gauge)
   )
 }
 

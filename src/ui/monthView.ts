@@ -72,7 +72,7 @@ interface Inputs {
 
 /**
  * One row per day of the month, from today where the month is this one. The
- * month is read as monthNav reads it. With the tide hidden the rows list no
+ * month is read as monthNav reads it. At a spot with no tide the rows list no
  * highs and lows; where the saved highs and lows stop short, the rows past
  * them have none either.
  */
@@ -80,12 +80,12 @@ export function monthRows(
   spot: Spot,
   month: string | null,
   data: Inputs,
-  tidesShown: boolean,
+  tidal: boolean,
 ): MonthRow[] {
   const zone = spot.timeZone
   const shown = monthNav(month, data.today).month
   const dates = datesOfMonth(shown).filter((date) => date >= data.today)
-  const events = tidesShown ? (data.hilo.data ?? []) : []
+  const events = tidal ? (data.hilo.data ?? []) : []
   return dates.map((date) => {
     const day = dayAstro(spot, date)
     const span = {

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { NwsOutsideError } from './nws.ts'
 import type { NwsCell } from './nws.ts'
-import { defaultTidesShown, resolveSpot } from './resolve.ts'
+import { resolveSpot } from './resolve.ts'
 import type { ResolveIo } from './resolve.ts'
 import type { StationRow } from './stations.ts'
 
@@ -27,22 +27,8 @@ function io(overrides: Partial<ResolveIo> = {}): ResolveIo {
   }
 }
 
-describe('defaultTidesShown', () => {
-  test('the three hard-coded spots come out as they are shipped', () => {
-    expect(defaultTidesShown(8.6, 3)).toBe(true)
-    expect(defaultTidesShown(0.2, 0)).toBe(true)
-    expect(defaultTidesShown(6.3, 3258)).toBe(false)
-  })
-  test('within 25 mi and under 300 ft, both inclusive on the near side', () => {
-    expect(defaultTidesShown(25, 299)).toBe(true)
-    expect(defaultTidesShown(25.1, 0)).toBe(false)
-    expect(defaultTidesShown(0, 300)).toBe(false)
-    expect(defaultTidesShown(636, 600)).toBe(false)
-  })
-})
-
 describe('resolveSpot', () => {
-  test('Campus Point: the cell, the zone, Santa Barbara both ways, tides on', async () => {
+  test('Campus Point: the cell, the zone, its height, Santa Barbara both ways', async () => {
     const result = await resolveSpot(34.4046, -119.844, io())
     expect(result).toEqual({
       ok: true,
@@ -66,7 +52,6 @@ describe('resolveSpot', () => {
           direction: 'east',
           type: 'harmonic',
         },
-        tidesShown: true,
       },
     })
   })
@@ -123,19 +108,24 @@ describe('resolveSpot', () => {
     expect(result.ok && result.facts.nws.elevationFt).toBe(3)
   })
 
-  test('a high cell turns tides off', async () => {
+  // Whether the spot has a tide is not decided here. It follows from
+  // these two heights and the distance, in spot.ts.
+  test("a peak: the cell's average and the spot's own height, both kept", async () => {
     const result = await resolveSpot(
       34.4939,
       -119.7147,
-      io({ fetchElevationFt: async () => 3258 }),
+      io({
+        fetchElevationFt: async () => 3258,
+        fetchPointElevationFt: async () => 3808,
+      }),
     )
-    expect(result.ok && result.facts.tidesShown).toBe(false)
     expect(result.ok && result.facts.nws.elevationFt).toBe(3258)
+    expect(result.ok && result.facts.elevationFt).toBe(3808)
+    expect(result.ok && 'tidesShown' in result.facts).toBe(false)
   })
 
-  test('a far station turns tides off', async () => {
+  test('a point far from any tide still resolves, with the distance', async () => {
     const result = await resolveSpot(43.0389, -87.9065, io())
-    expect(result.ok && result.facts.tidesShown).toBe(false)
     expect(result.ok && result.facts.tideStation.distanceMi).toBeGreaterThan(
       1000,
     )

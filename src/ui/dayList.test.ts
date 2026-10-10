@@ -172,11 +172,11 @@ describe('dayRows', () => {
     expect(rows[2].tides).toEqual([])
   })
 
-  test('with the tide hidden, no row lists highs and lows, and the rest of the row stands', () => {
-    const hidden = dayRows(data, null, ZONE, false)
-    expect(hidden.every((row) => row.tides.length === 0)).toBe(true)
-    expect(hidden[0].sunset).toBe(rows[0].sunset)
-    expect(hidden[0].weather).toEqual(rows[0].weather)
+  test('at a spot with no tide, no row lists highs and lows, and the rest of the row stands', () => {
+    const inland = dayRows(data, null, ZONE, false)
+    expect(inland.every((row) => row.tides.length === 0)).toBe(true)
+    expect(inland[0].sunset).toBe(rows[0].sunset)
+    expect(inland[0].weather).toEqual(rows[0].weather)
   })
 
   test('inside the forecast, a row gives the forecast for the hour of sunset', () => {

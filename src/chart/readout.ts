@@ -199,5 +199,6 @@ export function partsText(parts: ReadoutPart[]): string {
  * because the words within one are already set apart by commas.
  */
 export function cursorText(time: string, panels: string[]): string {
-  return [time, ...panels].join('; ')
+  // A spot with no tide has no tide panel, and its words are empty.
+  return [time, ...panels.filter((words) => words !== '')].join('; ')
 }

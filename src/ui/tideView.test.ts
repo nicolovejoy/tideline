@@ -22,27 +22,25 @@ function none<T>(status: Loaded<T>['status']): Loaded<T> {
   return { data: null, fetchedAt: null, span: null, status }
 }
 
-const OWN = { spot: CAMPUS_POINT, shown: true }
-const GAVIOTA = { spot: spotById('gaviota'), shown: true }
-const LA_CUMBRE = { spot: spotById('la-cumbre-peak'), shown: false }
+const OWN = CAMPUS_POINT
+const GAVIOTA = spotById('gaviota')
+// Inland and high up, so it has no tide.
+const LA_CUMBRE = spotById('la-cumbre-peak')
 // A spot whose station publishes highs and lows only. Its gauge is elsewhere,
 // as Gaviota's is.
 const VENTURA = {
-  spot: {
-    ...spotById('gaviota'),
-    id: 'ventura-test',
-    tideStation: {
-      id: '9411189',
-      name: 'Ventura',
-      distanceMi: 33,
-      direction: 'east',
-      type: 'subordinate' as const,
-    },
+  ...spotById('gaviota'),
+  id: 'ventura-test',
+  tideStation: {
+    id: '9411189',
+    name: 'Ventura',
+    distanceMi: 1.4,
+    direction: 'south',
+    type: 'subordinate' as const,
   },
-  shown: true,
 }
 
-/** The view at Campus Point, which has its own gauge and shows its tide. */
+/** The view at Campus Point, which has its own gauge. */
 function own(
   data: Parameters<typeof tideView>[0],
   selected: Selected,
@@ -395,19 +393,19 @@ describe('a spot whose gauge is another station', () => {
     expect(view.bounds).toEqual([3, 7])
   })
 
-  test('the hide control is not offered where the tide is shown by default', () => {
-    expect(tideView(gauge(), TODAY, null, GAVIOTA).canHide).toBe(false)
-    expect(tideView(data(), TODAY, null, OWN).canHide).toBe(false)
+  test('a spot with a tide has no line in its place', () => {
+    expect(tideView(gauge(), TODAY, null, GAVIOTA).noTides).toBeNull()
+    expect(tideView(data(), TODAY, null, OWN).noTides).toBeNull()
   })
 })
 
-describe('a spot whose tide is hidden', () => {
-  test('gives one line naming the nearest station, and nothing to draw', () => {
+describe('a spot with no tide', () => {
+  test('gives one line saying why, nothing to draw, and nothing for the cursor to say', () => {
     const view = tideView(data(), TODAY, null, LA_CUMBRE)
-    expect(view.hidden).toBe(
-      'Tides hidden. Nearest station: NOAA 9411340 Santa Barbara, 6.3 mi south.',
+    expect(view.noTides).toBe(
+      'Tides are not shown here: the spot is 3,997 ft above sea level.',
     )
-    expect(view.words).toBe(view.hidden)
+    expect(view.words).toBe('')
     expect(view.notice).toBeNull()
     expect(view.predicted).toEqual([])
     expect(view.observed).toEqual([])
@@ -418,7 +416,7 @@ describe('a spot whose tide is hidden', () => {
     expect(view.text.second).toBeNull()
   })
 
-  test('with the tide hidden the cursor rests on the clock today, and at sunset on other days', () => {
+  test('the cursor rests on the clock today, and at sunset on other days', () => {
     const view = tideView(data(), TODAY, null, LA_CUMBRE)
     expect(view.cursor).toBe(NOW)
     expect(tideView(data(), TOMORROW, null, LA_CUMBRE).cursor).toBe(
@@ -426,19 +424,12 @@ describe('a spot whose tide is hidden', () => {
     )
   })
 
-  test('once shown it is drawn like any spot with its own gauge, with the hide control offered', () => {
-    const shown = { ...LA_CUMBRE, shown: true }
-    const view = tideView(data(), TODAY, null, shown)
-    expect(view.hidden).toBeNull()
-    expect(view.canHide).toBe(true)
-    expect(view.series.map((series) => series.name)).toEqual([
-      'predicted',
-      'observed',
-    ])
-    expect(view.text.second).toEqual({
-      words: '4.0 ft observed (+1.0)',
-      key: 'observed',
-    })
+  // There is no switch. What a saved spot once said about its tide is not
+  // read: see hasTides in spot.ts.
+  test('nothing about the view offers to show it', () => {
+    const view = tideView(data(), TODAY, null, LA_CUMBRE)
+    expect('canHide' in view).toBe(false)
+    expect('hidden' in view).toBe(false)
   })
 })
 
