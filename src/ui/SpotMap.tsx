@@ -2,11 +2,8 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useEffectEvent, useRef } from 'react'
 import type { LatLon } from '../data/geo.ts'
-import { WORDS } from './addSpotView.ts'
+import { MAP, WORDS } from './addSpotView.ts'
 
-const TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-const ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 /** About 30 miles across a phone's width at mid latitudes. */
 const ZOOM = 10
 const PIN = {
@@ -44,7 +41,9 @@ export function SpotMap({ center, pin, look, onPick }: SpotMapProps) {
     if (!host.current) return
     const { lat, lon } = opening.current
     const made = L.map(host.current).setView([lat, lon], ZOOM)
-    L.tileLayer(TILES, { attribution: ATTRIBUTION, maxZoom: 19 }).addTo(made)
+    L.tileLayer(MAP.tiles, { attribution: MAP.attribution, maxZoom: 19 }).addTo(
+      made,
+    )
     made.on('click', (event: L.LeafletMouseEvent) => {
       pick({ lat: event.latlng.lat, lon: event.latlng.lng })
     })

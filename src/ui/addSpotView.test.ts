@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest'
 import {
+  MAP,
   NAME_MAX,
+  WORDS,
   canSave,
   cleanName,
   factsLines,
@@ -145,5 +147,25 @@ describe('cleanName and canSave', () => {
 describe('removeQuestion', () => {
   test('names the spot', () => {
     expect(removeQuestion('Leadbetter Beach')).toBe('Remove Leadbetter Beach?')
+  })
+})
+
+describe('WORDS', () => {
+  test('the line shown when the add screen could not be loaded', () => {
+    expect(WORDS.addUnavailable).toBe(
+      "Couldn't load the map. Check the connection and try again.",
+    )
+  })
+  test('the separator on the remove line', () => {
+    expect(WORDS.separator).toBe('·')
+  })
+})
+
+describe('MAP', () => {
+  test("OpenStreetMap's tiles and their credit", () => {
+    expect(MAP.tiles).toBe('https://tile.openstreetmap.org/{z}/{x}/{y}.png')
+    expect(MAP.attribution).toBe(
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    )
   })
 })

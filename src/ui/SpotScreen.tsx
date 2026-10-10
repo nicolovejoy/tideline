@@ -241,6 +241,7 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
               <button type="button" className="text-button" onClick={onRemove}>
                 {WORDS.removeYes}
               </button>{' '}
+              <span aria-hidden="true">{WORDS.separator}</span>{' '}
               <button
                 type="button"
                 className="text-button"

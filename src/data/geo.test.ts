@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest'
-import { bearingDeg, directionWord, distanceMi, roundMiles } from './geo.ts'
+import {
+  bearingDeg,
+  directionWord,
+  distanceMi,
+  roundMiles,
+  wrapLon,
+} from './geo.ts'
 
 // The hard-coded spots and their stations, as src/spot.ts states them.
 const CAMPUS_POINT = { lat: 34.4046, lon: -119.844 }
@@ -67,5 +73,26 @@ describe('roundMiles', () => {
     expect(roundMiles(9.96)).toBe(10)
     expect(roundMiles(30.9)).toBe(31)
     expect(roundMiles(636.04)).toBe(636)
+  })
+})
+
+describe('wrapLon', () => {
+  // Leaflet reports the longitude of the world copy that was tapped.
+  test('a copy to the west or east comes back to -180 to 180', () => {
+    expect(wrapLon(-215.3)).toBeCloseTo(144.7, 9)
+    expect(wrapLon(202.1)).toBeCloseTo(-157.9, 9)
+    expect(wrapLon(240.3)).toBeCloseTo(-119.7, 9)
+  })
+  test('two copies away as well', () => {
+    expect(wrapLon(-575.3)).toBeCloseTo(144.7, 9)
+    expect(wrapLon(562.1)).toBeCloseTo(-157.9, 9)
+  })
+  test('a longitude already in range is left as it is', () => {
+    expect(wrapLon(-119.844)).toBe(-119.844)
+    expect(wrapLon(0)).toBe(0)
+  })
+  test('180 comes back as -180, the same meridian', () => {
+    expect(wrapLon(180)).toBe(-180)
+    expect(wrapLon(-180)).toBe(-180)
   })
 })

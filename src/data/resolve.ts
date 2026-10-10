@@ -2,28 +2,19 @@
 // stations, and whether the tide is shown to start with. The requests are
 // handed in, so this can be tested without a network.
 
+import { wrapLon } from './geo.ts'
 import { NwsOutsideError } from './nws.ts'
 import type { NwsCell } from './nws.ts'
 import { nearestStations } from './stations.ts'
 import type { StationRow } from './stations.ts'
+import { defaultTidesShown } from './tideDefault.ts'
 import type { Spot } from '../spot.ts'
 
-/** Tides are shown to start with when the station is this near... */
-export const TIDES_WITHIN_MI = 25
-/** ...and the cell's average height is under this. */
-export const TIDES_BELOW_FT = 300
-
-/**
- * Distance alone is not enough: a 4,000 ft peak can be 6 mi from a
- * station. Elevation alone is not enough either: a lake shore is low and
- * hundreds of miles from any tide.
- */
-export function defaultTidesShown(
-  tideDistanceMi: number,
-  cellElevationFt: number,
-): boolean {
-  return tideDistanceMi <= TIDES_WITHIN_MI && cellElevationFt < TIDES_BELOW_FT
-}
+export {
+  TIDES_WITHIN_MI,
+  TIDES_BELOW_FT,
+  defaultTidesShown,
+} from './tideDefault.ts'
 
 /** Everything a spot has apart from what the user gives it. */
 export type SpotFacts = Omit<Spot, 'id' | 'name'>
@@ -51,7 +42,8 @@ export async function resolveSpot(
   lon: number,
   io: ResolveIo,
 ): Promise<ResolveResult> {
-  const at = { lat: round4(lat), lon: round4(lon) }
+  // Wrapped before rounding: a tap on a world copy is the same place.
+  const at = { lat: round4(lat), lon: round4(wrapLon(lon)) }
   try {
     const cell = await io.fetchPoints(at.lat, at.lon)
     const elevationFt = await io.fetchElevationFt(

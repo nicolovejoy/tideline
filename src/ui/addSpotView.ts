@@ -6,7 +6,8 @@ import type {
   ResolveResult,
   SpotFacts,
 } from '../data/resolve.ts'
-import { TIDES_WITHIN_MI } from '../data/resolve.ts'
+// Not from resolve.ts, which would bring the station code with it.
+import { TIDES_WITHIN_MI } from '../data/tideDefault.ts'
 import type { Station } from '../spot.ts'
 
 export const NAME_MAX = 40
@@ -26,9 +27,18 @@ export const WORDS = {
   cancel: 'Cancel',
   tryAgain: 'Try again',
   loadingMap: 'Loading the map…',
+  addUnavailable: "Couldn't load the map. Check the connection and try again.",
   remove: 'Remove this spot',
   removeYes: 'Yes, remove',
   removeNo: 'Keep',
+  separator: '·',
+} as const
+
+/** OpenStreetMap's standard tiles, and the credit their policy asks for. */
+export const MAP = {
+  tiles: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  attribution:
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 } as const
 
 const feet = (ft: number) => `${ft.toLocaleString('en-US')} ft`

@@ -3,13 +3,18 @@ import { readSavedSpots, addSpot } from './data/savedSpots.ts'
 import { SPOTS, allSpots, isSaved } from './spot.ts'
 import type { Spot } from './spot.ts'
 import { WORDS } from './ui/addSpotView.ts'
+import { AddSpotUnavailable } from './ui/AddSpotUnavailable.tsx'
 import { forgetSavedSpot, readSpot, writeSpot } from './ui/choices.ts'
 import { InstallHint } from './ui/InstallHint.tsx'
 import { SpotScreen } from './ui/SpotScreen.tsx'
 import { SpotSwitcher } from './ui/SpotSwitcher.tsx'
 
 // Leaflet and the station list come with it, the first time it is opened.
-const AddSpot = lazy(() => import('./ui/AddSpot.tsx'))
+// Offline, or in a home-screen app left open past a deploy, the fetch fails;
+// a failed lazy import would blank the whole app, so a line stands in.
+const AddSpot = lazy(() =>
+  import('./ui/AddSpot.tsx').catch(() => ({ default: AddSpotUnavailable })),
+)
 
 export default function App() {
   const [saved, setSaved] = useState<Spot[]>(readSavedSpots)

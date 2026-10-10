@@ -76,6 +76,22 @@ describe('resolveSpot', () => {
     expect(result.ok && result.facts.lon).toBe(-119.844)
   })
 
+  test('a longitude from a world copy is wrapped before it is asked about', async () => {
+    const asked: number[][] = []
+    const result = await resolveSpot(
+      21.3,
+      202.1,
+      io({
+        fetchPoints: async (lat, lon) => {
+          asked.push([lat, lon])
+          return LOX
+        },
+      }),
+    )
+    expect(asked).toEqual([[21.3, -157.9]])
+    expect(result.ok && result.facts.lon).toBe(-157.9)
+  })
+
   test('a high cell turns tides off', async () => {
     const result = await resolveSpot(
       34.4939,

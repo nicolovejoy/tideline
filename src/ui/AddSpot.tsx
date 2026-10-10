@@ -20,7 +20,7 @@ import { SpotMap } from './SpotMap.tsx'
 
 const LOCATE_TIMEOUT = 15_000
 
-interface AddSpotProps {
+export interface AddSpotProps {
   /** The spot the user came from: where the map opens. */
   from: Spot
   onSave: (spot: Spot) => void
@@ -37,6 +37,8 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
   const [look, setLook] = useState<LatLon | null>(null)
   const [name, setName] = useState('')
   const [stations, setStations] = useState<StationRow[] | null>(null)
+  const [stationsFailed, setStationsFailed] = useState(false)
+  const [stationsAttempt, setStationsAttempt] = useState(0)
   const [result, setResult] = useState<ResolveResult | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [tidesShown, setTidesShown] = useState<boolean | null>(null)
@@ -46,6 +48,8 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
   const nameId = useId()
   const tidesId = useId()
 
+  // The list is a chunk of its own and can fail to arrive like any fetch.
+  // Try again asks for it afresh.
   useEffect(() => {
     let gone = false
     loadStations().then(
@@ -53,14 +57,13 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
         if (!gone) setStations(rows)
       },
       () => {
-        // The list did not load: the add screen cannot resolve anything.
-        if (!gone) setStations([])
+        if (!gone) setStationsFailed(true)
       },
     )
     return () => {
       gone = true
     }
-  }, [])
+  }, [stationsAttempt])
 
   // Each pin, and each try-again, looks the pin up afresh. What the last
   // look-up found is cleared by the tap that asks again, below.
@@ -88,7 +91,13 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
   }
   const tryAgain = () => {
     setResult(null)
-    setAttempt((n) => n + 1)
+    // Once the list is in, the look-up below runs by itself.
+    if (stationsFailed) {
+      setStationsFailed(false)
+      setStationsAttempt((n) => n + 1)
+    } else {
+      setAttempt((n) => n + 1)
+    }
   }
 
   const locate = () => {
@@ -165,6 +174,13 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
       <div className="facts" aria-live="polite">
         {pin === null ? (
           <p className="caption">{WORDS.tapToStart}</p>
+        ) : stationsFailed ? (
+          <>
+            <p className="caption">{failureWords('unreachable')}</p>
+            <button type="button" className="text-button" onClick={tryAgain}>
+              {WORDS.tryAgain}
+            </button>
+          </>
         ) : result === null ? (
           <p className="caption">{WORDS.looking}</p>
         ) : !result.ok ? (
@@ -189,7 +205,10 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
                 onChange={(event) => setTidesShown(event.target.checked)}
               />
               <label htmlFor={tidesId}>{WORDS.showTides}</label>
-              {reason && <span className="caption">{reason}</span>}
+              {/* Ticking the box answers the reason, so it goes. */}
+              {tidesShown === false && reason && (
+                <span className="caption">{reason}</span>
+              )}
             </p>
           </>
         )}

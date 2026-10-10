@@ -599,6 +599,8 @@ h1 {
   background: none;
   color: var(--ink);
   font: inherit;
+  /* Under 16px, iOS Safari zooms the page when the field takes focus. */
+  font-size: 16px;
 }
 .field input[type='checkbox'] {
   width: 1.25rem;
@@ -616,6 +618,14 @@ h1 {
   align-items: center;
   gap: 1rem;
   margin-top: 1rem;
+}
+/* Save, once it can save, has the chosen spot's look, so it does not read
+   as one more muted chip. */
+.add-actions .spot-choice:enabled {
+  border-color: var(--sea);
+  background: var(--sea-fill);
+  color: var(--ink);
+  font-weight: 600;
 }
 .spot-choice:disabled {
   opacity: 0.5;

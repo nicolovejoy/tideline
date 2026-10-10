@@ -1,5 +1,6 @@
 // Distance and direction over the Earth's surface, for saying where a
-// station stands from a spot. No React, no fetch.
+// station stands from a spot, and a tapped longitude put back in range.
+// No React, no fetch.
 
 export interface LatLon {
   lat: number
@@ -9,6 +10,15 @@ export interface LatLon {
 const EARTH_RADIUS_MI = 3958.8
 const toRadians = (degrees: number) => (degrees * Math.PI) / 180
 const toDegrees = (radians: number) => (radians * 180) / Math.PI
+
+/**
+ * A longitude brought into -180 to 180. Leaflet reports the longitude of
+ * the world copy that was tapped, so Hawaii one copy east is 202.1, and
+ * NWS answers 404 for that. 180 comes back as -180, the same meridian.
+ */
+export function wrapLon(lon: number): number {
+  return ((((lon + 180) % 360) + 360) % 360) - 180
+}
 
 /** Great-circle distance in miles, by the haversine formula. */
 export function distanceMi(a: LatLon, b: LatLon): number {
