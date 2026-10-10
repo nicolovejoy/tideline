@@ -16,9 +16,10 @@ import {
   isTidePoints,
 } from './noaa.ts'
 import type { TideExtreme, TidePoint } from './noaa.ts'
+import { curveFromHiLo } from './interpolate.ts'
 import { fetchForecast, isForecast } from './nws.ts'
 import type { Forecast } from './nws.ts'
-import { hasOwnGauge } from '../spot.ts'
+import { hasOwnCurve, hasOwnGauge } from '../spot.ts'
 import type { Spot } from '../spot.ts'
 import {
   MINUTE,
@@ -45,10 +46,16 @@ export interface SpotData {
   /** The 14 local days starting today. */
   window: Span
   /**
-   * From today to the end of the last month the month view offers. The
-   * highs and lows are fetched for all of it, in one request.
+   * From today to the end of the last month the month view offers.
+   * `hiloSpan` covers it from the day before.
    */
   ahead: Span
+  /**
+   * From the midnight that starts yesterday to the end of `ahead`. The highs
+   * and lows are fetched for all of it: a curve interpolated from them needs
+   * yesterday's last extreme to start today's first hours from.
+   */
+  hiloSpan: Span
   days: DayAstro[]
   /** When each of those days starts and ends, in the same order. */
   spans: Span[]
@@ -65,13 +72,14 @@ export interface SpotData {
 }
 
 /**
- * The spans of time, and the sun and moon, for the 14 days from `today`, and
- * `ahead`, which runs to the end of the third month ahead.
+ * The spans of time, and the sun and moon, for the 14 days from today; ahead,
+ * which runs to the end of the third month ahead; and hiloSpan, which begins
+ * the day before.
  */
 export function frameFor(
   spot: Spot,
   today: string,
-): Pick<SpotData, 'day' | 'window' | 'ahead' | 'days' | 'spans'> {
+): Pick<SpotData, 'day' | 'window' | 'ahead' | 'hiloSpan' | 'days' | 'spans'> {
   // One more local midnight than there are days: each day runs from its own
   // midnight to the next, which on a clock-change day is 23 or 25 hours on.
   const midnights = Array.from({ length: DAYS + 1 }, (_, i) =>
@@ -86,10 +94,15 @@ export function frameFor(
     start: midnights[0],
     end: localDayStart(`${addMonths(lastMonth, 1)}-01`, spot.timeZone),
   }
+  const hiloSpan = {
+    start: localDayStart(addDays(today, -1), spot.timeZone),
+    end: ahead.end,
+  }
   return {
     day: spans[0],
     window: { start: midnights[0], end: midnights[DAYS] },
     ahead,
+    hiloSpan,
     days: astroForDays(spot, today, DAYS),
     spans,
   }
@@ -98,7 +111,7 @@ export function frameFor(
 /** What to load for the tide: which source, for which span, and how. */
 export function tideSpecs(
   spot: Spot,
-  frame: Pick<SpotData, 'day' | 'window' | 'ahead'>,
+  frame: Pick<SpotData, 'day' | 'window' | 'ahead' | 'hiloSpan'>,
 ): {
   predictions: SourceSpec<TidePoint[]>
   hilo: SourceSpec<TideExtreme[]>
@@ -121,10 +134,11 @@ export function tideSpecs(
       spotId: spot.id,
       source: 'hilo',
       isData: isTideExtremes,
-      // The month view lists highs and lows months ahead. They never change,
-      // so one longer request a month costs less than a shorter one every day
-      // (the old 14-day window's end moved daily).
-      needed: frame.ahead,
+      // The month view lists highs and lows months ahead, and a curve
+      // interpolated from them needs yesterday's last one. They never
+      // change, so one longer request a month costs less than a shorter one
+      // every day.
+      needed: frame.hiloSpan,
       fetch: (needed) => fetchHiLo(station, needed.start, needed.end),
       isEmpty: noPoints,
     },
@@ -193,8 +207,9 @@ function useClock(): Pick<SpotData, 'now' | 'shown'> {
 /**
  * One source over time. The loader is always made, so the hooks are called
  * in one order, but it fetches nothing while `wanted` is false: a hidden
- * tide is not loaded, and a gauge's own prediction is not loaded where the
- * gauge is the spot's own station.
+ * tide is not loaded, a gauge's own prediction is not loaded where the
+ * gauge is the spot's own station, and a curve is not loaded where the
+ * station publishes none.
  */
 function useLoaded<T>(
   spec: SourceSpec<T>,
@@ -218,9 +233,17 @@ export function useSpotData(spot: Spot, tidesShown: boolean): SpotData {
   const frame = useMemo(() => frameFor(spot, today), [spot, today])
   const specs = tideSpecs(spot, frame)
   const ownGauge = hasOwnGauge(spot)
+  const ownCurve = hasOwnCurve(spot)
 
-  const predictions = useLoaded(specs.predictions, now, tidesShown)
+  // A subordinate station publishes no curve, and a 6-minute request to it
+  // returns an error, so its loader is never asked to fetch. Its curve is
+  // made from the highs and lows instead.
+  const fetched = useLoaded(specs.predictions, now, tidesShown && ownCurve)
   const hilo = useLoaded(specs.hilo, now, tidesShown)
+  const predictions = useMemo(
+    () => (ownCurve ? fetched : curveFromHiLo(hilo, frame.window)),
+    [ownCurve, fetched, hilo, frame.window],
+  )
   const observed = useLoaded(specs.observed, now, tidesShown)
   const gaugeOwn = useLoaded(
     specs.gaugePredictions,

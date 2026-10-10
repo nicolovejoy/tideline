@@ -144,6 +144,25 @@ describe('wording', () => {
       tideWords({ predictedFt: null, observedFt: null, aboveFt: null }),
     ).toEqual({ predicted: 'No prediction here', observed: null })
   })
+
+  test('a curve made on the device is worded as interpolated', () => {
+    expect(
+      tideWords(
+        { predictedFt: 0.86, observedFt: 2.04, aboveFt: 1.1 },
+        'interpolated',
+      ),
+    ).toEqual({
+      predicted: '0.9 ft interpolated',
+      observed: '2.0 ft observed (+1.1)',
+    })
+    // Off the curve the words do not change: nothing was interpolated there.
+    expect(
+      tideWords(
+        { predictedFt: null, observedFt: null, aboveFt: null },
+        'interpolated',
+      ),
+    ).toEqual({ predicted: 'No prediction here', observed: null })
+  })
 })
 
 describe('the weather under the cursor', () => {

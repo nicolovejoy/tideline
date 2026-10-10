@@ -23,7 +23,7 @@ Then open http://localhost:5173. `npm test` runs the tests.
 
 ## Where the data comes from
 
-- **Tides:** NOAA CO-OPS, predicted and observed, station 9411340 (Santa Barbara).
+- **Tides:** NOAA CO-OPS, the nearest station per spot (named on screen), predicted and observed; where the station publishes highs and lows only, the curve is interpolated between them and labelled so.
 - **Weather:** the US National Weather Service forecast for the 2.5 km grid cell at the spot.
 - **Sun and moon:** computed in the browser with `astronomy-engine`, and tested against US Naval Observatory times.
 

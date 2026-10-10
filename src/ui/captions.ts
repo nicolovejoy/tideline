@@ -4,7 +4,7 @@
 import type { Loaded } from '../data/load.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
 import type { Forecast } from '../data/nws.ts'
-import { hasOwnGauge } from '../spot.ts'
+import { hasOwnCurve, hasOwnGauge } from '../spot.ts'
 import type { Spot, Station } from '../spot.ts'
 import { formatDay, formatTime, localDate } from '../time.ts'
 
@@ -60,13 +60,25 @@ export function tideCaption(spot: Spot, tide: TideSources): string {
   const zone = spot.timeZone
   const { predictions, hilo, observed, readings, today } = tide
   const ownGauge = hasOwnGauge(spot)
+  const ownCurve = hasOwnCurve(spot)
+  const station = stationWords(spot.tideStation)
+  // Highs and lows only says more than predictions only, so a station with
+  // no curve does not get both tags.
   const parts = [
-    ownGauge
-      ? `Tide: ${stationWords(spot.tideStation)}.`
-      : `Tide: ${stationWords(spot.tideStation)}, predictions only.`,
+    !ownCurve
+      ? `Tide: ${station}, highs and lows only. Curve interpolated between them, not NOAA's.`
+      : ownGauge
+        ? `Tide: ${station}.`
+        : `Tide: ${station}, predictions only.`,
   ]
 
-  if (predictions.status === 'stale' && predictions.fetchedAt !== null) {
+  // A curve made from the highs and lows is as stale as they are, and the
+  // highs-and-lows sentence below says so once.
+  if (
+    ownCurve &&
+    predictions.status === 'stale' &&
+    predictions.fetchedAt !== null
+  ) {
     const saved = when(predictions.fetchedAt, today, zone)
     parts.push(`Couldn't refresh. Showing predictions from ${saved}.`)
   }
