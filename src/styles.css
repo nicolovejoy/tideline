@@ -237,6 +237,17 @@ h1 {
   font-size: 1.1333rem;
   font-weight: 600;
 }
+/* The headings take focus when a view changes. A tap shows no ring; a
+   keyboard does. */
+.day-head h2:focus,
+.month-head h2:focus {
+  outline: none;
+}
+.day-head h2:focus-visible,
+.month-head h2:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 2px;
+}
 .day-cursor {
   font-family: var(--numerals);
   font-size: 1.1333rem;

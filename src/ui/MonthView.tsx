@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import type { Loaded } from '../data/load.ts'
 import type { TideExtreme } from '../data/noaa.ts'
 import type { Spot } from '../spot.ts'
@@ -40,6 +40,13 @@ export function MonthView({
   onShowTides,
 }: MonthViewProps) {
   const nav = monthNav(month, today)
+  // The heading takes focus on entry and on each step. The button that was
+  // pressed has gone, or is disabled at an end, and a screen reader reads
+  // the heading it lands on, so the new month is announced.
+  const heading = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    heading.current?.focus({ preventScroll: true })
+  }, [nav.month])
   // About thirty days of sun and moon, worked out once per month on screen
   // and again at midnight.
   const rows = useMemo(
@@ -62,7 +69,9 @@ export function MonthView({
         >
           ‹
         </button>
-        <h2>{nav.title}</h2>
+        <h2 ref={heading} tabIndex={-1}>
+          {nav.title}
+        </h2>
         <button
           type="button"
           className="month-step"

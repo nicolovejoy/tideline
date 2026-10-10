@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Panel } from '../chart/Panel.tsx'
 import { PanelStack } from '../chart/PanelStack.tsx'
 import { cursorText } from '../chart/readout.ts'
@@ -71,6 +72,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
   )
 
   const dayTop = useRef<HTMLElement>(null)
+  const dayHeading = useRef<HTMLHeadingElement>(null)
   const selectDay = useCallback((date: string) => {
     setPickedDay(date)
     // The cursor goes back to rest, on this day and on the one left behind.
@@ -86,11 +88,16 @@ export function SpotScreen({ spot }: SpotScreenProps) {
     window.scrollTo(0, 0)
   }, [])
   const backToForecast = () => {
-    setView('forecast')
-    setMonth(null)
-    // Today on the panels, with the cursor at rest, as on a first open.
-    setPickedDay(null)
-    setPick(null)
+    flushSync(() => {
+      setView('forecast')
+      setMonth(null)
+      // Today on the panels, with the cursor at rest, as on a first open.
+      setPickedDay(null)
+      setPick(null)
+    })
+    // The button pressed has gone with the month view; focus goes to the
+    // day's heading, not to the page.
+    dayHeading.current?.focus({ preventScroll: true })
     window.scrollTo(0, 0)
   }
 
@@ -122,7 +129,9 @@ export function SpotScreen({ spot }: SpotScreenProps) {
 
       <section className="day" ref={dayTop}>
         <header className="day-head">
-          <h2>{formatDay(selected.date)}</h2>
+          <h2 ref={dayHeading} tabIndex={-1}>
+            {formatDay(selected.date)}
+          </h2>
           <p className="day-cursor">at {cursorTime}</p>
         </header>
 
