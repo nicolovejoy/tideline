@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Stage 1 is built; its phone check is down to one item. Stage 2 has begun: three spots are merged, the month view is merged, and the interpolated curve is on a pull request.
+Stage 1 is built; its phone check is down to one item. Stage 2 has begun: three spots, the month view and the interpolated curve are merged, and own spots from a map is on a pull request.
 
-- Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and tides hidden by default at La Cumbre; then the month view (this month and the next three, sunset, moon and highs and lows per day); then a curve interpolated from the highs and lows for stations that publish only those, labelled "interpolated" (no shipped spot uses it yet; #4 will).
-- Not built: everything after the interpolated curve. It is tracked as GitHub issues.
+- Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and tides hidden by default at La Cumbre; then the month view (this month and the next three, sunset, moon and highs and lows per day); then a curve interpolated from the highs and lows for stations that publish only those, labelled "interpolated" (a saved spot at a subordinate station uses it); then your own spots: a pin on a map (Leaflet, OpenStreetMap tiles) or the device's location, named and saved on the device, with the NWS cell, nearest tide station and nearest gauge worked out from a baked station list (`scripts/bake-stations.mjs`, `src/data/stations.json`).
+- Not built: everything after own spots. It is tracked as GitHub issues.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
 
@@ -63,11 +63,12 @@ In every tracked file, commit message, issue, and pull request, that person is "
 ## Stack (approved 2026-10-08)
 
 - Static single-page app with no server: Vite, React, strict TypeScript, plain CSS. Hosted on Vercel.
-- The browser calls NOAA, NWS and Open-Meteo directly. Sun and moon are computed on the device.
+- The browser calls NOAA and NWS directly. Sun and moon are computed on the device.
 - Charts are hand-written SVG: stacked panels on one time axis with one shared cursor. The arithmetic is in `src/chart/scales.ts`. No charting library and no d3.
-- Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/selection.ts`, `src/ui/tideView.ts`, `src/ui/weatherView.ts`, `src/ui/dayList.ts`, `src/ui/monthView.ts`, `src/data/load.ts`, `src/data/interpolate.ts`), and the components are checked in a browser.
+- Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/selection.ts`, `src/ui/tideView.ts`, `src/ui/weatherView.ts`, `src/ui/dayList.ts`, `src/ui/monthView.ts`, `src/data/load.ts`, `src/data/interpolate.ts`, `src/data/geo.ts`, `src/data/stations.ts`, `src/data/resolve.ts`, `src/data/savedSpots.ts`, `src/ui/addSpotView.ts`), and the components are checked in a browser.
 - Weather is drawn as staircases, level across the hour each value is forecast for, so the line, the cursor's dot and the words always agree.
 - Data modules (NOAA, NWS, astronomy) are framework-free TypeScript so they can move behind a server function unchanged. Tested with Vitest against recorded real responses.
+- The map is Leaflet on OpenStreetMap tiles, loaded only with the add screen. No key. Changing the tile provider is one URL in `src/ui/SpotMap.tsx`.
 - Caching is on the device in Stage 1: draw from the last saved data, refresh behind it, show each source's "as of" time. A server cache is deferred to an issue.
 
 ## Decisions (2026-10-08)
@@ -76,14 +77,18 @@ Settled:
 - Audience is the first user and friends, non-commercial.
 - Units: feet above MLLW, °F, mph, 12-hour clock.
 
-Provisional. Nico gave these on the first user's behalf; the first user has not confirmed them:
+The first user confirmed these on 2026-10-09 (recorded by Nico on `stage-1/weather-and-days` after pull request 22; ported to main on 2026-10-10):
 - Stage 1 spot is Campus Point, UCSB.
-- Forecast horizon: add a second source for days 8 to 10 rather than stopping at 7.
-- Weather: temperature, wind, gusts, direction, cloud cover, rain chance, each with a way to dig in.
+- Weather: NWS only, 7 days. Days past the forecast say so in the list. The first user asked for NWS alone; the second source for days 8 to 10 was dropped (issue 1 closed).
+- Weather values: temperature, wind, gusts, direction, cloud cover, rain chance, drawn for the full day. A way to dig in is issue 8.
 - Where a spot's tide station has no gauge, show the nearest gauge's deviation from its own prediction. Do not redraw the spot's curve with that deviation applied.
 - Inland spots: tides hidden by default.
-- Sun and moon times should account for the spot's elevation, but after launch.
-- Sharing (is share-by-link enough?) is still unanswered.
+- Sun and moon times should account for the spot's elevation, after launch (issue 9).
+- Sharing: a link to chosen friends is enough. No accounts (issue 12 closed; issue 7 stays).
+- The cursor rests on the latest gauge reading today.
+- Working offline is not a Stage 1 goal (decided 2026-10-09). The data is saved on the device; the page itself is not.
+
+Still open with the first user, as of 2026-10-09: whether the forecast at the hour of sunset is the right moment for a day's row; and the wording of the moon line, which he wants as "Moonrise 5:00 AM".
 
 Display convention: times and calendar days are shown in the spot's own time zone (returned by NWS `/points`), not the viewer's. Never derive a day from a UTC ISO string; use `Intl.DateTimeFormat` with an explicit `timeZone`.
 
@@ -97,9 +102,11 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 - Cell elevation is a cell average, not the spot: 3 ft for Campus Point, 157 ft for the Leadbetter cell, 3,258 ft for La Cumbre (summit is 3,997 ft).
 - `/forecast/hourly` has no wind gust or sky cover. The raw `/gridpoints/{wfo}/{x},{y}` endpoint has both, but in SI units with ISO 8601 `validTime` intervals of varying length.
 - Responses carry `cache-control: public, max-age` of about an hour.
+- `/points` answers 404 outside its grids and, for some open-ocean points inside them, HTTP 500 (seen at 20°N 115°W on 2026-10-10).
 
 **NOAA CO-OPS (`api.tidesandcurrents.noaa.gov`)** — data at `/api/prod/datagetter`, station metadata at `/mdapi/prod/webapi`.
 - 3,502 prediction stations, 302 water-level (observing) stations, 238 that are both. Most prediction stations have no observed data.
+- The station lists (`mdapi/prod/webapi/stations.json?type=tidepredictions` and `?type=waterlevels`) are baked into `src/data/stations.json` by `scripts/bake-stations.mjs`: 3,566 rows on 2026-10-10 (1,022 harmonic, 2,242 subordinate, 238 harmonic with a gauge, 64 gauges with no predictions, 52 of them on the Great Lakes). About 200 KB, loaded with the add screen.
 - 2,242 prediction stations are subordinate (`type: "S"`): they return high/low only, and a 6-minute request returns an error. For these the app interpolates a cosine curve between consecutive highs and lows (`src/data/interpolate.ts`) and says "interpolated" in the readout and the caption. Against Santa Barbara's own curve over 14 days: 0.19 ft rms, 95% within 0.33 ft, worst 1.15 ft in a 16-hour gap where NOAA's list skips a near-stand.
 - 9411340 Santa Barbara is harmonic and observing, and is the nearest station of both kinds to Campus Point (8.6 mi) and to La Cumbre Peak (6.3 mi south). 9411399 Gaviota State Park is harmonic with no observations, 0.2 mi from the beach; its nearest observing station is Santa Barbara, 31 mi east.
 - Highs and lows from today to the end of the third month ahead are one request of about 22 KB (432 events for Santa Barbara, 10 October 2026 to 31 January 2027); one month at 6-minute resolution is 7,440 points.
@@ -107,19 +114,19 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 - A 14-day predicted curve at 6-minute resolution is one request: 136 KB as JSON, 20 KB gzipped.
 - Responses carry `cache-control: no-store`, so any caching of tide data is ours to do. Predictions for a given date do not change.
 
-**Open-Meteo** — second source for days 8 to 10. Its `ncep_nbm_conus` model (NOAA National Blend, 2.5 km) returns 11 days. Free for non-commercial use with attribution.
+**Open-Meteo** — not used. Kept as a reference: its `ncep_nbm_conus` model (NOAA National Blend, 2.5 km) returned 11 days when checked on 2026-10-08. Free for non-commercial use with attribution.
 
 **Sun and moon** — computed locally with `astronomy-engine`. The USNO API (`aa.usno.navy.mil/api/rstt/oneday`) is the reference to test computed values against.
 
 ## Next Steps
 
 - Stage 1 (Campus Point) is built. Items 1 to 6 of the phone check in the pull request for `stage-1/weather-and-days` passed on 2026-10-09; item 7 remains: a reopen with a connection draws at once from saved data and the captions update when the refresh lands.
-- The interpolated-curve pull request (`stage-2/interpolated-curve`, issue #5) waits for the owner's review. It changes nothing on the three shipped spots.
+- The own-spots pull request (`stage-2/own-spots`, issue #4, first half) waits for the owner's phone check and review. Place-name search is the issue's second half.
 - Not yet tried: a screen reader on the cursor.
-- The first user: confirm or correct the provisional decisions above, and answer the sharing question.
+- The first user: the two questions still open under Decisions (the sunset-hour row, the moon line wording).
 - Everything after Stage 1 is tracked as GitHub issues, in provisional order.
 
-<!-- SHARED-CONVENTIONS:BEGIN v=28022362f01b — auto-managed, do not edit here; source: prompt-lab/workflow/claude-md-shared.md (edit + re-sync) -->
+<!-- SHARED-CONVENTIONS:BEGIN v=2ed9fb390e55 — auto-managed, do not edit here; source: prompt-lab/workflow/claude-md-shared.md (edit + re-sync) -->
 ## Shared conventions
 
 <!-- These are Nico's cross-repo output rules. They're materialized into each repo's
@@ -142,6 +149,8 @@ re-sync, never here. -->
 - **Codex branches are named `codex/<description>`.** When working in this repo via Codex CLI, always create a working branch under the `codex/` prefix (e.g. `codex/fix-flaky-test`) rather than working directly on `main` or an unprefixed branch. Claude Code has no visibility into other tools' running sessions (`ListAgents` only sees Claude sessions), so this prefix is the one signal a Claude session can check for — a local or remote `codex/*` branch means Codex has touched or is touching this repo, even though its session itself is invisible. Claude branches keep whatever naming they already use; only Codex adopts this new prefix.
 
 - **Codex: run commands in a form a rule can match.** Codex approval rules match a command's leading tokens, so a wrapped command never matches an existing allow and every variant prompts again, then leaves a dead one-off "don't ask again" rule behind (36 of them in five days, 2026-09-23). The program is the first token: call helpers and tools directly, never through `/bin/zsh -lc "…"`, never with a `PATH=…` or other `VAR=…` prefix, never with `$(…)` in the arguments. Work only inside your clone (one long-lived `~/src/<repo>-codex`, no worktrees, no scratch clones — everything outside it escalates, except the cross-repo handoff log at `~/src/.handoff`, which is granted). Redirect output only to files inside the workspace, and keep temp files in a gitignored `tmp/` there, never `/private/tmp`. If a tool is missing from `PATH`, report it: the fix belongs in `~/.zprofile` (Nico's edit), not in an inline `PATH=` prefix.
+
+- **Reader-facing text lives in content or copy files, not inline in components.** Some repos ship French alongside English (selected-projects mirrors the site under `/fr`; ibuild4you has French public pages). There, every new string goes in the repo's strings/copy module or content folder, with its translation, and an English copy edit means updating the French twin too. Elsewhere, keeping text out of components is what makes `/localize` cheap later. Terms and register: `prompt-lab/workflow/localization/fr-glossary.md`.
 
 - **A review another agent must act on goes on the PR.** A review that another agent must act on, or that must outlive the session, is posted as a PR comment (`gh pr comment`), where the next session or agent finds it. Live, in-session reviews between Nico and the agent stay in chat. There is no devlog.md: the history DB is the one session record.
 <!-- SHARED-CONVENTIONS:END -->

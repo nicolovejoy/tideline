@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
+  forgetSavedSpot,
   readSpot,
   readTidesShown,
   writeSpot,
   writeTidesShown,
 } from './choices.ts'
-import { CAMPUS_POINT, spotById } from '../spot.ts'
+import { CAMPUS_POINT, SPOTS, spotById } from '../spot.ts'
 
 const GAVIOTA = spotById('gaviota')
 const LA_CUMBRE = spotById('la-cumbre-peak')
@@ -99,5 +100,30 @@ describe('whether tides are shown', () => {
     expect(readSpot()).toBe(CAMPUS_POINT)
     expect(readTidesShown(LA_CUMBRE)).toBe(false)
     expect(() => writeSpot(GAVIOTA)).not.toThrow()
+  })
+})
+
+describe('with saved spots', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  const saved = { ...CAMPUS_POINT, id: 'spot-abc', name: 'Leadbetter Beach' }
+
+  test('readSpot finds a saved spot in the list it is given', () => {
+    vi.stubGlobal('localStorage', fakeStorage({ 'tideline:spot': 'spot-abc' }))
+    expect(readSpot([...SPOTS, saved])).toBe(saved)
+    expect(readSpot()).toBe(CAMPUS_POINT)
+  })
+
+  test('forgetSavedSpot drops the spot, its tides choice and its cache', () => {
+    const storage = fakeStorage({
+      'tideline:spots:v1': JSON.stringify([saved]),
+      'tideline:tides:spot-abc': 'hidden',
+      'tideline:v2:spot-abc:forecast': '{}',
+      'tideline:spot': 'spot-abc',
+    })
+    vi.stubGlobal('localStorage', storage)
+    forgetSavedSpot(saved)
+    expect(storage.getItem('tideline:spots:v1')).toBe('[]')
+    expect(storage.getItem('tideline:tides:spot-abc')).toBeNull()
+    expect(storage.getItem('tideline:v2:spot-abc:forecast')).toBeNull()
   })
 })

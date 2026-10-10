@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { isStale, readCache, writeCache } from './cache.ts'
+import { forgetSpot, isStale, readCache, writeCache } from './cache.ts'
 import type { CacheEntry } from './cache.ts'
 
 const MINUTE = 60_000
@@ -223,4 +223,30 @@ describe('isStale', () => {
       expect(isStale(source, entry, NOW, WINDOW)).toBe(false)
     },
   )
+})
+
+describe('forgetSpot', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  test('removes the five entries for that spot and no other', () => {
+    const storage = fakeStorage({
+      'tideline:v2:spot-abc:predictions': '1',
+      'tideline:v2:spot-abc:hilo': '1',
+      'tideline:v2:spot-abc:observed': '1',
+      'tideline:v2:spot-abc:gauge-predictions': '1',
+      'tideline:v2:spot-abc:forecast': '1',
+      'tideline:v2:campus-point:forecast': '1',
+    })
+    vi.stubGlobal('localStorage', storage)
+    forgetSpot('spot-abc')
+    expect(storage.length).toBe(1)
+    expect(storage.getItem('tideline:v2:campus-point:forecast')).toBe('1')
+  })
+  test('does not throw with storage disabled', () => {
+    vi.stubGlobal('localStorage', {
+      removeItem: () => {
+        throw new Error('disabled')
+      },
+    })
+    expect(() => forgetSpot('spot-abc')).not.toThrow()
+  })
 })

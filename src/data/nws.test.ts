@@ -1,13 +1,21 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
+  NwsOutsideError,
   compassPoint,
+  fetchElevationFt,
   fetchForecast,
+  fetchPoints,
   isForecast,
   nwsUrl,
   parseDurationHours,
+  parseElevationFt,
   parseGridpoint,
+  parsePoints,
+  pointsUrl,
 } from './nws.ts'
 import realRaw from './__fixtures__/nws-gridpoint-LOX-100-71.json?raw'
+import pointsRaw from './__fixtures__/nws-points-34.4046--119.844.json?raw'
+import outsideRaw from './__fixtures__/nws-points-48.5--3.0.json?raw'
 
 const HOUR = 3_600_000
 const EIGHT = Date.UTC(2026, 9, 8, 8)
@@ -318,5 +326,95 @@ describe('isForecast', () => {
     ],
   ])('%s does not pass', (_name, data) => {
     expect(isForecast(data)).toBe(false)
+  })
+})
+
+describe('pointsUrl', () => {
+  test('four decimals at most, with trailing zeros dropped', () => {
+    expect(pointsUrl(34.4046, -119.844)).toBe(
+      'https://api.weather.gov/points/34.4046,-119.844',
+    )
+    expect(pointsUrl(34.40461234, -119.84400001)).toBe(
+      'https://api.weather.gov/points/34.4046,-119.844',
+    )
+  })
+})
+
+describe('parsePoints', () => {
+  test('reads the cell and the zone from a real response', () => {
+    expect(parsePoints(JSON.parse(pointsRaw))).toEqual({
+      office: 'LOX',
+      gridX: 100,
+      gridY: 71,
+      timeZone: 'America/Los_Angeles',
+    })
+  })
+  test('throws on a response without a cell', () => {
+    expect(() => parsePoints({ properties: {} })).toThrow('NWS')
+    expect(() => parsePoints(null)).toThrow('NWS')
+  })
+})
+
+describe('fetchPoints', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  test('a 404 is "outside", a distinct error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(outsideRaw, { status: 404 })),
+    )
+    await expect(fetchPoints(48.5, -3)).rejects.toBeInstanceOf(NwsOutsideError)
+  })
+  test('any other failure is an ordinary error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('', { status: 503 })),
+    )
+    const failure = fetchPoints(34.4046, -119.844)
+    await expect(failure).rejects.toThrow('HTTP 503')
+    await expect(failure).rejects.not.toBeInstanceOf(NwsOutsideError)
+  })
+  test('asks for geo+json and parses the answer', async () => {
+    const fetchMock = vi.fn(async () => new Response(pointsRaw))
+    vi.stubGlobal('fetch', fetchMock)
+    const cell = await fetchPoints(34.4046, -119.844)
+    expect(cell.office).toBe('LOX')
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.weather.gov/points/34.4046,-119.844',
+      { headers: { Accept: 'application/geo+json' } },
+    )
+  })
+})
+
+describe('parseElevationFt', () => {
+  test("Campus Point's cell is 3 ft", () => {
+    expect(parseElevationFt(JSON.parse(realRaw))).toBe(3)
+  })
+  test('rounds to whole feet', () => {
+    const json = {
+      properties: { elevation: { unitCode: 'wmoUnit:m', value: 993 } },
+    }
+    expect(parseElevationFt(json)).toBe(3258)
+  })
+  test('throws on another unit or no value', () => {
+    expect(() =>
+      parseElevationFt({
+        properties: { elevation: { unitCode: 'wmoUnit:ft', value: 3 } },
+      }),
+    ).toThrow('NWS')
+    expect(() => parseElevationFt({ properties: {} })).toThrow('NWS')
+  })
+})
+
+describe('fetchElevationFt', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  test('fetches the gridpoint and reads its elevation', async () => {
+    const fetchMock = vi.fn(async () => new Response(realRaw))
+    vi.stubGlobal('fetch', fetchMock)
+    expect(await fetchElevationFt('LOX', 100, 71)).toBe(3)
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.weather.gov/gridpoints/LOX/100,71',
+      { headers: { Accept: 'application/geo+json' } },
+    )
   })
 })

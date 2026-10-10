@@ -2,7 +2,9 @@
 // whether a spot's tide is shown. Every access is wrapped, as the cache's
 // are, so a browser with storage disabled still works.
 
-import { spotById } from '../spot.ts'
+import { forgetSpot } from '../data/cache.ts'
+import { removeSpot } from '../data/savedSpots.ts'
+import { SPOTS, spotById } from '../spot.ts'
 import type { Spot } from '../spot.ts'
 
 const SPOT_KEY = 'tideline:spot'
@@ -24,9 +26,9 @@ function write(key: string, value: string): void {
   }
 }
 
-/** The spot last chosen. Nothing chosen, or a spot since gone, is the first. */
-export function readSpot(): Spot {
-  return spotById(read(SPOT_KEY))
+/** The spot last chosen, from the list. Nothing chosen, or a spot since gone, is the first. */
+export function readSpot(spots: Spot[] = SPOTS): Spot {
+  return spotById(read(SPOT_KEY), spots)
 }
 
 export function writeSpot(spot: Spot): void {
@@ -47,4 +49,19 @@ export function readTidesShown(spot: Spot): boolean {
 
 export function writeTidesShown(spot: Spot, shown: boolean): void {
   write(tidesKey(spot), shown ? 'shown' : 'hidden')
+}
+
+function remove(key: string): void {
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    // Storage is disabled. There was nothing to remove.
+  }
+}
+
+/** Drop a saved spot and everything remembered about it. */
+export function forgetSavedSpot(spot: Spot): void {
+  removeSpot(spot.id)
+  remove(tidesKey(spot))
+  forgetSpot(spot.id)
 }

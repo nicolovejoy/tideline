@@ -11,6 +11,8 @@ Real responses, saved so the parsers are tested against what the services actual
 - `noaa-predictions-20261008-20261009.json`: the same station's predicted curve at 6-minute resolution, 8 and 9 October 2026 UTC.
 - `noaa-water-level-20261008-20261009.json`: the same station's observed water level, requested for those two days but recorded on the afternoon of the 8th, so it holds readings from midnight UTC to 21:36 UTC that day. On that morning the level ran about 1.1 ft above the prediction.
 - `nws-gridpoint-LOX-100-71.json`: the NWS raw forecast grid for the cell containing Campus Point. A live forecast, so tests assert its structure, not its numbers.
+- `nws-points-34.4046--119.844.json`: NWS `/points` for Campus Point, recorded on 2026-10-10: the cell LOX 100,71 and the zone America/Los_Angeles.
+- `nws-points-48.5--3.0.json`: NWS `/points` for a point in France, the 404 body that means "no forecast here".
 - `usno-campus-point.ts`: sunset and moonrise from the US Naval Observatory API (`aa.usno.navy.mil/api/rstt/oneday`) for latitude 34.4046, longitude -119.8440.
 
 The NOAA requests all used `datum=MLLW&units=english&time_zone=gmt&format=json`.
