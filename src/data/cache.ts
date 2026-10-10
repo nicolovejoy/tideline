@@ -93,6 +93,25 @@ export function writeCache<T>(
   }
 }
 
+const SOURCES: Source[] = [
+  'predictions',
+  'hilo',
+  'observed',
+  'gauge-predictions',
+  'forecast',
+]
+
+/** Drop everything saved for a spot, when the spot itself goes. */
+export function forgetSpot(spotId: string): void {
+  for (const source of SOURCES) {
+    try {
+      localStorage.removeItem(storageKey(spotId, source))
+    } catch {
+      // Storage is disabled. There was nothing to drop.
+    }
+  }
+}
+
 /**
  * Whether a source needs fetching again. `needed` is the window of time the
  * screen needs right now.

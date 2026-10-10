@@ -3,7 +3,9 @@ import {
   CAMPUS_POINT,
   SPOTS,
   hasOwnCurve,
+  allSpots,
   hasOwnGauge,
+  isSaved,
   spotById,
 } from './spot.ts'
 import gaviotaCell from './data/__fixtures__/nws-gridpoint-LOX-87-76.json'
@@ -80,5 +82,26 @@ describe('the spots', () => {
     expect(spotById('nowhere')).toBe(CAMPUS_POINT)
     expect(spotById(null)).toBe(CAMPUS_POINT)
     expect(spotById('la-cumbre-peak').name).toBe('La Cumbre Peak')
+  })
+})
+
+describe('saved spots beside the hard-coded ones', () => {
+  const saved = { ...CAMPUS_POINT, id: 'spot-abc', name: 'Leadbetter Beach' }
+  test('allSpots lists the three first, then the saved', () => {
+    expect(allSpots([saved]).map((spot) => spot.id)).toEqual([
+      'campus-point',
+      'gaviota',
+      'la-cumbre-peak',
+      'spot-abc',
+    ])
+    expect(allSpots([])).toEqual(SPOTS)
+  })
+  test('spotById finds a saved spot in the list it is given', () => {
+    expect(spotById('spot-abc', allSpots([saved]))).toBe(saved)
+    expect(spotById('spot-abc')).toBe(CAMPUS_POINT)
+  })
+  test('only a saved spot can be removed', () => {
+    expect(isSaved(saved)).toBe(true)
+    expect(SPOTS.map(isSaved)).toEqual([false, false, false])
   })
 })
