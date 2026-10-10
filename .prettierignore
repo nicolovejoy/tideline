@@ -1,3 +1,4 @@
 package-lock.json
 *.md
 src/data/__fixtures__
+src/data/stations.json
