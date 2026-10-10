@@ -69,7 +69,7 @@ describe('interpolateCurve', () => {
     ).toEqual(interpolateCurve(PAIR, { start: T0, end: T0 + 6 * HOUR }))
   })
 
-  test('two events at one instant make no point, and no NaN', () => {
+  test('two events at one instant give no NaN, and the later one is used', () => {
     const twins: TideExtreme[] = [
       { t: T0, ft: 1, type: 'L' },
       { t: T0, ft: 1.1, type: 'H' },
@@ -77,6 +77,8 @@ describe('interpolateCurve', () => {
     ]
     const curve = interpolateCurve(twins, { start: T0, end: T0 + 6 * HOUR })
     expect(curve.every((p) => Number.isFinite(p.ft))).toBe(true)
+    expect(curve[0].t).toBe(T0)
+    expect(curve[0].ft).toBeCloseTo(1.1, 9)
     expect(curve.at(-1)).toEqual({ t: T0 + 6 * HOUR, ft: 5 })
   })
 

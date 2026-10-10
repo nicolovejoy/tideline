@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Stage 1 is built; its phone check is down to one item. Stage 2 has begun: three spots are merged, and the month view is on a pull request.
+Stage 1 is built; its phone check is down to one item. Stage 2 has begun: three spots are merged, the month view is merged, and the interpolated curve is on a pull request.
 
 - Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and tides hidden by default at La Cumbre; then the month view (this month and the next three, sunset, moon and highs and lows per day); then a curve interpolated from the highs and lows for stations that publish only those, labelled "interpolated" (no shipped spot uses it yet; #4 will).
-- Not built: everything after the month view. It is tracked as GitHub issues.
+- Not built: everything after the interpolated curve. It is tracked as GitHub issues.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
 

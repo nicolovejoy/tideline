@@ -104,17 +104,17 @@ describe('tideSpecs', () => {
     expect(specs.hilo.needed).toEqual(frame.hiloSpan)
   })
 
-  test('the highs and lows are one request, to the last day of the last month', async () => {
+  test('the highs and lows are one request, from the day before to the last day of the last month', async () => {
     const fetchMock = vi.fn(
       async (_url: string) => new Response('{"predictions":[]}'),
     )
     vi.stubGlobal('fetch', fetchMock)
-    await specs.hilo.fetch(frame.ahead)
+    await specs.hilo.fetch(frame.hiloSpan)
     expect(fetchMock).toHaveBeenCalledTimes(1)
     // The end date is the UTC date holding the span's last instant: local
     // midnight on 1 February is 08:00 UTC that day.
     expect(fetchMock.mock.calls[0][0]).toContain(
-      'begin_date=20261008&end_date=20270201',
+      'begin_date=20261007&end_date=20270201',
     )
   })
 

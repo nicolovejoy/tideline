@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import type { Selected } from './selection.ts'
 import { tideView } from './tideView.ts'
+import { curveFromHiLo } from '../data/interpolate.ts'
 import type { Loaded } from '../data/load.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
 import { CAMPUS_POINT, spotById } from '../spot.ts'
@@ -451,6 +452,22 @@ describe('at a spot whose station publishes highs and lows only', () => {
     expect(view.series[0].name).toBe('predicted')
     expect(view.dots).toEqual([{ name: 'predicted', v: 3 }])
     expect(view.notice).toBeNull()
+  })
+
+  test('saved highs and lows draw the curve at once, while the refresh is still loading', () => {
+    const hilo: Loaded<TideExtreme[]> = {
+      data: events,
+      fetchedAt: NOW,
+      span: null,
+      status: 'loading',
+    }
+    const predictions = curveFromHiLo(hilo, { start: START, end: END + DAY })
+    const view = tideView(data({ predictions }), TODAY, null, VENTURA)
+    expect(view.notice).toBeNull()
+    expect(view.predicted).toHaveLength(241)
+    expect(view.predicted[0].t).toBe(START)
+    expect(view.predicted.at(-1)?.t).toBe(END)
+    expect(view.text.predicted.endsWith('interpolated')).toBe(true)
   })
 
   test('a harmonic station still says predicted', () => {

@@ -46,8 +46,8 @@ export interface SpotData {
   /** The 14 local days starting today. */
   window: Span
   /**
-   * From today to the end of the last month the month view offers. The
-   * highs and lows are fetched for all of it, in one request.
+   * From today to the end of the last month the month view offers.
+   * `hiloSpan` covers it from the day before.
    */
   ahead: Span
   /**
