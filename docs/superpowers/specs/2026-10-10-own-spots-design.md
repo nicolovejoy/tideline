@@ -23,7 +23,7 @@ The issue says this item will probably split: adding by location with station ch
      - "Tide: NOAA 9411340 Santa Barbara, 8.6 mi east. 6-minute curve." or, at a subordinate station, "… highs and lows only; the curve will be interpolated."
      - "Gauge: its own." or "Gauge: NOAA 9411340 Santa Barbara, 31 mi east."
      - A checkbox, "Show tides", checked or not by the rule below, with a reason after it when unchecked: "Off to start: the cell is 3,258 ft up." or "Off to start: the nearest station is 140 mi away." The user can change it; the choice is saved with the spot as its default and can be changed later with the hide and show buttons the spot screen already has.
-   - Where NWS has no forecast for the pin (its `/points` answers 404, which it does outside the US and its territories): "NWS has no forecast here. Tideline covers the US." and no facts. Where NWS cannot be reached, or the cell's forecast cannot be fetched: "Couldn't reach the National Weather Service. Try again in a minute." and a "Try again" button.
+   - Where NWS has no forecast for the pin (its `/points` answers 404, which it does outside the US and its territories): "NWS has no forecast here. Tideline covers the US." and no facts. Where NWS cannot be reached, the cell's forecast cannot be fetched, or the station list cannot be fetched: "Couldn't reach the National Weather Service. Try again in a minute." and a "Try again" button.
    - Two buttons: "Save" and "Cancel". Save is enabled only with a pin down, a name that is not blank, and the facts in. Save adds the spot after the ones already there, chooses it, and shows its screen. Cancel returns to the spot the user came from.
 
 3. **Removing a saved spot.** On a saved spot's screen, under the captions, a text button "Remove this spot". Pressing it turns the line into "Remove Leadbetter Beach? Yes, remove · Keep". "Yes, remove" drops the spot, forgets everything saved for it, and shows the first built-in spot. The three built-in spots have no remove button. No browser dialog: a dialog would block the page.
@@ -42,11 +42,11 @@ Measured on 2026-10-10 from the live lists: 1,260 harmonic, 2,242 subordinate, 3
 
 ### Nearest stations
 
-`src/data/stations.ts` (framework-free): `nearestStations(lat, lon, rows)` returns the nearest prediction station (kind R or S) as the tide station, and the nearest station that is both harmonic and a gauge (kind RW) as the gauge. Where the tide station itself has a gauge, the gauge is the tide station. Each comes back as a `Station` as `src/spot.ts` defines it: id, name, distance in miles to one decimal, the 8-point direction word of the bearing from the spot to the station, and `type` harmonic or subordinate.
+`src/data/stations.ts` (framework-free): `nearestStations(point, rows)` returns the nearest prediction station (kind R or S) as the tide station, and the nearest station that is both harmonic and a gauge (kind RW) as the gauge. Where the tide station itself has a gauge, the gauge is the tide station. Each comes back as a `Station` as `src/spot.ts` defines it: id, name, distance in miles to one decimal, the 8-point direction word of the bearing from the spot to the station, and `type` harmonic or subordinate.
 
 The gauge is chosen from harmonic stations because the spot screen fetches the gauge's own predicted curve and sets its readings against it; a gauge with no curve would have nothing to deviate from. This is what the interpolated-curve spec assumed #4 would do.
 
-`src/data/geo.ts` (framework-free): `distanceMi(a, b)` by the haversine formula, `bearingDeg(a, b)`, and `directionWord(deg)` giving north, northeast, east, southeast, south, southwest, west, northwest. Checked against the hard-coded spots: Campus Point to Santa Barbara is 8.6 mi east, Gaviota to its station 0.2 mi south, La Cumbre Peak to Santa Barbara 6.3 mi south.
+`src/data/geo.ts` (framework-free): `distanceMi(a, b)` by the haversine formula, `bearingDeg(a, b)`, `directionWord(deg)` giving north, northeast, east, southeast, south, southwest, west, northwest, and `wrapLon(lon)`, which brings a longitude into -180 to 180 (180 comes back as -180, the same meridian). Leaflet reports the longitude of the world copy that was tapped, so Hawaii one copy east is 202.1, and NWS answers 404 for that. Checked against the hard-coded spots: Campus Point to Santa Barbara is 8.6 mi east, Gaviota to its station 0.2 mi south, La Cumbre Peak to Santa Barbara 6.3 mi south.
 
 ### The NWS cell
 
@@ -54,42 +54,43 @@ The gauge is chosen from harmonic stations because the spot screen fetches the g
 
 ### Resolving a pin
 
-`src/data/resolve.ts` (framework-free): `resolveSpot(lat, lon, io)` where `io` supplies `fetchPoints`, `fetchElevationFt` and the station rows, so the test needs no network. It returns either `{ ok: true, spot: Omit<Spot, 'id' | 'name'> }` or `{ ok: false, reason: 'outside' | 'unreachable' }`. The spot's `elevationFt` (its own height, used for a peak's caption) is null: no source gives a point height, and issue #9 is where that goes. `tidesShown` comes from the rule below.
+`src/data/resolve.ts` (framework-free): `resolveSpot(lat, lon, io)` where `io` supplies `fetchPoints`, `fetchElevationFt` and the station rows, so the test needs no network. It wraps the longitude with `wrapLon` and rounds both coordinates to four decimals before asking anything; the pin stays drawn where the user tapped. It returns either `{ ok: true, facts }`, where `facts` is a `SpotFacts` (`Omit<Spot, 'id' | 'name'>`), or `{ ok: false, reason: 'outside' | 'unreachable' }`. The spot's `elevationFt` (its own height, used for a peak's caption) is null: no source gives a point height, and issue #9 is where that goes. `tidesShown` comes from the rule below.
 
 ### Whether the tide is shown to start with
 
-`defaultTidesShown(tideDistanceMi, cellElevationFt)` in `resolve.ts`: shown when the nearest prediction station is within 25 miles and the cell's average height is under 300 ft. The issue asks for distance plus elevation. Against the built-in spots: Campus Point (8.6 mi, 3 ft) shown; Gaviota (0.2 mi, 0 ft) shown; La Cumbre Peak (6.3 mi, 3,258 ft) hidden. A Great Lakes shore is hundreds of miles from any prediction station, so hidden, and its gauge (there are 52 on the lakes, none harmonic) is never chosen: the gauge comes from the nearest harmonic coastal station, which the facts disclose with its distance.
+`defaultTidesShown(tideDistanceMi, cellElevationFt)` in `src/data/tideDefault.ts`, with its two numbers, `TIDES_WITHIN_MI` and `TIDES_BELOW_FT`. That module imports nothing, so the add screen's words can use the numbers without bringing the station code into the bundle every open loads; `resolve.ts` re-exports all three. Shown when the nearest prediction station is within 25 miles and the cell's average height is under 300 ft. The issue asks for distance plus elevation. Against the built-in spots: Campus Point (8.6 mi, 3 ft) shown; Gaviota (0.2 mi, 0 ft) shown; La Cumbre Peak (6.3 mi, 3,258 ft) hidden. A Great Lakes shore is hundreds of miles from any prediction station, so hidden, and its gauge (there are 52 on the lakes, none harmonic) is never chosen: the gauge comes from the nearest harmonic coastal station, which the facts disclose with its distance.
 
 ### Saving spots
 
-`src/data/savedSpots.ts` (framework-free, every storage access wrapped as `cache.ts` and `choices.ts` wrap theirs): `readSavedSpots(): Spot[]`, `addSpot(spot)`, `removeSpot(id)`, under one key `tideline:spots:v1` holding a JSON array of `Spot`. Reading validates each entry's shape with a type guard and drops any that fail, so a damaged entry or one from an older build cannot break every open. A new spot's id is `spot-` followed by the time in base 36. `removeSpot` also calls `forgetSpot(id)` in `cache.ts`, which removes the spot's five cache entries, and the tides choice for it in `choices.ts`.
+`src/data/savedSpots.ts` (framework-free, every storage access wrapped as `cache.ts` and `choices.ts` wrap theirs): `readSavedSpots(): Spot[]`, `addSpot(spot)`, `removeSpot(id)`, under one key `tideline:spots:v1` holding a JSON array of `Spot`. Reading validates each entry's shape with a type guard and drops any that fail, so a damaged entry or one from an older build cannot break every open. A new spot's id is `spot-` followed by the time in base 36. Removing goes through `forgetSavedSpot(spot)` in `choices.ts`, which calls `removeSpot`, drops the tides choice for the spot, and calls `forgetSpot(id)` in `cache.ts`, which removes the spot's five cache entries.
 
 `src/spot.ts`: `spotById(id, spots)` now takes the list to look in; `allSpots(saved)` is the built-in three followed by the saved ones; `isSaved(spot)` says whether a spot can be removed. `App` holds the saved list in state and reads it once on open.
 
 ### The map
 
-Leaflet 1.9.4 (BSD, no key, 42 KB gzipped) with OpenStreetMap's standard tiles at `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, credited "© OpenStreetMap contributors". OSM's tile policy allows light use from a site like this one with no key; changing provider is one URL. Leaflet is used directly, without react-leaflet: one component, `src/ui/SpotMap.tsx`, makes the map in an effect on a ref, puts a circle marker where the pin is, and calls `onPick(lat, lon)` on a tap. A circle marker, not Leaflet's default image marker, so there is no icon path for the bundler to lose. Leaflet's stylesheet is imported in that component.
+Leaflet 1.9.4 (BSD, no key, 42 KB gzipped) with OpenStreetMap's standard tiles at `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, credited "© OpenStreetMap contributors". OSM's tile policy allows light use from a site like this one with no key; changing provider is one URL. Leaflet is used directly, without react-leaflet: one component, `src/ui/SpotMap.tsx`, makes the map in an effect on a ref, puts a circle marker where the pin is, and calls `onPick({ lat, lon })` on a tap. A circle marker, not Leaflet's default image marker, so there is no icon path for the bundler to lose. Leaflet's stylesheet is imported in that component.
 
-The add screen (`src/ui/AddSpot.tsx`) is loaded with `React.lazy`, so Leaflet, its stylesheet and the station list are fetched the first time someone presses "Add a spot", not on every open.
+The add screen (`src/ui/AddSpot.tsx`) is loaded with `React.lazy`, so Leaflet, its stylesheet and the station list are fetched the first time someone presses "Add a spot", not on every open. If that fetch fails, offline or in a home-screen app left open past a deploy that asks for a chunk that is gone, the import's rejection is caught and `src/ui/AddSpotUnavailable.tsx` stands in: "Couldn't load the map. Check the connection and try again." and Cancel. Uncaught, the rejection would unmount the whole app.
 
 ## Rules, in plain modules
 
-- `src/data/geo.ts`: distance, bearing, direction word.
+- `src/data/geo.ts`: distance, bearing, direction word, `wrapLon`.
 - `src/data/stations.ts`: the row type, the loader, `nearestStations`.
 - `src/data/nws.ts`: `fetchPoints`, `fetchElevationFt`, `NwsOutsideError`.
-- `src/data/resolve.ts`: `resolveSpot`, `defaultTidesShown`.
+- `src/data/tideDefault.ts`: `defaultTidesShown` and its two numbers, importing nothing.
+- `src/data/resolve.ts`: `resolveSpot`, re-exporting `defaultTidesShown`.
 - `src/data/savedSpots.ts`: read, add, remove, the type guard.
 - `src/data/cache.ts`: `forgetSpot`.
-- `src/ui/addSpotView.ts`: the words of the add screen: the facts lines, the tides reason, the two error lines, and whether Save is enabled, from the resolve result, the name and the pin.
+- `src/ui/addSpotView.ts`: the words of the add screen: the facts lines, the tides reason, the two error lines, the line for an add screen that could not load, the map's tile URL and credit (`MAP`), and whether Save is enabled, from the resolve result, the name and the pin.
 - `src/spot.ts`: `spotById(id, spots)`, `allSpots`, `isSaved`.
 
-Components (`AddSpot.tsx`, `SpotMap.tsx`, the switcher's button, the remove line in `SpotScreen.tsx`) hold no arithmetic and no wording, and are checked in a browser.
+Components (`AddSpot.tsx`, `AddSpotUnavailable.tsx`, `SpotMap.tsx`, the switcher's button, the remove line in `SpotScreen.tsx`) hold no arithmetic and no wording, and are checked in a browser.
 
 ## Testing
 
 - Unit tests for every plain module above, against the recorded responses and a short station list.
 - One test of `nearestStations` against the real baked list: from Campus Point's coordinates it picks 9411340 Santa Barbara at 8.6 mi east for both roles; from Gaviota's, 9411399 as the tide station and 9411340 as the gauge at 31 mi; from a point on Lake Michigan, a far tide station and `tidesShown` false.
-- The browser check, by the implementer with Playwright: open the add screen, tap the map, see the facts fill in, save, see the new spot's screen with its captions; reopen and see it still there; remove it; cancel from the add screen; the outside-US message for a pin in the Pacific off Mexico. The pull request lists the same steps for the owner's phone.
+- The browser check, by the implementer with Playwright: open the add screen, tap the map, see the facts fill in, save, see the new spot's screen with its captions; reopen and see it still there; remove it; cancel from the add screen; the outside-US message for a pin in inland Mexico (25°N 103°W answers 404; open-ocean points inside NWS's domain answer 500, which reads as unreachable). The pull request lists the same steps for the owner's phone.
 
 ## Out of scope
 
