@@ -3,6 +3,8 @@
 // NOAA's station metadata on 2026-10-10. Directions are the 8-point compass
 // name of the bearing from the spot to the station.
 
+import { tidesApply } from './data/tideRule.ts'
+
 /** A NOAA tide station, as it stands from one spot. */
 export interface Station {
   id: string
@@ -24,7 +26,10 @@ export interface Spot {
   lon: number
   /** IANA zone. Every displayed time and calendar day uses it. */
   timeZone: string
-  /** The spot's own height, where it is worth saying: a peak. */
+  /**
+   * The spot's own height above sea level: from USGS for a spot the user
+   * added, null where that could not be had or was never asked.
+   */
   elevationFt: number | null
   /** The 2.5 km NWS forecast cell containing the spot, and its average height. */
   nws: { office: string; gridX: number; gridY: number; elevationFt: number }
@@ -35,8 +40,6 @@ export interface Spot {
    * a gauge; the nearest station that has one when it does not.
    */
   gauge: Station
-  /** Whether the tide is shown until the user says otherwise. Hidden inland. */
-  tidesShown: boolean
 }
 
 const SANTA_BARBARA = {
@@ -55,7 +58,6 @@ export const CAMPUS_POINT: Spot = {
   nws: { office: 'LOX', gridX: 100, gridY: 71, elevationFt: 3 },
   tideStation: { ...SANTA_BARBARA, distanceMi: 8.6, direction: 'east' },
   gauge: { ...SANTA_BARBARA, distanceMi: 8.6, direction: 'east' },
-  tidesShown: true,
 }
 
 // Station 9411399 is harmonic, so it has a curve, but it has no gauge: a
@@ -76,10 +78,10 @@ const GAVIOTA: Spot = {
     type: 'harmonic',
   },
   gauge: { ...SANTA_BARBARA, distanceMi: 31, direction: 'east' },
-  tidesShown: true,
 }
 
-// Inland and high up. The cell's average is well below the summit.
+// Inland and high up, so it has no tide. The cell's average is well below
+// the summit.
 const LA_CUMBRE_PEAK: Spot = {
   id: 'la-cumbre-peak',
   name: 'La Cumbre Peak',
@@ -90,7 +92,6 @@ const LA_CUMBRE_PEAK: Spot = {
   nws: { office: 'LOX', gridX: 105, gridY: 74, elevationFt: 3258 },
   tideStation: { ...SANTA_BARBARA, distanceMi: 6.3, direction: 'south' },
   gauge: { ...SANTA_BARBARA, distanceMi: 6.3, direction: 'south' },
-  tidesShown: false,
 }
 
 export const SPOTS: Spot[] = [CAMPUS_POINT, GAVIOTA, LA_CUMBRE_PEAK]
@@ -108,6 +109,23 @@ export function spotById(id: string | null, spots: Spot[] = SPOTS): Spot {
 /** Whether the user added this spot, so it can be removed. */
 export function isSaved(spot: Spot): boolean {
   return !SPOTS.some((built) => built.id === spot.id)
+}
+
+/** What the tide rule goes by. */
+type Placed = Pick<Spot, 'elevationFt' | 'nws' | 'tideStation'>
+
+/**
+ * Whether the spot has a tide to show: a station near, and the spot low.
+ * A fact of the spot, not a choice. Until 2026-10-10 it could be switched
+ * on anywhere, and a spot saved then may still carry what was chosen; it
+ * is not read. The height is the spot's own where it is known and its
+ * forecast cell's average where not.
+ */
+export function hasTides(spot: Placed): boolean {
+  return tidesApply(
+    spot.tideStation.distanceMi,
+    spot.elevationFt ?? spot.nws.elevationFt,
+  )
 }
 
 /** Whether the spot's observed level comes from its own tide station. */

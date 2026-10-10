@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { monthCaption, tideCaption, weatherCaption } from './captions.ts'
+import {
+  monthCaption,
+  noTidesWords,
+  tideCaption,
+  weatherCaption,
+} from './captions.ts'
 import type { Loaded } from '../data/load.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
 import type { Forecast } from '../data/nws.ts'
@@ -267,10 +272,72 @@ describe('weatherCaption', () => {
     )
   })
 
+  // Every added spot has a height of its own now, from USGS. It is said
+  // only where it is far enough from the cell's to change the reading.
+  test("a beach under hills gives both; a spot as high as its cell gives the cell's alone", () => {
+    const elCapitan = {
+      ...CAMPUS_POINT,
+      elevationFt: 21,
+      nws: { office: 'LOX', gridX: 95, gridY: 75, elevationFt: 640 },
+    }
+    expect(weatherCaption(elCapitan, forecast('loading', null), TODAY)).toBe(
+      'Weather: NWS forecast for the 2.5 km cell at this spot, which averages 640 ft above sea level; the spot itself is at 21 ft.',
+    )
+    const flat = { ...CAMPUS_POINT, elevationFt: 12 }
+    expect(weatherCaption(flat, forecast('loading', null), TODAY)).toBe(
+      `${SOURCE}.`,
+    )
+    const nearly = { ...elCapitan, elevationFt: 541 }
+    expect(weatherCaption(nearly, forecast('loading', null), TODAY)).toBe(
+      'Weather: NWS forecast for the 2.5 km cell at this spot, 640 ft above sea level.',
+    )
+    const just = { ...elCapitan, elevationFt: 540 }
+    expect(weatherCaption(just, forecast('loading', null), TODAY)).toBe(
+      'Weather: NWS forecast for the 2.5 km cell at this spot, which averages 640 ft above sea level; the spot itself is at 540 ft.',
+    )
+  })
+
   test('a cell at sea level says 0 ft', () => {
     const gaviota = spotById('gaviota')
     expect(weatherCaption(gaviota, forecast('ready'), TODAY)).toBe(
       'Weather: NWS forecast for the 2.5 km cell at this spot, 0 ft above sea level. Updated 7:26 AM.',
+    )
+  })
+})
+
+describe('noTidesWords', () => {
+  const laCumbre = spotById('la-cumbre-peak')
+  const lake = {
+    ...CAMPUS_POINT,
+    tideStation: { ...CAMPUS_POINT.tideStation, distanceMi: 636 },
+  }
+
+  test('nothing where the spot has a tide', () => {
+    expect(noTidesWords(CAMPUS_POINT)).toBeNull()
+    expect(noTidesWords(spotById('gaviota'))).toBeNull()
+  })
+
+  test("the spot's own height, where it is high", () => {
+    expect(noTidesWords(laCumbre)).toBe(
+      'Tides are not shown here: the spot is 3,997 ft above sea level.',
+    )
+  })
+
+  test("the cell's average, where the spot's own height is not known", () => {
+    expect(noTidesWords({ ...laCumbre, elevationFt: null })).toBe(
+      'Tides are not shown here: the forecast cell averages 3,258 ft above sea level.',
+    )
+  })
+
+  test('the distance, where the station is far', () => {
+    expect(noTidesWords(lake)).toBe(
+      'Tides are not shown here: the nearest station, NOAA 9411340 Santa Barbara, is 636 mi away.',
+    )
+  })
+
+  test('both: the distance comes first, as the plainer fact', () => {
+    expect(noTidesWords({ ...lake, elevationFt: 3997 })).toBe(
+      'Tides are not shown here: the nearest station, NOAA 9411340 Santa Barbara, is 636 mi away.',
     )
   })
 })

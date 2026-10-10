@@ -203,7 +203,7 @@ describe('monthRows', () => {
     expect(rows.every((row) => row.tides.length === 0)).toBe(true)
   })
 
-  test('with the tide hidden the rows list no highs and lows', () => {
+  test('at a spot with no tide the rows list no highs and lows', () => {
     const laCumbre = spotById('la-cumbre-peak')
     const rows = monthRows(
       laCumbre,

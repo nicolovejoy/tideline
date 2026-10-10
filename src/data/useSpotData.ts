@@ -206,9 +206,9 @@ function useClock(): Pick<SpotData, 'now' | 'shown'> {
 
 /**
  * One source over time. The loader is always made, so the hooks are called
- * in one order, but it fetches nothing while `wanted` is false: a hidden
- * tide is not loaded, a gauge's own prediction is not loaded where the
- * gauge is the spot's own station, and a curve is not loaded where the
+ * in one order, but it fetches nothing while `wanted` is false: at a spot
+ * with no tide none is loaded, a gauge's own prediction is not loaded where
+ * the gauge is the spot's own station, and a curve is not loaded where the
  * station publishes none.
  */
 function useLoaded<T>(
@@ -225,7 +225,7 @@ function useLoaded<T>(
   return useSyncExternalStore(loader.subscribe, loader.current)
 }
 
-export function useSpotData(spot: Spot, tidesShown: boolean): SpotData {
+export function useSpotData(spot: Spot, tidal: boolean): SpotData {
   const { now, shown } = useClock()
   const today = localDate(now, spot.timeZone)
   // Recomputed only when the date at the spot changes, such as at midnight
@@ -238,18 +238,14 @@ export function useSpotData(spot: Spot, tidesShown: boolean): SpotData {
   // A subordinate station publishes no curve, and a 6-minute request to it
   // returns an error, so its loader is never asked to fetch. Its curve is
   // made from the highs and lows instead.
-  const fetched = useLoaded(specs.predictions, now, tidesShown && ownCurve)
-  const hilo = useLoaded(specs.hilo, now, tidesShown)
+  const fetched = useLoaded(specs.predictions, now, tidal && ownCurve)
+  const hilo = useLoaded(specs.hilo, now, tidal)
   const predictions = useMemo(
     () => (ownCurve ? fetched : curveFromHiLo(hilo, frame.window)),
     [ownCurve, fetched, hilo, frame.window],
   )
-  const observed = useLoaded(specs.observed, now, tidesShown)
-  const gaugeOwn = useLoaded(
-    specs.gaugePredictions,
-    now,
-    tidesShown && !ownGauge,
-  )
+  const observed = useLoaded(specs.observed, now, tidal)
+  const gaugeOwn = useLoaded(specs.gaugePredictions, now, tidal && !ownGauge)
   const gaugePredictions = ownGauge ? predictions : gaugeOwn
   const forecast = useLoaded(forecastSpec(spot, frame), now, true)
 

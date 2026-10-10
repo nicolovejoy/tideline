@@ -11,7 +11,6 @@ import {
   removeQuestion,
   searchLine,
   suggestedName,
-  tidesOffReason,
 } from './addSpotView.ts'
 import type { SpotFacts } from '../data/resolve.ts'
 import type { Place } from '../data/geocode.ts'
@@ -36,7 +35,6 @@ const CAMPUS: SpotFacts = {
     direction: 'east',
     type: 'harmonic',
   },
-  tidesShown: true,
 }
 const GAVIOTA: SpotFacts = {
   ...CAMPUS,
@@ -63,59 +61,64 @@ const VENTURA_WAY: SpotFacts = {
 }
 const PEAK: SpotFacts = {
   ...CAMPUS,
+  elevationFt: 3997,
   nws: { office: 'LOX', gridX: 105, gridY: 74, elevationFt: 3258 },
-  tidesShown: false,
 }
 const LAKE: SpotFacts = {
   ...CAMPUS,
   tideStation: { ...CAMPUS.tideStation, distanceMi: 636 },
-  tidesShown: false,
+}
+// A beach under hills: its cell averages 640 ft, the beach is at 21 ft.
+const EL_CAPITAN: SpotFacts = {
+  ...GAVIOTA,
+  elevationFt: 21,
+  nws: { office: 'LOX', gridX: 95, gridY: 75, elevationFt: 640 },
+  tideStation: { ...GAVIOTA.tideStation, distanceMi: 12, direction: 'west' },
+  gauge: { ...CAMPUS.gauge, distanceMi: 19 },
 }
 
 describe('factsLines', () => {
   test('a spot with its own gauge and a curve', () => {
-    expect(factsLines(CAMPUS)).toEqual({
-      weather: 'Weather: NWS cell LOX 100,71, 3 ft, America/Los_Angeles.',
-      tide: 'Tide: NOAA 9411340 Santa Barbara, 8.6 mi east. 6-minute curve.',
-      gauge: 'Gauge: its own.',
-    })
+    expect(factsLines(CAMPUS)).toEqual([
+      'Weather: NWS cell LOX 100,71, 3 ft, America/Los_Angeles.',
+      'Tide: NOAA 9411340 Santa Barbara, 8.6 mi east. 6-minute curve.',
+      'Gauge: its own.',
+    ])
   })
   test('a gauge elsewhere, and a cell at 0 ft', () => {
     const lines = factsLines(GAVIOTA)
-    expect(lines.weather).toBe(
+    expect(lines[0]).toBe(
       'Weather: NWS cell LOX 87,76, 0 ft, America/Los_Angeles.',
     )
-    expect(lines.gauge).toBe('Gauge: NOAA 9411340 Santa Barbara, 31 mi east.')
+    expect(lines.at(-1)).toBe('Gauge: NOAA 9411340 Santa Barbara, 31 mi east.')
   })
   test('a subordinate station says its curve will be interpolated', () => {
-    expect(factsLines(VENTURA_WAY).tide).toBe(
+    expect(factsLines(VENTURA_WAY)[1]).toBe(
       'Tide: NOAA 9411189 Ventura, 1.4 mi south. Highs and lows only; the curve will be interpolated.',
     )
   })
-  test('thousands of feet get a separator', () => {
-    expect(factsLines(PEAK).weather).toBe(
+  test("the spot's own height has a line, after the cell's", () => {
+    expect(factsLines(EL_CAPITAN)).toEqual([
+      'Weather: NWS cell LOX 95,75, 640 ft, America/Los_Angeles.',
+      'Height: 21 ft above sea level, from USGS.',
+      'Tide: NOAA 9411399 Gaviota State Park, Pacific Ocean, 12 mi west. 6-minute curve.',
+      'Gauge: NOAA 9411340 Santa Barbara, 19 mi east.',
+    ])
+  })
+  // A search can drop the pin in the hills behind the beach it was asked
+  // for: El Capitan State Beach's is at 583 ft. The pin can be moved.
+  test('a high spot near a station: no station is named, and the pin can go to the shore', () => {
+    expect(factsLines(PEAK)).toEqual([
       'Weather: NWS cell LOX 105,74, 3,258 ft, America/Los_Angeles.',
-    )
+      'Height: 3,997 ft above sea level, from USGS.',
+      'Tides are not shown here: the spot is 3,997 ft above sea level. For a tide, put the pin on the shore.',
+    ])
   })
-})
-
-describe('tidesOffReason', () => {
-  test('nothing where tides are on', () => {
-    expect(tidesOffReason(CAMPUS)).toBeNull()
-  })
-  test('the height, where the cell is high', () => {
-    expect(tidesOffReason(PEAK)).toBe('Off to start: the cell is 3,258 ft up.')
-  })
-  test('the distance, where the station is far', () => {
-    expect(tidesOffReason(LAKE)).toBe(
-      'Off to start: the nearest station is 636 mi away.',
-    )
-  })
-  test('both: the distance comes first', () => {
-    const both = { ...LAKE, nws: PEAK.nws }
-    expect(tidesOffReason(both)).toBe(
-      'Off to start: the nearest station is 636 mi away.',
-    )
+  test('far from any tide: the distance, and no station lines', () => {
+    expect(factsLines(LAKE)).toEqual([
+      'Weather: NWS cell LOX 100,71, 3 ft, America/Los_Angeles.',
+      'Tides are not shown here: the nearest station, NOAA 9411340 Santa Barbara, is 636 mi away.',
+    ])
   })
 })
 

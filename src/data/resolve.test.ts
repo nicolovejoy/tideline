@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { NwsOutsideError } from './nws.ts'
 import type { NwsCell } from './nws.ts'
-import { defaultTidesShown, resolveSpot } from './resolve.ts'
+import { resolveSpot } from './resolve.ts'
 import type { ResolveIo } from './resolve.ts'
 import type { StationRow } from './stations.ts'
 
@@ -21,27 +21,14 @@ function io(overrides: Partial<ResolveIo> = {}): ResolveIo {
   return {
     fetchPoints: async () => LOX,
     fetchElevationFt: async () => 3,
+    fetchPointElevationFt: async () => 12,
     stations: ROWS,
     ...overrides,
   }
 }
 
-describe('defaultTidesShown', () => {
-  test('the three hard-coded spots come out as they are shipped', () => {
-    expect(defaultTidesShown(8.6, 3)).toBe(true)
-    expect(defaultTidesShown(0.2, 0)).toBe(true)
-    expect(defaultTidesShown(6.3, 3258)).toBe(false)
-  })
-  test('within 25 mi and under 300 ft, both inclusive on the near side', () => {
-    expect(defaultTidesShown(25, 299)).toBe(true)
-    expect(defaultTidesShown(25.1, 0)).toBe(false)
-    expect(defaultTidesShown(0, 300)).toBe(false)
-    expect(defaultTidesShown(636, 600)).toBe(false)
-  })
-})
-
 describe('resolveSpot', () => {
-  test('Campus Point: the cell, the zone, Santa Barbara both ways, tides on', async () => {
+  test('Campus Point: the cell, the zone, its height, Santa Barbara both ways', async () => {
     const result = await resolveSpot(34.4046, -119.844, io())
     expect(result).toEqual({
       ok: true,
@@ -49,7 +36,7 @@ describe('resolveSpot', () => {
         lat: 34.4046,
         lon: -119.844,
         timeZone: 'America/Los_Angeles',
-        elevationFt: null,
+        elevationFt: 12,
         nws: { office: 'LOX', gridX: 100, gridY: 71, elevationFt: 3 },
         tideStation: {
           id: '9411340',
@@ -65,7 +52,6 @@ describe('resolveSpot', () => {
           direction: 'east',
           type: 'harmonic',
         },
-        tidesShown: true,
       },
     })
   })
@@ -92,19 +78,54 @@ describe('resolveSpot', () => {
     expect(result.ok && result.facts.lon).toBe(-157.9)
   })
 
-  test('a high cell turns tides off', async () => {
+  test("the spot's own height is asked for at the wrapped, rounded point", async () => {
+    const asked: number[][] = []
+    const result = await resolveSpot(
+      21.30004,
+      202.1,
+      io({
+        fetchPointElevationFt: async (lat, lon) => {
+          asked.push([lat, lon])
+          return 40
+        },
+      }),
+    )
+    expect(asked).toEqual([[21.3, -157.9]])
+    expect(result.ok && result.facts.elevationFt).toBe(40)
+  })
+
+  test('without its own height a spot still resolves, with none', async () => {
+    const result = await resolveSpot(
+      34.4046,
+      -119.844,
+      io({
+        fetchPointElevationFt: async () => {
+          throw new Error('USGS: HTTP 503')
+        },
+      }),
+    )
+    expect(result.ok && result.facts.elevationFt).toBeNull()
+    expect(result.ok && result.facts.nws.elevationFt).toBe(3)
+  })
+
+  // Whether the spot has a tide is not decided here. It follows from
+  // these two heights and the distance, in spot.ts.
+  test("a peak: the cell's average and the spot's own height, both kept", async () => {
     const result = await resolveSpot(
       34.4939,
       -119.7147,
-      io({ fetchElevationFt: async () => 3258 }),
+      io({
+        fetchElevationFt: async () => 3258,
+        fetchPointElevationFt: async () => 3808,
+      }),
     )
-    expect(result.ok && result.facts.tidesShown).toBe(false)
     expect(result.ok && result.facts.nws.elevationFt).toBe(3258)
+    expect(result.ok && result.facts.elevationFt).toBe(3808)
+    expect(result.ok && 'tidesShown' in result.facts).toBe(false)
   })
 
-  test('a far station turns tides off', async () => {
+  test('a point far from any tide still resolves, with the distance', async () => {
     const result = await resolveSpot(43.0389, -87.9065, io())
-    expect(result.ok && result.facts.tidesShown).toBe(false)
     expect(result.ok && result.facts.tideStation.distanceMi).toBeGreaterThan(
       1000,
     )
@@ -123,7 +144,24 @@ describe('resolveSpot', () => {
     expect(result).toEqual({ ok: false, reason: 'outside' })
   })
 
-  test('any other failure, from either request, is "unreachable"', async () => {
+  // NWS answers HTTP 500, not 404, for open water in the tropics. Nothing
+  // there can be tried again, so it reads as land outside the US does.
+  test('any failure for a point outside the US is "outside"', async () => {
+    const error = async () => {
+      throw new Error('HTTP 500')
+    }
+    expect(await resolveSpot(15, -96, io({ fetchPoints: error }))).toEqual({
+      ok: false,
+      reason: 'outside',
+    })
+    // A world copy east of the date line is the same water.
+    expect(await resolveSpot(15, 264, io({ fetchPoints: error }))).toEqual({
+      ok: false,
+      reason: 'outside',
+    })
+  })
+
+  test('any other failure inside the US, from either request, is "unreachable"', async () => {
     const down = async () => {
       throw new Error('HTTP 503')
     }

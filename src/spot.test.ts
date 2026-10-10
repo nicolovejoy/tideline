@@ -5,6 +5,7 @@ import {
   hasOwnCurve,
   allSpots,
   hasOwnGauge,
+  hasTides,
   isSaved,
   spotById,
 } from './spot.ts'
@@ -51,11 +52,7 @@ describe('the spots', () => {
     expect(hasOwnGauge(CAMPUS_POINT)).toBe(true)
   })
 
-  test('La Cumbre Peak hides its tide by default; the others show it', () => {
-    expect(SPOTS.map((spot) => spot.tidesShown)).toEqual([true, true, false])
-  })
-
-  test('only La Cumbre Peak has an elevation worth saying', () => {
+  test('only La Cumbre Peak carries a height of its own', () => {
     expect(SPOTS.map((spot) => spot.elevationFt)).toEqual([null, null, 3997])
   })
 
@@ -82,6 +79,58 @@ describe('the spots', () => {
     expect(spotById('nowhere')).toBe(CAMPUS_POINT)
     expect(spotById(null)).toBe(CAMPUS_POINT)
     expect(spotById('la-cumbre-peak').name).toBe('La Cumbre Peak')
+  })
+})
+
+describe('whether a spot has a tide', () => {
+  const gaviota = spotById('gaviota')
+  // A beach under hills: 21 ft by USGS, in a cell that averages 640 ft.
+  const elCapitan = {
+    ...gaviota,
+    id: 'spot-elcap',
+    name: 'El Capitan State Beach',
+    elevationFt: 21,
+    nws: { office: 'LOX', gridX: 95, gridY: 75, elevationFt: 640 },
+    tideStation: { ...gaviota.tideStation, distanceMi: 12, direction: 'west' },
+  }
+
+  test('La Cumbre Peak has none; the other two have', () => {
+    expect(SPOTS.map(hasTides)).toEqual([true, true, false])
+  })
+
+  test("goes by the spot's own height, not its cell's: a beach under hills has one", () => {
+    expect(hasTides(elCapitan)).toBe(true)
+  })
+
+  test('and a peak in a low cell has none', () => {
+    expect(hasTides({ ...CAMPUS_POINT, elevationFt: 2000 })).toBe(false)
+  })
+
+  test("goes by the cell's average where the spot's own height is not known", () => {
+    expect(hasTides({ ...elCapitan, elevationFt: null })).toBe(false)
+    expect(hasTides(CAMPUS_POINT)).toBe(true)
+  })
+
+  test('a far station means none, however low the spot', () => {
+    const lake = {
+      ...CAMPUS_POINT,
+      elevationFt: 580,
+      tideStation: { ...CAMPUS_POINT.tideStation, distanceMi: 636 },
+    }
+    expect(hasTides(lake)).toBe(false)
+    expect(hasTides({ ...lake, elevationFt: 0 })).toBe(false)
+  })
+
+  // Until 2026-10-10 a tick on the add screen could show the tide anywhere,
+  // and was saved with the spot. It is read past now.
+  test('is not a choice: a peak saved with its tide ticked on has none', () => {
+    const ticked = {
+      ...spotById('la-cumbre-peak'),
+      id: 'spot-peak',
+      elevationFt: null,
+      tidesShown: true,
+    }
+    expect(hasTides(ticked)).toBe(false)
   })
 })
 

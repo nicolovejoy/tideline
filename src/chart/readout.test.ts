@@ -294,6 +294,12 @@ describe('cursorText', () => {
       cursorText('3:36 PM', ['Tide: 3.0 ft predicted', 'Wind: 9 mph, from W']),
     ).toBe('3:36 PM; Tide: 3.0 ft predicted; Wind: 9 mph, from W')
   })
+  // A spot with no tide has no tide panel, and nothing is said in its place.
+  test('a panel with nothing to say is left out', () => {
+    expect(cursorText('3:36 PM', ['', 'Wind: 9 mph, from W'])).toBe(
+      '3:36 PM; Wind: 9 mph, from W',
+    )
+  })
 })
 
 describe('gaugeWords', () => {

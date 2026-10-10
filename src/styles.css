@@ -139,17 +139,7 @@ h1 {
   outline-offset: 2px;
 }
 
-/* Where the tide would be, when the spot hides it, and the control that
-   shows or hides it. */
-.tides-hidden {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: 0.9em;
-  row-gap: 0.25rem;
-  margin-top: 0.75rem;
-}
-.tides-toggle,
+/* A button that reads as a link in the text. */
 .text-button {
   padding: 0.5rem 0;
   border: 0;
@@ -160,7 +150,6 @@ h1 {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.tides-toggle:focus-visible,
 .text-button:focus-visible {
   outline: 2px solid var(--sea);
   outline-offset: 2px;

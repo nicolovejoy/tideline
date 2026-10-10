@@ -1,15 +1,8 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import {
-  forgetSavedSpot,
-  readSpot,
-  readTidesShown,
-  writeSpot,
-  writeTidesShown,
-} from './choices.ts'
+import { forgetSavedSpot, readSpot, writeSpot } from './choices.ts'
 import { CAMPUS_POINT, SPOTS, spotById } from '../spot.ts'
 
 const GAVIOTA = spotById('gaviota')
-const LA_CUMBRE = spotById('la-cumbre-peak')
 
 function fakeStorage(initial: Record<string, string> = {}): Storage {
   const items = new Map(Object.entries(initial))
@@ -63,42 +56,9 @@ describe('the spot', () => {
     expect(readSpot()).toBe(CAMPUS_POINT)
     expect(() => writeSpot(GAVIOTA)).not.toThrow()
   })
-})
-
-describe('whether tides are shown', () => {
-  test("is the spot's own default until the user says otherwise", () => {
-    vi.stubGlobal('localStorage', fakeStorage())
-    expect(readTidesShown(CAMPUS_POINT)).toBe(true)
-    expect(readTidesShown(LA_CUMBRE)).toBe(false)
-  })
-
-  test('is remembered per spot', () => {
-    vi.stubGlobal('localStorage', fakeStorage())
-    writeTidesShown(LA_CUMBRE, true)
-    expect(readTidesShown(LA_CUMBRE)).toBe(true)
-    expect(readTidesShown(CAMPUS_POINT)).toBe(true)
-    writeTidesShown(CAMPUS_POINT, false)
-    expect(readTidesShown(CAMPUS_POINT)).toBe(false)
-    expect(readTidesShown(LA_CUMBRE)).toBe(true)
-  })
-
-  test('a saved value that is neither word means the default', () => {
-    vi.stubGlobal(
-      'localStorage',
-      fakeStorage({ 'tideline:tides:la-cumbre-peak': 'maybe' }),
-    )
-    expect(readTidesShown(LA_CUMBRE)).toBe(false)
-  })
-
-  test('with storage disabled it is the default, and choosing does not throw', () => {
-    vi.stubGlobal('localStorage', brokenStorage())
-    expect(readTidesShown(LA_CUMBRE)).toBe(false)
-    expect(() => writeTidesShown(LA_CUMBRE, true)).not.toThrow()
-  })
 
   test('with no localStorage at all, the same', () => {
     expect(readSpot()).toBe(CAMPUS_POINT)
-    expect(readTidesShown(LA_CUMBRE)).toBe(false)
     expect(() => writeSpot(GAVIOTA)).not.toThrow()
   })
 })
@@ -113,17 +73,15 @@ describe('with saved spots', () => {
     expect(readSpot()).toBe(CAMPUS_POINT)
   })
 
-  test('forgetSavedSpot drops the spot, its tides choice and its cache', () => {
+  test('forgetSavedSpot drops the spot and its cache', () => {
     const storage = fakeStorage({
       'tideline:spots:v1': JSON.stringify([saved]),
-      'tideline:tides:spot-abc': 'hidden',
       'tideline:v2:spot-abc:forecast': '{}',
       'tideline:spot': 'spot-abc',
     })
     vi.stubGlobal('localStorage', storage)
     forgetSavedSpot(saved)
     expect(storage.getItem('tideline:spots:v1')).toBe('[]')
-    expect(storage.getItem('tideline:tides:spot-abc')).toBeNull()
     expect(storage.getItem('tideline:v2:spot-abc:forecast')).toBeNull()
   })
 })

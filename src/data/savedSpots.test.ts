@@ -152,8 +152,15 @@ describe('isSpot', () => {
     expect(isSpot({ ...LEADBETTER, gauge: untyped })).toBe(false)
     const { timeZone: _zone, ...noZone } = LEADBETTER
     expect(isSpot(noZone)).toBe(false)
-    expect(isSpot({ ...LEADBETTER, tidesShown: 'yes' })).toBe(false)
     expect(isSpot(null)).toBe(false)
+  })
+  // Spots saved before 2026-10-10 carry tidesShown. It is no longer part
+  // of a spot, and neither needed nor minded.
+  test('a spot passes with or without the old tidesShown', () => {
+    const { tidesShown: _old, ...bare } = { ...LEADBETTER, tidesShown: true }
+    expect(isSpot(bare)).toBe(true)
+    expect(isSpot({ ...bare, tidesShown: true })).toBe(true)
+    expect(isSpot({ ...bare, tidesShown: 'yes' })).toBe(true)
   })
   test('elevationFt may be null or a number, nothing else', () => {
     expect(isSpot({ ...LEADBETTER, elevationFt: 3997 })).toBe(true)

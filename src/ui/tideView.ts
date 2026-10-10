@@ -15,9 +15,10 @@ import type { TideReadout } from '../chart/readout.ts'
 import { steppedBounds, wholeSteps } from '../chart/scales.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
 import type { SpotData } from '../data/useSpotData.ts'
-import { hasOwnCurve, hasOwnGauge } from '../spot.ts'
+import { hasOwnCurve, hasOwnGauge, hasTides } from '../spot.ts'
 import type { Spot } from '../spot.ts'
 import { MINUTE } from '../time.ts'
+import { noTidesWords } from './captions.ts'
 import { onDay } from './selection.ts'
 import type { Selected } from './selection.ts'
 
@@ -63,7 +64,10 @@ export interface TideView {
    * nothing.
    */
   text: { predicted: string; second: SecondLine | null }
-  /** Everything the panel says at the cursor, as one run of words. */
+  /**
+   * Everything the panel says at the cursor, as one run of words. Empty at
+   * a spot with no tide, which has no panel.
+   */
   words: string
   rules: Rule[]
   /** The curve, filled, with the readings over it where there are any. */
@@ -77,11 +81,9 @@ export interface TideView {
   notice: string | null
   /**
    * The one line that stands in for the panel, the table and the caption
-   * when the tide is hidden. Null when it is shown.
+   * at a spot with no tide, saying why. Null where there is one.
    */
-  hidden: string | null
-  /** Whether to offer "Hide tides": at a spot that hides them by default. */
-  canHide: boolean
+  noTides: string | null
 }
 
 type Inputs = Pick<
@@ -95,12 +97,6 @@ type Inputs = Pick<
   | 'gaugePredictions'
 >
 
-/** Which spot, and whether its tide is on screen. */
-export interface TideChoice {
-  spot: Spot
-  shown: boolean
-}
-
 /** The points on a day, both ends included. */
 function within(
   points: TidePoint[] | null,
@@ -109,40 +105,34 @@ function within(
   return (points ?? []).filter((p) => p.t >= day.start && p.t <= day.end)
 }
 
-/** The one line shown in place of the tide when it is hidden. */
-function hiddenLine(spot: Spot): string {
-  const { id, name, distanceMi, direction } = spot.tideStation
-  return `Tides hidden. Nearest station: NOAA ${id} ${name}, ${distanceMi} mi ${direction}.`
-}
-
 export function tideView(
   data: Inputs,
   selected: Selected,
   pick: CursorPick | null,
-  tides: TideChoice,
+  spot: Spot,
 ): TideView {
-  const { spot } = tides
+  // Whether there is a tide here at all. Not a choice: see hasTides.
+  const tidal = hasTides(spot)
   const { span } = selected
   const ownGauge = hasOwnGauge(spot)
   // Both ends are included, so the curve reaches the right edge of the plot
   // by using the first point of the next day.
-  const predicted = tides.shown ? within(data.predictions.data, span) : []
+  const predicted = tidal ? within(data.predictions.data, span) : []
   // The gauge's readings for today, wherever the gauge is.
   const readings = within(data.observed.data, data.day)
-  // Drawn only where they are this station's own, and only when the tide is.
-  const observed = selected.isToday && ownGauge && tides.shown ? readings : []
-  const events = tides.shown ? onDay(data.hilo.data ?? [], span) : []
+  // Drawn only where they are this station's own, and only where the tide is.
+  const observed = selected.isToday && ownGauge && tidal ? readings : []
+  const events = tidal ? onDay(data.hilo.data ?? [], span) : []
 
   // Where the cursor sits until someone moves it. Today that is the latest
-  // reading, or the clock. With the tide hidden nothing on screen justifies
-  // resting on a reading, and a cached one is not refreshed while the tide
-  // is not wanted, so the cursor rests on the clock. Any other day it is the
-  // day's anchor. It is the step that contains the anchor, never the one
-  // after: a sunset at 4:59 PM must not tip the cursor into the 5 PM hour,
-  // or the weather under it would not be the hour that the day's row in the
-  // list gives.
+  // reading, or the clock. With no tide nothing on screen justifies resting
+  // on a reading, and none is loaded, so the cursor rests on the clock. Any
+  // other day it is the day's anchor. It is the step that contains the
+  // anchor, never the one after: a sunset at 4:59 PM must not tip the cursor
+  // into the 5 PM hour, or the weather under it would not be the hour that
+  // the day's row in the list gives.
   const rest = selected.isToday
-    ? restingCursor(data.now, tides.shown ? readings : [])
+    ? restingCursor(data.now, tidal ? readings : [])
     : Math.floor(selected.anchor / STEP) * STEP
   // A pick belongs to the day it was made on, and lasts until the page is put
   // away and brought back. After that the cursor goes back to rest, so
@@ -162,9 +152,9 @@ export function tideView(
     1,
   )
 
-  const hidden = tides.shown ? null : hiddenLine(spot)
+  const noTides = noTidesWords(spot)
   let notice: string | null = null
-  if (hidden === null && predicted.length === 0) {
+  if (tidal && predicted.length === 0) {
     notice =
       data.predictions.status === 'loading'
         ? 'Loading tides'
@@ -181,7 +171,7 @@ export function tideView(
   let second: SecondLine | null = null
   if (text.observed !== null) {
     second = { words: text.observed, key: 'observed' }
-  } else if (!ownGauge && selected.isToday && hidden === null) {
+  } else if (!ownGauge && selected.isToday && tidal) {
     const theirs = within(data.gaugePredictions.data, data.day)
     const { aboveFt } = tideReadout(theirs, readings, cursor)
     if (aboveFt !== null) {
@@ -190,7 +180,7 @@ export function tideView(
   }
 
   const dots: Dot[] = []
-  if (notice === null && hidden === null) {
+  if (notice === null && tidal) {
     if (readout.predictedFt !== null) {
       dots.push({ name: 'predicted', v: readout.predictedFt })
     }
@@ -200,14 +190,15 @@ export function tideView(
   }
   // For a screen reader. The panel is named, so the words are never left
   // hanging among the weather panels'. Without a curve there is no panel,
-  // and the notice is said instead; hidden, the hidden line is said.
+  // and the notice is said instead. With no tide nothing is said: the line
+  // saying why is among the captions, not at every move of the cursor.
   const said = [text.predicted, second?.words ?? null].filter(
     (part) => part !== null,
   )
-  const words = hidden ?? notice ?? `${TITLE}: ${said.join(', ')}`
+  const words = !tidal ? '' : (notice ?? `${TITLE}: ${said.join(', ')}`)
 
   const series: Series[] = []
-  if (hidden === null) {
+  if (tidal) {
     series.push({
       name: 'predicted',
       filled: true,
@@ -234,7 +225,7 @@ export function tideView(
     text: { predicted: text.predicted, second },
     words,
     rules:
-      notice === null && hidden === null
+      notice === null && tidal
         ? wholeSteps(bounds[0], bounds[1], RULE_EVERY).map((v) => ({
             v,
             label: `${v} ft`,
@@ -243,7 +234,6 @@ export function tideView(
     series,
     dots,
     notice,
-    hidden,
-    canHide: tides.shown && !spot.tidesShown,
+    noTides,
   }
 }

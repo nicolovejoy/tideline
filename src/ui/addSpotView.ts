@@ -7,9 +7,10 @@ import type {
   ResolveResult,
   SpotFacts,
 } from '../data/resolve.ts'
-// Not from resolve.ts, which would bring the station code with it.
-import { TIDES_WITHIN_MI } from '../data/tideDefault.ts'
+// Imports nothing itself, so it brings no station code with it.
+import { TIDES_WITHIN_MI } from '../data/tideRule.ts'
 import type { Station } from '../spot.ts'
+import { noTidesWords } from './captions.ts'
 
 export const NAME_MAX = 40
 
@@ -28,7 +29,7 @@ export const WORDS = {
   tapToStart: 'Tap the map to drop a pin, or use your location.',
   looking: 'Looking up the forecast and the nearest stations…',
   nameLabel: 'Name',
-  showTides: 'Show tides',
+  pinOnShore: 'For a tide, put the pin on the shore.',
   save: 'Save',
   cancel: 'Cancel',
   tryAgain: 'Try again',
@@ -56,37 +57,39 @@ function stationWords(station: Station): string {
   return `NOAA ${station.id} ${station.name}, ${station.distanceMi} mi ${station.direction}`
 }
 
-/** The three lines under "What this spot gets". */
-export function factsLines(facts: SpotFacts): {
-  weather: string
-  tide: string
-  gauge: string
-} {
+/**
+ * What this spot gets, a line each: its forecast cell, its own height
+ * where USGS gave one, then its tide station and gauge, or in their place
+ * the one line saying why it has no tide.
+ */
+export function factsLines(facts: SpotFacts): string[] {
   const { nws, tideStation, gauge } = facts
+  const lines = [
+    `Weather: NWS cell ${nws.office} ${nws.gridX},${nws.gridY}, ${feet(nws.elevationFt)}, ${facts.timeZone}.`,
+  ]
+  if (facts.elevationFt !== null) {
+    lines.push(`Height: ${feet(facts.elevationFt)} above sea level, from USGS.`)
+  }
+  const none = noTidesWords(facts)
+  if (none !== null) {
+    // Near a station it is the spot's height that rules the tide out, and
+    // the pin can be moved: a search for a beach can land in the hills
+    // behind it. Far from any station there is nowhere to move it to.
+    const near = tideStation.distanceMi <= TIDES_WITHIN_MI
+    return [...lines, near ? `${none} ${WORDS.pinOnShore}` : none]
+  }
+
   const curve =
     tideStation.type === 'harmonic'
       ? '6-minute curve.'
       : 'Highs and lows only; the curve will be interpolated.'
-  return {
-    weather: `Weather: NWS cell ${nws.office} ${nws.gridX},${nws.gridY}, ${feet(nws.elevationFt)}, ${facts.timeZone}.`,
-    tide: `Tide: ${stationWords(tideStation)}. ${curve}`,
-    gauge:
-      gauge.id === tideStation.id
-        ? 'Gauge: its own.'
-        : `Gauge: ${stationWords(gauge)}.`,
-  }
-}
-
-/**
- * Why the tide is off to start with, or null where it is on. Where both
- * reasons hold, the distance: a far station is the plainer fact.
- */
-export function tidesOffReason(facts: SpotFacts): string | null {
-  if (facts.tidesShown) return null
-  if (facts.tideStation.distanceMi > TIDES_WITHIN_MI) {
-    return `Off to start: the nearest station is ${facts.tideStation.distanceMi} mi away.`
-  }
-  return `Off to start: the cell is ${feet(facts.nws.elevationFt)} up.`
+  return [
+    ...lines,
+    `Tide: ${stationWords(tideStation)}. ${curve}`,
+    gauge.id === tideStation.id
+      ? 'Gauge: its own.'
+      : `Gauge: ${stationWords(gauge)}.`,
+  ]
 }
 
 export function failureWords(reason: ResolveFailure): string {

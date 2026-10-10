@@ -5,17 +5,16 @@ import { PanelStack } from '../chart/PanelStack.tsx'
 import { cursorText } from '../chart/readout.ts'
 import { linearScale } from '../chart/scales.ts'
 import { useSpotData } from '../data/useSpotData.ts'
+import { hasTides } from '../spot.ts'
 import type { Spot } from '../spot.ts'
 import { formatDay, formatTime } from '../time.ts'
 import { WORDS, removeQuestion } from './addSpotView.ts'
 import { tideCaption, weatherCaption } from './captions.ts'
-import { readTidesShown, writeTidesShown } from './choices.ts'
 import { DayList } from './DayList.tsx'
 import { dayRows, tonightWords } from './dayList.ts'
 import { HiLoTable } from './HiLoTable.tsx'
 import { MonthView } from './MonthView.tsx'
 import { dayMarkers, selectedDay } from './selection.ts'
-import { TidesHidden } from './TidesHidden.tsx'
 import { tideView } from './tideView.ts'
 import type { CursorPick } from './tideView.ts'
 import { TonightStrip } from './TonightStrip.tsx'
@@ -40,8 +39,9 @@ interface SpotScreenProps {
  */
 export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
   const zone = spot.timeZone
-  const [tidesShown, setTidesShown] = useState(() => readTidesShown(spot))
-  const data = useSpotData(spot, tidesShown)
+  // A fact of the spot, not a choice: there is no switch.
+  const tidal = hasTides(spot)
+  const data = useSpotData(spot, tidal)
   const { days, spans, hilo, forecast } = data
 
   const [pickedDay, setPickedDay] = useState<string | null>(null)
@@ -53,7 +53,7 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
   // Removing asks once, on the line itself.
   const [removing, setRemoving] = useState(false)
   const selected = selectedDay(data, pickedDay)
-  const tide = tideView(data, selected, pick, { spot, shown: tidesShown })
+  const tide = tideView(data, selected, pick, spot)
   const weather = weatherView(forecast, selected, tide.cursor, data.now)
   const cursorTime = formatTime(tide.cursor, zone)
   const markers = dayMarkers(selected, data.now)
@@ -71,9 +71,9 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
         { now: data.now, days, spans, hilo, forecast },
         pickedDay,
         zone,
-        tidesShown,
+        tidal,
       ),
-    [data.now, days, spans, hilo, forecast, pickedDay, zone, tidesShown],
+    [data.now, days, spans, hilo, forecast, pickedDay, zone, tidal],
   )
 
   const dayTop = useRef<HTMLElement>(null)
@@ -106,24 +106,16 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
     window.scrollTo(0, 0)
   }
 
-  const showTides = (shown: boolean) => {
-    writeTidesShown(spot, shown)
-    setTidesShown(shown)
-  }
-
   if (view === 'month') {
     return (
       <MonthView
         spot={spot}
         today={data.today}
         hilo={hilo}
-        tidesShown={tidesShown}
         month={month}
-        hidden={tide.hidden}
-        canHide={tide.canHide}
+        noTides={tide.noTides}
         onMonth={setMonth}
         onBack={backToForecast}
-        onShowTides={showTides}
       />
     )
   }
@@ -140,12 +132,6 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
           <p className="day-cursor">at {cursorTime}</p>
         </header>
 
-        {/* Outside the stack, which takes every press for the cursor; a
-            button inside it would not get its tap. */}
-        {tide.hidden !== null && (
-          <TidesHidden words={tide.hidden} onShow={() => showTides(true)} />
-        )}
-
         <PanelStack
           start={selected.span.start}
           end={selected.span.end}
@@ -160,7 +146,7 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
         >
           {({ width, x }) => (
             <>
-              {tide.hidden !== null ? null : tide.notice !== null ? (
+              {tide.noTides !== null ? null : tide.notice !== null ? (
                 <p className="notice">{tide.notice}</p>
               ) : (
                 <Panel
@@ -209,9 +195,11 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
           <HiLoTable events={tide.events} timeZone={zone} />
         )}
 
-        {tide.hidden === null && (
-          <p className="caption">
-            {tideCaption(spot, {
+        {/* Where the tide's caption goes: the caption, or why there is no
+            tide here. */}
+        <p className="caption">
+          {tide.noTides ??
+            tideCaption(spot, {
               predictions: data.predictions,
               hilo,
               observed: data.observed,
@@ -219,20 +207,7 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
               today: data.today,
               isToday: selected.isToday,
             })}
-            {tide.canHide && (
-              <>
-                {' '}
-                <button
-                  type="button"
-                  className="tides-toggle"
-                  onClick={() => showTides(false)}
-                >
-                  Hide tides
-                </button>
-              </>
-            )}
-          </p>
-        )}
+        </p>
         <p className="caption">{weatherCaption(spot, forecast, data.today)}</p>
         {onRemove &&
           (removing ? (
