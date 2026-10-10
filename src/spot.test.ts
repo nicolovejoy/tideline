@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest'
-import { CAMPUS_POINT, SPOTS, hasOwnGauge, spotById } from './spot.ts'
+import {
+  CAMPUS_POINT,
+  SPOTS,
+  hasOwnCurve,
+  hasOwnGauge,
+  spotById,
+} from './spot.ts'
 import gaviotaCell from './data/__fixtures__/nws-gridpoint-LOX-87-76.json'
 import laCumbreCell from './data/__fixtures__/nws-gridpoint-LOX-105-74.json'
 import campusCell from './data/__fixtures__/nws-gridpoint-LOX-100-71.json'
@@ -49,6 +55,25 @@ describe('the spots', () => {
 
   test('only La Cumbre Peak has an elevation worth saying', () => {
     expect(SPOTS.map((spot) => spot.elevationFt)).toEqual([null, null, 3997])
+  })
+
+  test('every shipped station is harmonic, so each spot has its own curve', () => {
+    // Verified against NOAA's station metadata on 2026-10-10: 9411340 and
+    // 9411399 are type R. Subordinate stations arrive with #4.
+    for (const spot of SPOTS) {
+      expect(spot.tideStation.type).toBe('harmonic')
+      expect(spot.gauge.type).toBe('harmonic')
+      expect(hasOwnCurve(spot)).toBe(true)
+    }
+  })
+
+  test('a spot at a subordinate station has no curve of its own', () => {
+    const gaviota = spotById('gaviota')
+    const ventura = {
+      ...gaviota,
+      tideStation: { ...gaviota.tideStation, type: 'subordinate' as const },
+    }
+    expect(hasOwnCurve(ventura)).toBe(false)
   })
 
   test('an id that is not a spot means Campus Point', () => {
