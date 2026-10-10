@@ -7,6 +7,7 @@ import { linearScale } from '../chart/scales.ts'
 import { useSpotData } from '../data/useSpotData.ts'
 import type { Spot } from '../spot.ts'
 import { formatDay, formatTime } from '../time.ts'
+import { WORDS, removeQuestion } from './addSpotView.ts'
 import { tideCaption, weatherCaption } from './captions.ts'
 import { readTidesShown, writeTidesShown } from './choices.ts'
 import { DayList } from './DayList.tsx'
@@ -27,6 +28,8 @@ const HEADROOM = 14
 
 interface SpotScreenProps {
   spot: Spot
+  /** Given for a spot the user saved, which can be removed. */
+  onRemove?: () => void
 }
 
 /**
@@ -35,7 +38,7 @@ interface SpotScreenProps {
  * afresh for each spot, so a switch starts from saved data, today and a
  * resting cursor, as a first open does.
  */
-export function SpotScreen({ spot }: SpotScreenProps) {
+export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
   const zone = spot.timeZone
   const [tidesShown, setTidesShown] = useState(() => readTidesShown(spot))
   const data = useSpotData(spot, tidesShown)
@@ -47,6 +50,8 @@ export function SpotScreen({ spot }: SpotScreenProps) {
   // about the view is remembered.
   const [view, setView] = useState<'forecast' | 'month'>('forecast')
   const [month, setMonth] = useState<string | null>(null)
+  // Removing asks once, on the line itself.
+  const [removing, setRemoving] = useState(false)
   const selected = selectedDay(data, pickedDay)
   const tide = tideView(data, selected, pick, { spot, shown: tidesShown })
   const weather = weatherView(forecast, selected, tide.cursor, data.now)
@@ -229,6 +234,32 @@ export function SpotScreen({ spot }: SpotScreenProps) {
           </p>
         )}
         <p className="caption">{weatherCaption(spot, forecast, data.today)}</p>
+        {onRemove &&
+          (removing ? (
+            <p className="caption remove-spot">
+              <span>{removeQuestion(spot.name)}</span>{' '}
+              <button type="button" className="text-button" onClick={onRemove}>
+                {WORDS.removeYes}
+              </button>{' '}
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setRemoving(false)}
+              >
+                {WORDS.removeNo}
+              </button>
+            </p>
+          ) : (
+            <p className="caption remove-spot">
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setRemoving(true)}
+              >
+                {WORDS.remove}
+              </button>
+            </p>
+          ))}
       </section>
 
       <DayList rows={rows} onSelect={selectDay} onMonths={openMonths} />
