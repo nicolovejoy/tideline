@@ -153,7 +153,7 @@ describe('removeQuestion', () => {
 describe('WORDS', () => {
   test('the line shown when the add screen could not be loaded', () => {
     expect(WORDS.addUnavailable).toBe(
-      "Couldn't load the map. Check the connection and try again.",
+      "Couldn't load the map. Check the connection and reload the page.",
     )
   })
   test('the separator on the remove line', () => {

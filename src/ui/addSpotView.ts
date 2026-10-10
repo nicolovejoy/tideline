@@ -27,7 +27,8 @@ export const WORDS = {
   cancel: 'Cancel',
   tryAgain: 'Try again',
   loadingMap: 'Loading the map…',
-  addUnavailable: "Couldn't load the map. Check the connection and try again.",
+  addUnavailable:
+    "Couldn't load the map. Check the connection and reload the page.",
   remove: 'Remove this spot',
   removeYes: 'Yes, remove',
   removeNo: 'Keep',
