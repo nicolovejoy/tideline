@@ -25,7 +25,7 @@ Then open http://localhost:5173. `npm test` runs the tests.
 
 - **Tides:** NOAA CO-OPS, the nearest station per spot (named on screen), predicted and observed; where the station publishes highs and lows only, the curve is interpolated between them and labelled so.
 - **Weather:** the US National Weather Service forecast for the 2.5 km grid cell at the spot.
-- **Map:** Leaflet on OpenStreetMap tiles, © OpenStreetMap contributors.
+- **Map and place search:** Leaflet on OpenStreetMap tiles, © OpenStreetMap contributors; place names looked up with OpenStreetMap's Nominatim.
 - **Sun and moon:** computed in the browser with `astronomy-engine`, and tested against US Naval Observatory times.
 
 The browser calls these services directly. There is no server, no account and no API key.
