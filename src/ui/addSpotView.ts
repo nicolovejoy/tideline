@@ -1,6 +1,7 @@
 // The words of the add screen, and whether it can save. No React here.
 
 import type { LatLon } from '../data/geo.ts'
+import type { Place } from '../data/geocode.ts'
 import type {
   ResolveFailure,
   ResolveResult,
@@ -18,6 +19,11 @@ export const WORDS = {
   locate: 'Use my location',
   locating: 'Finding you…',
   locateFailed: "Couldn't get your location. Tap the map instead.",
+  placeLabel: 'Place',
+  search: 'Search',
+  searching: 'Searching…',
+  noPlace: 'No place by that name in the US.',
+  searchFailed: "Couldn't reach the place search. Try again in a minute.",
   mapLabel: 'Map. Tap to drop a pin.',
   tapToStart: 'Tap the map to drop a pin, or use your location.',
   looking: 'Looking up the forecast and the nearest stations…',
@@ -39,7 +45,7 @@ export const WORDS = {
 export const MAP = {
   tiles: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   attribution:
-    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · Search by <a href="https://nominatim.org">Nominatim</a>',
 } as const
 
 const feet = (ft: number) => `${ft.toLocaleString('en-US')} ft`
@@ -92,6 +98,33 @@ export function failureWords(reason: ResolveFailure): string {
 
 export function cleanName(raw: string): string {
   return raw.trim().slice(0, NAME_MAX)
+}
+
+export type SearchState =
+  | { status: 'idle' }
+  | { status: 'searching' }
+  | { status: 'found'; place: Place }
+  | { status: 'none' }
+  | { status: 'failed' }
+
+/** The line under the search row: what was found, or why nothing was. */
+export function searchLine(state: SearchState): string | null {
+  switch (state.status) {
+    case 'idle':
+    case 'searching':
+      return null
+    case 'found':
+      return state.place.displayName
+    case 'none':
+      return WORDS.noPlace
+    case 'failed':
+      return WORDS.searchFailed
+  }
+}
+
+/** The name field after a search: what was typed, or the place's name for a blank. */
+export function suggestedName(typed: string, place: Place): string {
+  return cleanName(typed) === '' ? cleanName(place.name) : typed
 }
 
 export function canSave(

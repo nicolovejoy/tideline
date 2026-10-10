@@ -8,9 +8,12 @@ import {
   factsLines,
   failureWords,
   removeQuestion,
+  searchLine,
+  suggestedName,
   tidesOffReason,
 } from './addSpotView.ts'
 import type { SpotFacts } from '../data/resolve.ts'
+import type { Place } from '../data/geocode.ts'
 
 const CAMPUS: SpotFacts = {
   lat: 34.4046,
@@ -161,11 +164,51 @@ describe('WORDS', () => {
   })
 })
 
+const SANTA_BARBARA: Place = {
+  lat: 34.4221319,
+  lon: -119.702667,
+  name: 'Santa Barbara',
+  displayName: 'Santa Barbara, Santa Barbara County, California, United States',
+  bounds: { south: 34.336, north: 34.464, west: -119.86, east: -119.64 },
+}
+
+describe('searchLine', () => {
+  test('nothing before a search, and nothing while one runs', () => {
+    expect(searchLine({ status: 'idle' })).toBeNull()
+    expect(searchLine({ status: 'searching' })).toBeNull()
+  })
+  test('the full name of what was found', () => {
+    expect(searchLine({ status: 'found', place: SANTA_BARBARA })).toBe(
+      'Santa Barbara, Santa Barbara County, California, United States',
+    )
+  })
+  test('the two failures', () => {
+    expect(searchLine({ status: 'none' })).toBe(WORDS.noPlace)
+    expect(searchLine({ status: 'failed' })).toBe(WORDS.searchFailed)
+  })
+})
+
+describe('suggestedName', () => {
+  test("a typed name stays, the place's fills a blank", () => {
+    expect(suggestedName('My beach', SANTA_BARBARA)).toBe('My beach')
+    expect(suggestedName('', SANTA_BARBARA)).toBe('Santa Barbara')
+    expect(suggestedName('   ', SANTA_BARBARA)).toBe('Santa Barbara')
+  })
+  test("the place's name is cut to the limit", () => {
+    const long = { ...SANTA_BARBARA, name: 'x'.repeat(60) }
+    expect(suggestedName('', long)).toHaveLength(NAME_MAX)
+  })
+})
+
 describe('MAP', () => {
   test("OpenStreetMap's tiles and their credit", () => {
     expect(MAP.tiles).toBe('https://tile.openstreetmap.org/{z}/{x}/{y}.png')
     expect(MAP.attribution).toBe(
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · Search by <a href="https://nominatim.org">Nominatim</a>',
     )
+  })
+  test('credits OpenStreetMap and Nominatim', () => {
+    expect(MAP.attribution).toContain('OpenStreetMap')
+    expect(MAP.attribution).toContain('Nominatim')
   })
 })
