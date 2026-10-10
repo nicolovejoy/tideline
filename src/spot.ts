@@ -1,6 +1,7 @@
 // The spots, hard-coded until saving your own arrives. Facts verified against
-// the live NOAA and NWS APIs on 2026-10-09. Directions are the 8-point
-// compass name of the bearing from the spot to the station.
+// the live NOAA and NWS APIs on 2026-10-09, and the station types against
+// NOAA's station metadata on 2026-10-10. Directions are the 8-point compass
+// name of the bearing from the spot to the station.
 
 /** A NOAA tide station, as it stands from one spot. */
 export interface Station {
@@ -8,6 +9,12 @@ export interface Station {
   name: string
   distanceMi: number
   direction: string
+  /**
+   * NOAA's own distinction. A harmonic station publishes a 6-minute curve;
+   * a subordinate one publishes highs and lows only, and a 6-minute request
+   * to it returns an error, so its curve is interpolated on the device.
+   */
+  type: 'harmonic' | 'subordinate'
 }
 
 export interface Spot {
@@ -32,7 +39,11 @@ export interface Spot {
   tidesShown: boolean
 }
 
-const SANTA_BARBARA = { id: '9411340', name: 'Santa Barbara' }
+const SANTA_BARBARA = {
+  id: '9411340',
+  name: 'Santa Barbara',
+  type: 'harmonic',
+} as const
 
 export const CAMPUS_POINT: Spot = {
   id: 'campus-point',
@@ -62,6 +73,7 @@ const GAVIOTA: Spot = {
     name: 'Gaviota State Park',
     distanceMi: 0.2,
     direction: 'south',
+    type: 'harmonic',
   },
   gauge: { ...SANTA_BARBARA, distanceMi: 31, direction: 'east' },
   tidesShown: true,
@@ -91,4 +103,9 @@ export function spotById(id: string | null): Spot {
 /** Whether the spot's observed level comes from its own tide station. */
 export function hasOwnGauge(spot: Spot): boolean {
   return spot.gauge.id === spot.tideStation.id
+}
+
+/** Whether the spot's tide station publishes a curve, or highs and lows only. */
+export function hasOwnCurve(spot: Spot): boolean {
+  return spot.tideStation.type === 'harmonic'
 }

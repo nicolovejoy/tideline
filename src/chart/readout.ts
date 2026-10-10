@@ -98,9 +98,15 @@ export function signedFeet(ft: number): string {
 
 /**
  * The readout in words: the prediction, and the reading if there is one at
- * the cursor. Shared by what is drawn and what a screen reader is told.
+ * the cursor. Shared by what is drawn and what a screen reader is told. The
+ * curve is NOAA's prediction, or one interpolated on the device from the
+ * highs and lows where the station publishes no curve, and the word says
+ * which.
  */
-export function tideWords(readout: TideReadout): {
+export function tideWords(
+  readout: TideReadout,
+  curve: 'predicted' | 'interpolated' = 'predicted',
+): {
   predicted: string
   observed: string | null
 } {
@@ -110,7 +116,7 @@ export function tideWords(readout: TideReadout): {
     predicted:
       predictedFt === null
         ? 'No prediction here'
-        : `${feet(predictedFt)} predicted`,
+        : `${feet(predictedFt)} ${curve}`,
     observed:
       observedFt === null ? null : `${feet(observedFt)} observed${above}`,
   }

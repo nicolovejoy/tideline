@@ -13,6 +13,7 @@ import {
 import hiloRaw from './__fixtures__/noaa-hilo-20261008-20261022.json?raw'
 import curveRaw from './__fixtures__/noaa-predictions-20261008-20261009.json?raw'
 import observedRaw from './__fixtures__/noaa-water-level-20261008-20261009.json?raw'
+import venturaErrorRaw from './__fixtures__/noaa-predictions-9411189-error.json?raw'
 
 const hilo: unknown = JSON.parse(hiloRaw)
 const curve: unknown = JSON.parse(curveRaw)
@@ -99,6 +100,13 @@ describe('parsePredictions', () => {
     }
     expect(() => parsePredictions(body)).toThrow(
       'NOAA: No Predictions data was found.',
+    )
+  })
+
+  test('a 6-minute request to a subordinate station is an error, as recorded at Ventura', () => {
+    // 9411189 publishes highs and lows only. This is NOAA's whole answer.
+    expect(() => parsePredictions(JSON.parse(venturaErrorRaw))).toThrow(
+      'NOAA: No Predictions data was found. Please make sure the Datum input is valid.',
     )
   })
 
