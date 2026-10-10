@@ -1,5 +1,7 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import type { FormEvent } from 'react'
 import type { LatLon } from '../data/geo.ts'
+import { fetchPlace } from '../data/geocode.ts'
 import { fetchElevationFt, fetchPoints } from '../data/nws.ts'
 import { resolveSpot } from '../data/resolve.ts'
 import type { ResolveResult } from '../data/resolve.ts'
@@ -14,9 +16,13 @@ import {
   cleanName,
   factsLines,
   failureWords,
+  searchLine,
+  suggestedName,
   tidesOffReason,
 } from './addSpotView.ts'
+import type { SearchState } from './addSpotView.ts'
 import { SpotMap } from './SpotMap.tsx'
+import type { Look } from './SpotMap.tsx'
 
 const LOCATE_TIMEOUT = 15_000
 
@@ -34,7 +40,9 @@ export interface AddSpotProps {
  */
 export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
   const [pin, setPin] = useState<LatLon | null>(null)
-  const [look, setLook] = useState<LatLon | null>(null)
+  const [look, setLook] = useState<Look | null>(null)
+  const [query, setQuery] = useState('')
+  const [search, setSearch] = useState<SearchState>({ status: 'idle' })
   const [name, setName] = useState('')
   const [stations, setStations] = useState<StationRow[] | null>(null)
   const [stationsFailed, setStationsFailed] = useState(false)
@@ -47,6 +55,16 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
   )
   const nameId = useId()
   const tidesId = useId()
+  const placeId = useId()
+
+  // A search that answers after the screen is gone sets nothing.
+  const gone = useRef(false)
+  useEffect(() => {
+    gone.current = false
+    return () => {
+      gone.current = true
+    }
+  }, [])
 
   // The list is a chunk of its own and can fail to arrive like any fetch.
   // Try again asks for it afresh.
@@ -100,6 +118,28 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
     }
   }
 
+  const submitSearch = (event: FormEvent) => {
+    event.preventDefault()
+    if (query.trim() === '' || search.status === 'searching') return
+    setSearch({ status: 'searching' })
+    fetchPlace(query).then(
+      (place) => {
+        if (gone.current) return
+        if (!place) {
+          setSearch({ status: 'none' })
+          return
+        }
+        setSearch({ status: 'found', place })
+        dropPin({ lat: place.lat, lon: place.lon })
+        setLook({ lat: place.lat, lon: place.lon, bounds: place.bounds })
+        setName((typed) => suggestedName(typed, place))
+      },
+      () => {
+        if (!gone.current) setSearch({ status: 'failed' })
+      },
+    )
+  }
+
   const locate = () => {
     if (!('geolocation' in navigator)) {
       setLocating('failed')
@@ -136,6 +176,29 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
 
   return (
     <section className="add-spot">
+      <form className="field search" onSubmit={submitSearch}>
+        <label htmlFor={placeId}>{WORDS.placeLabel}</label>
+        <input
+          id={placeId}
+          type="search"
+          value={query}
+          autoComplete="off"
+          enterKeyHint="search"
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <button
+          type="submit"
+          className="text-button"
+          disabled={search.status === 'searching' || query.trim() === ''}
+        >
+          {search.status === 'searching' ? WORDS.searching : WORDS.search}
+        </button>
+        {/* Always rendered, so a screen reader is told when the line changes. */}
+        <p className="caption search-line" role="status">
+          {searchLine(search)}
+        </p>
+      </form>
+
       <div className="locate">
         <button
           type="button"
