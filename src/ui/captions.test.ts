@@ -323,3 +323,79 @@ describe('monthCaption', () => {
     )
   })
 })
+
+describe('tideCaption at a spot whose station publishes highs and lows only', () => {
+  const gaviota = spotById('gaviota')
+  const VENTURA = {
+    ...gaviota,
+    id: 'ventura-test',
+    tideStation: {
+      id: '9411189',
+      name: 'Ventura',
+      distanceMi: 33,
+      direction: 'east',
+      type: 'subordinate' as const,
+    },
+  }
+  const THEIRS =
+    "Tide: NOAA 9411189 Ventura, 33 mi east, highs and lows only. Curve interpolated between them, not NOAA's."
+  const GAUGE = 'Gauge: NOAA 9411340 Santa Barbara, 31 mi east'
+
+  function ventura(
+    predictions: Loaded<TidePoint[]>,
+    observed: Loaded<TidePoint[]>,
+    readings: TidePoint[],
+    rest: { hilo?: Loaded<TideExtreme[]>; isToday?: boolean } = {},
+  ): string {
+    return tideCaption(VENTURA, {
+      predictions,
+      hilo: HILO,
+      observed,
+      readings,
+      today: TODAY,
+      isToday: true,
+      ...rest,
+    })
+  }
+
+  test('says the curve is interpolated, then names the gauge as at any spot without one', () => {
+    expect(ventura(loaded('ready'), loaded('ready'), [EARLIER, READING])).toBe(
+      `${THEIRS} ${GAUGE}, observed through 2:06 PM, preliminary.`,
+    )
+  })
+
+  test('a failed refresh is reported once, by the highs and lows, not by the curve too', () => {
+    const stale: Loaded<TideExtreme[]> = {
+      data: [],
+      fetchedAt: DAYS_AGO,
+      span: null,
+      status: 'stale',
+    }
+    // The derived curve carries the same stale status and stamp.
+    const curve: Loaded<TidePoint[]> = {
+      data: [],
+      fetchedAt: DAYS_AGO,
+      span: null,
+      status: 'stale',
+    }
+    expect(ventura(curve, loaded('ready'), [READING], { hilo: stale })).toBe(
+      `${THEIRS} Couldn't refresh the high and low times. Showing those from Mon Oct 5, 1:33 AM. ${GAUGE}, observed through 2:06 PM, preliminary.`,
+    )
+  })
+
+  test('with nothing saved, the highs and lows are unavailable and so is the curve', () => {
+    const none: Loaded<TideExtreme[]> = {
+      data: null,
+      fetchedAt: null,
+      span: null,
+      status: 'unavailable',
+    }
+    expect(
+      ventura(loaded('unavailable', null), loaded('ready'), [READING], {
+        hilo: none,
+      }),
+    ).toBe(
+      `${THEIRS} High and low times unavailable. ${GAUGE}, observed through 2:06 PM, preliminary.`,
+    )
+  })
+})
