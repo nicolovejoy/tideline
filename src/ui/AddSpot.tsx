@@ -13,6 +13,7 @@ import {
   NAME_MAX,
   WORDS,
   canSave,
+  canSearch,
   cleanName,
   factsLines,
   failureWords,
@@ -120,7 +121,7 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault()
-    if (query.trim() === '' || search.status === 'searching') return
+    if (!canSearch(query, search)) return
     setSearch({ status: 'searching' })
     fetchPlace(query).then(
       (place) => {
@@ -183,13 +184,15 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
           type="search"
           value={query}
           autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
           enterKeyHint="search"
           onChange={(event) => setQuery(event.target.value)}
         />
         <button
           type="submit"
           className="text-button"
-          disabled={search.status === 'searching' || query.trim() === ''}
+          disabled={!canSearch(query, search)}
         >
           {search.status === 'searching' ? WORDS.searching : WORDS.search}
         </button>

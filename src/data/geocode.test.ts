@@ -36,6 +36,14 @@ describe('parsePlaces', () => {
       },
     })
   })
+  test('non-object entries are dropped', () => {
+    expect(parsePlaces([null, 'x', 5])).toEqual([])
+  })
+  test('an entry with a blank coordinate is dropped', () => {
+    const [first] = JSON.parse(santaBarbaraRaw)
+    expect(parsePlaces([{ ...first, lat: '' }])).toEqual([])
+    expect(parsePlaces([{ ...first, lon: '  ' }])).toEqual([])
+  })
   test('a beach', () => {
     const [beach] = parsePlaces(JSON.parse(leadbetterRaw))
     expect(beach.name).toBe('Leadbetter Beach')

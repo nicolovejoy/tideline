@@ -135,6 +135,11 @@ export function canSave(
   return pin !== null && cleanName(name) !== '' && result?.ok === true
 }
 
+/** Whether the search button can fire: something typed, and no search in flight. */
+export function canSearch(query: string, search: SearchState): boolean {
+  return query.trim() !== '' && search.status !== 'searching'
+}
+
 export function removeQuestion(name: string): string {
   return `Remove ${name}?`
 }

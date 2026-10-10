@@ -4,6 +4,7 @@ import {
   NAME_MAX,
   WORDS,
   canSave,
+  canSearch,
   cleanName,
   factsLines,
   failureWords,
@@ -210,5 +211,16 @@ describe('MAP', () => {
   test('credits OpenStreetMap and Nominatim', () => {
     expect(MAP.attribution).toContain('OpenStreetMap')
     expect(MAP.attribution).toContain('Nominatim')
+  })
+})
+
+describe('canSearch', () => {
+  test('blank and whitespace cannot search', () => {
+    expect(canSearch('', { status: 'idle' })).toBe(false)
+    expect(canSearch('   ', { status: 'idle' })).toBe(false)
+  })
+  test('a word can, unless a search is running', () => {
+    expect(canSearch('Gaviota', { status: 'idle' })).toBe(true)
+    expect(canSearch('Gaviota', { status: 'searching' })).toBe(false)
   })
 })

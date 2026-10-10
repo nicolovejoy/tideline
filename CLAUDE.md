@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Stage 1 is built; its phone check is down to one item. Stage 2 has begun: three spots, the month view, the interpolated curve and own spots from a map are merged, and place search by name is on a pull request.
 
 - Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and tides hidden by default at La Cumbre; then the month view (this month and the next three, sunset, moon and highs and lows per day); then a curve interpolated from the highs and lows for stations that publish only those, labelled "interpolated" (a saved spot at a subordinate station uses it); then your own spots: a pin on a map (Leaflet, OpenStreetMap tiles) or the device's location, named and saved on the device, with the NWS cell, nearest tide station and nearest gauge worked out from a baked station list (`scripts/bake-stations.mjs`, `src/data/stations.json`); then a place name typed on the add screen, looked up with OpenStreetMap's Nominatim (`src/data/geocode.ts`), which pans the map there and drops the pin.
-- Not built: everything after own spots. It is tracked as GitHub issues.
+- Not built: everything after place search. It is tracked as GitHub issues.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
 

@@ -38,6 +38,7 @@ export function searchUrl(query: string): string {
 
 const num = (value: unknown): number | null => {
   if (typeof value !== 'string') return null
+  if (value.trim() === '') return null
   const n = Number(value)
   return Number.isFinite(n) ? n : null
 }
