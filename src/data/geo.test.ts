@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import {
+  inUsBounds,
   bearingDeg,
   directionWord,
   distanceMi,
@@ -94,5 +95,49 @@ describe('wrapLon', () => {
   test('180 comes back as -180, the same meridian', () => {
     expect(wrapLon(180)).toBe(-180)
     expect(wrapLon(-180)).toBe(-180)
+  })
+})
+
+describe('inUsBounds', () => {
+  const at = (lat: number, lon: number) => inUsBounds({ lat, lon })
+
+  test('the lower 48, from corner to corner', () => {
+    expect(at(34.4046, -119.844)).toBe(true) // Campus Point
+    expect(at(24.55, -81.8)).toBe(true) // Key West
+    expect(at(25.9, -97.5)).toBe(true) // Brownsville
+    expect(at(29.56, -104.37)).toBe(true) // Presidio, on the Rio Grande
+    expect(at(48.99, -123.1)).toBe(true) // Point Roberts
+    expect(at(44.8, -66.95)).toBe(true) // Lubec, Maine
+  })
+
+  test('Alaska, the Aleutians past the date line, and Hawaii out to Midway', () => {
+    expect(at(71.29, -156.79)).toBe(true) // Utqiagvik
+    expect(at(55.34, -131.65)).toBe(true) // Ketchikan
+    expect(at(52.9, 172.9)).toBe(true) // Attu
+    expect(at(21.31, -157.86)).toBe(true) // Honolulu
+    expect(at(28.2, -177.4)).toBe(true) // Midway
+  })
+
+  test('the territories', () => {
+    expect(at(18.47, -66.1)).toBe(true) // San Juan
+    expect(at(17.73, -64.75)).toBe(true) // St Croix
+    expect(at(13.44, 144.79)).toBe(true) // Guam
+    expect(at(15.2, 145.75)).toBe(true) // Saipan
+    expect(at(-14.28, -170.7)).toBe(true) // Pago Pago
+  })
+
+  // NWS answered HTTP 500, not 404, for each of these on 2026-10-10.
+  test('open water in the tropics, where NWS answers with an error', () => {
+    expect(at(15, -96)).toBe(false) // off Oaxaca
+    expect(at(20, -115)).toBe(false) // off Mexico
+    expect(at(24.5, -112.5)).toBe(false) // off southern Baja
+    expect(at(16, -80)).toBe(false) // the Caribbean
+  })
+
+  test('the rest of the world', () => {
+    expect(at(17.06, -96.72)).toBe(false) // Oaxaca
+    expect(at(51.5, -0.12)).toBe(false) // London
+    expect(at(-33.87, 151.21)).toBe(false) // Sydney
+    expect(at(0, 0)).toBe(false)
   })
 })

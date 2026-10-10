@@ -123,7 +123,24 @@ describe('resolveSpot', () => {
     expect(result).toEqual({ ok: false, reason: 'outside' })
   })
 
-  test('any other failure, from either request, is "unreachable"', async () => {
+  // NWS answers HTTP 500, not 404, for open water in the tropics. Nothing
+  // there can be tried again, so it reads as land outside the US does.
+  test('any failure for a point outside the US is "outside"', async () => {
+    const error = async () => {
+      throw new Error('HTTP 500')
+    }
+    expect(await resolveSpot(15, -96, io({ fetchPoints: error }))).toEqual({
+      ok: false,
+      reason: 'outside',
+    })
+    // A world copy east of the date line is the same water.
+    expect(await resolveSpot(15, 264, io({ fetchPoints: error }))).toEqual({
+      ok: false,
+      reason: 'outside',
+    })
+  })
+
+  test('any other failure inside the US, from either request, is "unreachable"', async () => {
     const down = async () => {
       throw new Error('HTTP 503')
     }

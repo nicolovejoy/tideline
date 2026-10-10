@@ -2,7 +2,7 @@
 // stations, and whether the tide is shown to start with. The requests are
 // handed in, so this can be tested without a network.
 
-import { wrapLon } from './geo.ts'
+import { inUsBounds, wrapLon } from './geo.ts'
 import { NwsOutsideError } from './nws.ts'
 import type { NwsCell } from './nws.ts'
 import { nearestStations } from './stations.ts'
@@ -29,7 +29,10 @@ export interface ResolveIo {
   stations: StationRow[]
 }
 
-/** outside: NWS has no forecast there. unreachable: it could not be asked. */
+/**
+ * outside: NWS has no forecast there, or the point is nowhere near the US.
+ * unreachable: a point it should answer for could not be asked about.
+ */
 export type ResolveFailure = 'outside' | 'unreachable'
 
 export type ResolveResult =
@@ -71,9 +74,10 @@ export async function resolveSpot(
       },
     }
   } catch (error) {
-    return {
-      ok: false,
-      reason: error instanceof NwsOutsideError ? 'outside' : 'unreachable',
-    }
+    // NWS says 404 for land it does not cover. For open water in the
+    // tropics it says HTTP 500, which reads as an outage; but nowhere near
+    // the US there is nothing to try again for.
+    const outside = error instanceof NwsOutsideError || !inUsBounds(at)
+    return { ok: false, reason: outside ? 'outside' : 'unreachable' }
   }
 }
