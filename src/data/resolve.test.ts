@@ -21,6 +21,7 @@ function io(overrides: Partial<ResolveIo> = {}): ResolveIo {
   return {
     fetchPoints: async () => LOX,
     fetchElevationFt: async () => 3,
+    fetchPointElevationFt: async () => 12,
     stations: ROWS,
     ...overrides,
   }
@@ -49,7 +50,7 @@ describe('resolveSpot', () => {
         lat: 34.4046,
         lon: -119.844,
         timeZone: 'America/Los_Angeles',
-        elevationFt: null,
+        elevationFt: 12,
         nws: { office: 'LOX', gridX: 100, gridY: 71, elevationFt: 3 },
         tideStation: {
           id: '9411340',
@@ -90,6 +91,36 @@ describe('resolveSpot', () => {
     )
     expect(asked).toEqual([[21.3, -157.9]])
     expect(result.ok && result.facts.lon).toBe(-157.9)
+  })
+
+  test("the spot's own height is asked for at the wrapped, rounded point", async () => {
+    const asked: number[][] = []
+    const result = await resolveSpot(
+      21.30004,
+      202.1,
+      io({
+        fetchPointElevationFt: async (lat, lon) => {
+          asked.push([lat, lon])
+          return 40
+        },
+      }),
+    )
+    expect(asked).toEqual([[21.3, -157.9]])
+    expect(result.ok && result.facts.elevationFt).toBe(40)
+  })
+
+  test('without its own height a spot still resolves, with none', async () => {
+    const result = await resolveSpot(
+      34.4046,
+      -119.844,
+      io({
+        fetchPointElevationFt: async () => {
+          throw new Error('USGS: HTTP 503')
+        },
+      }),
+    )
+    expect(result.ok && result.facts.elevationFt).toBeNull()
+    expect(result.ok && result.facts.nws.elevationFt).toBe(3)
   })
 
   test('a high cell turns tides off', async () => {

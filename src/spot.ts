@@ -24,7 +24,10 @@ export interface Spot {
   lon: number
   /** IANA zone. Every displayed time and calendar day uses it. */
   timeZone: string
-  /** The spot's own height, where it is worth saying: a peak. */
+  /**
+   * The spot's own height above sea level: from USGS for a spot the user
+   * added, null where that could not be had or was never asked.
+   */
   elevationFt: number | null
   /** The 2.5 km NWS forecast cell containing the spot, and its average height. */
   nws: { office: string; gridX: number; gridY: number; elevationFt: number }

@@ -21,6 +21,9 @@ function stationWords(station: Station): string {
   return `NOAA ${id} ${name}, ${distanceMi} mi ${direction}`
 }
 
+/** A spot's own height is said when it is this far from its cell's average. */
+const HEIGHTS_APART_FT = 100
+
 /** A height in whole feet with a thousands comma: '3,258 ft'. */
 function feetHigh(ft: number): string {
   return `${Math.round(ft).toLocaleString('en-US')} ft`
@@ -136,12 +139,16 @@ export function weatherCaption(
   const zone = spot.timeZone
   const cell = feetHigh(spot.nws.elevationFt)
   // The cell is an average over 2.5 km. Where the spot is a peak, that
-  // average is well below it, and saying so stops the forecast looking
-  // wrong.
+  // average is well below it; where it is a beach under hills, well above.
+  // Saying so stops the forecast looking wrong. Where the two are close
+  // the spot's own height adds nothing.
+  const apart =
+    spot.elevationFt !== null &&
+    Math.abs(spot.elevationFt - spot.nws.elevationFt) >= HEIGHTS_APART_FT
   const height =
-    spot.elevationFt === null
-      ? `${cell} above sea level`
-      : `which averages ${cell} above sea level; the spot itself is at ${feetHigh(spot.elevationFt)}`
+    spot.elevationFt !== null && apart
+      ? `which averages ${cell} above sea level; the spot itself is at ${feetHigh(spot.elevationFt)}`
+      : `${cell} above sea level`
   const source = `Weather: NWS forecast for the 2.5 km cell at this spot, ${height}.`
   if (forecast.data === null) return source
 

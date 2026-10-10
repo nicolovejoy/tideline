@@ -26,6 +26,8 @@ export interface ResolveIo {
     gridX: number,
     gridY: number,
   ) => Promise<number>
+  /** The point's own height in feet. The one request that may fail. */
+  fetchPointElevationFt: (lat: number, lon: number) => Promise<number>
   stations: StationRow[]
 }
 
@@ -47,6 +49,9 @@ export async function resolveSpot(
 ): Promise<ResolveResult> {
   // Wrapped before rounding: a tap on a world copy is the same place.
   const at = { lat: round4(lat), lon: round4(wrapLon(lon)) }
+  // Asked alongside NWS, not after it. Without it the spot is still a spot:
+  // null stands in, and the cell's average is what is known of its height.
+  const own = io.fetchPointElevationFt(at.lat, at.lon).catch(() => null)
   try {
     const cell = await io.fetchPoints(at.lat, at.lon)
     const elevationFt = await io.fetchElevationFt(
@@ -60,8 +65,7 @@ export async function resolveSpot(
       facts: {
         ...at,
         timeZone: cell.timeZone,
-        // No source gives the point's own height; issue #9 is where that goes.
-        elevationFt: null,
+        elevationFt: await own,
         nws: {
           office: cell.office,
           gridX: cell.gridX,

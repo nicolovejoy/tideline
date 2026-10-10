@@ -8,6 +8,7 @@ import type { ResolveResult } from '../data/resolve.ts'
 import { newSpotId } from '../data/savedSpots.ts'
 import { loadStations } from '../data/stations.ts'
 import type { StationRow } from '../data/stations.ts'
+import { fetchPointElevationFt } from '../data/usgs.ts'
 import type { Spot } from '../spot.ts'
 import {
   NAME_MAX,
@@ -92,6 +93,7 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
     resolveSpot(pin.lat, pin.lon, {
       fetchPoints,
       fetchElevationFt,
+      fetchPointElevationFt,
       stations,
     }).then((answer) => {
       if (gone) return

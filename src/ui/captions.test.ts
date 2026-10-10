@@ -267,6 +267,31 @@ describe('weatherCaption', () => {
     )
   })
 
+  // Every added spot has a height of its own now, from USGS. It is said
+  // only where it is far enough from the cell's to change the reading.
+  test("a beach under hills gives both; a spot as high as its cell gives the cell's alone", () => {
+    const elCapitan = {
+      ...CAMPUS_POINT,
+      elevationFt: 21,
+      nws: { office: 'LOX', gridX: 95, gridY: 75, elevationFt: 640 },
+    }
+    expect(weatherCaption(elCapitan, forecast('loading', null), TODAY)).toBe(
+      'Weather: NWS forecast for the 2.5 km cell at this spot, which averages 640 ft above sea level; the spot itself is at 21 ft.',
+    )
+    const flat = { ...CAMPUS_POINT, elevationFt: 12 }
+    expect(weatherCaption(flat, forecast('loading', null), TODAY)).toBe(
+      `${SOURCE}.`,
+    )
+    const nearly = { ...elCapitan, elevationFt: 541 }
+    expect(weatherCaption(nearly, forecast('loading', null), TODAY)).toBe(
+      'Weather: NWS forecast for the 2.5 km cell at this spot, 640 ft above sea level.',
+    )
+    const just = { ...elCapitan, elevationFt: 540 }
+    expect(weatherCaption(just, forecast('loading', null), TODAY)).toBe(
+      'Weather: NWS forecast for the 2.5 km cell at this spot, which averages 640 ft above sea level; the spot itself is at 540 ft.',
+    )
+  })
+
   test('a cell at sea level says 0 ft', () => {
     const gaviota = spotById('gaviota')
     expect(weatherCaption(gaviota, forecast('ready'), TODAY)).toBe(

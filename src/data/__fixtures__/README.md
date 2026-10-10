@@ -15,6 +15,7 @@ Real responses, saved so the parsers are tested against what the services actual
 - `nws-points-48.5--3.0.json`: NWS `/points` for a point in France, the 404 body that means "no forecast here".
 - `nominatim-santa-barbara.json`: OpenStreetMap Nominatim's answer to "Santa Barbara" with `format=jsonv2&countrycodes=us&limit=5`, recorded on 2026-10-10: the city, the county and Hatch, New Mexico (a fuzzy match), 3 places. The app asks for `limit=1`; the parser takes the first.
 - `nominatim-leadbetter-beach.json`: the same for "Leadbetter Beach", recorded on 2026-10-10: one place of type beach.
+- `usgs-epqs-34.4586--120.0236.json`: the USGS Elevation Point Query Service's answer for El Capitan State Beach in feet, recorded on 2026-10-10: 20.77 ft, where the NWS cell containing the beach averages 640 ft.
 - `usno-campus-point.ts`: sunset and moonrise from the US Naval Observatory API (`aa.usno.navy.mil/api/rstt/oneday`) for latitude 34.4046, longitude -119.8440.
 
 The NOAA requests all used `datum=MLLW&units=english&time_zone=gmt&format=json`.
