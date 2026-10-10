@@ -4,6 +4,7 @@
 // one, or one from another build, is dropped rather than break every open.
 
 import type { Spot, Station } from '../spot.ts'
+import { evictCache } from './cache.ts'
 
 export const SAVED_KEY = 'tideline:spots:v1'
 
@@ -54,16 +55,31 @@ export function readSavedSpots(): Spot[] {
   }
 }
 
-function writeSavedSpots(spots: Spot[]): void {
+/**
+ * Writes the list and says whether it went in. The list matters more than
+ * any cached data, so when a write fails the whole cache goes to make room
+ * and the write is tried once more. False means storage is disabled or too
+ * full even so: the spot lasts the session and is gone on the next open.
+ */
+function writeSavedSpots(spots: Spot[]): boolean {
+  const text = JSON.stringify(spots)
   try {
-    localStorage.setItem(SAVED_KEY, JSON.stringify(spots))
+    localStorage.setItem(SAVED_KEY, text)
+    return true
   } catch {
-    // Storage is full or disabled. The spot is not kept; the app carries on.
+    evictCache()
+    try {
+      localStorage.setItem(SAVED_KEY, text)
+      return true
+    } catch {
+      return false
+    }
   }
 }
 
-export function addSpot(spot: Spot): void {
-  writeSavedSpots([...readSavedSpots(), spot])
+/** Keeps the spot on the device; false when it could not be kept. */
+export function addSpot(spot: Spot): boolean {
+  return writeSavedSpots([...readSavedSpots(), spot])
 }
 
 export function removeSpot(id: string): void {

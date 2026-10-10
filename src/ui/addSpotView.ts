@@ -29,6 +29,8 @@ export const WORDS = {
   loadingMap: 'Loading the map…',
   addUnavailable:
     "Couldn't load the map. Check the connection and reload the page.",
+  notKept:
+    "Couldn't save this spot on the device: its storage is full. The spot is here until the page is next opened.",
   remove: 'Remove this spot',
   removeYes: 'Yes, remove',
   removeNo: 'Keep',
