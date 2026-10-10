@@ -175,6 +175,81 @@ export async function fetchForecast(
   return parseGridpoint(await response.json())
 }
 
+/** The point is outside every NWS grid: no forecast there, ever. */
+export class NwsOutsideError extends Error {}
+
+export interface NwsCell {
+  office: string
+  gridX: number
+  gridY: number
+  /** IANA zone, the one every time at the spot is shown in. */
+  timeZone: string
+}
+
+const round4 = (n: number) => Math.round(n * 1e4) / 1e4
+
+/** NWS takes four decimals at most and redirects anything longer. */
+export function pointsUrl(lat: number, lon: number): string {
+  return `https://api.weather.gov/points/${round4(lat)},${round4(lon)}`
+}
+
+export function parsePoints(json: unknown): NwsCell {
+  const properties = (json as { properties?: Record<string, unknown> } | null)
+    ?.properties
+  if (!properties) throw new Error('NWS: response has no properties')
+  const { gridId, gridX, gridY, timeZone } = properties
+  if (
+    typeof gridId !== 'string' ||
+    typeof gridX !== 'number' ||
+    typeof gridY !== 'number' ||
+    typeof timeZone !== 'string'
+  ) {
+    throw new Error('NWS: response has no grid cell')
+  }
+  return { office: gridId, gridX, gridY, timeZone }
+}
+
+/** The forecast cell containing a point. Throws NwsOutsideError on a 404. */
+export async function fetchPoints(lat: number, lon: number): Promise<NwsCell> {
+  const response = await fetch(pointsUrl(lat, lon), {
+    headers: { Accept: 'application/geo+json' },
+  })
+  if (response.status === 404) {
+    throw new NwsOutsideError('NWS: no forecast for this point')
+  }
+  if (!response.ok) throw new Error(`NWS: HTTP ${response.status}`)
+  return parsePoints(await response.json())
+}
+
+const FT_PER_M = 3.28084
+
+/** A cell's average height in whole feet, from the gridpoint response. */
+export function parseElevationFt(json: unknown): number {
+  const properties = (json as { properties?: Record<string, unknown> } | null)
+    ?.properties
+  const elevation = properties?.elevation as
+    { unitCode?: unknown; value?: unknown } | undefined
+  if (!elevation || typeof elevation.value !== 'number') {
+    throw new Error('NWS: response has no elevation')
+  }
+  if (elevation.unitCode !== 'wmoUnit:m') {
+    throw new Error(`NWS: elevation is in ${String(elevation.unitCode)}`)
+  }
+  return Math.round(elevation.value * FT_PER_M)
+}
+
+export async function fetchElevationFt(
+  office: string,
+  gridX: number,
+  gridY: number,
+): Promise<number> {
+  const response = await fetch(nwsUrl(office, gridX, gridY), {
+    headers: { Accept: 'application/geo+json' },
+  })
+  if (!response.ok) throw new Error(`NWS: HTTP ${response.status}`)
+  return parseElevationFt(await response.json())
+}
+
 const COMPASS = [
   'N',
   'NNE',
