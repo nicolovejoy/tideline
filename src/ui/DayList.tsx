@@ -5,16 +5,28 @@ interface DayListProps {
   rows: DayRow[]
   /** Called with a row's date when it is tapped. */
   onSelect: (date: string) => void
+  /** Called when the "Months ahead" button is tapped. */
+  onMonths: () => void
 }
 
 /**
  * The 14 days from today. Tapping a row puts that day in the panels and the
- * table above. Kept from drawing again while only the cursor moves.
+ * table above. Kept from drawing again while only the cursor moves. The
+ * heading's button opens the month view.
  */
-export const DayList = memo(function DayList({ rows, onSelect }: DayListProps) {
+export const DayList = memo(function DayList({
+  rows,
+  onSelect,
+  onMonths,
+}: DayListProps) {
   return (
     <section className="days">
-      <h2>14 days</h2>
+      <header className="days-head">
+        <h2>14 days</h2>
+        <button type="button" className="text-button" onClick={onMonths}>
+          Months ahead
+        </button>
+      </header>
       <ol>
         {rows.map((row) => (
           <li key={row.date}>

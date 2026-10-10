@@ -26,6 +26,24 @@ function feetHigh(ft: number): string {
   return `${Math.round(ft).toLocaleString('en-US')} ft`
 }
 
+/** What is wrong with the highs and lows, if anything. */
+function hiloWords(
+  hilo: Loaded<TideExtreme[]>,
+  today: string,
+  timeZone: string,
+): string[] {
+  // Without this the table of highs and lows is simply missing, or stops
+  // short of the last days, with nothing to say why.
+  if (hilo.status === 'unavailable') return ['High and low times unavailable.']
+  if (hilo.status === 'stale' && hilo.fetchedAt !== null) {
+    const saved = when(hilo.fetchedAt, today, timeZone)
+    return [
+      `Couldn't refresh the high and low times. Showing those from ${saved}.`,
+    ]
+  }
+  return []
+}
+
 export interface TideSources {
   predictions: Loaded<TidePoint[]>
   hilo: Loaded<TideExtreme[]>
@@ -53,16 +71,7 @@ export function tideCaption(spot: Spot, tide: TideSources): string {
     parts.push(`Couldn't refresh. Showing predictions from ${saved}.`)
   }
 
-  // Without this the table of highs and lows is simply missing, or stops
-  // short of the last days, with nothing to say why.
-  if (hilo.status === 'unavailable') {
-    parts.push('High and low times unavailable.')
-  } else if (hilo.status === 'stale' && hilo.fetchedAt !== null) {
-    const saved = when(hilo.fetchedAt, today, zone)
-    parts.push(
-      `Couldn't refresh the high and low times. Showing those from ${saved}.`,
-    )
-  }
+  parts.push(...hiloWords(hilo, today, zone))
 
   if (!tide.isToday) return parts.join(' ')
 
@@ -88,6 +97,22 @@ export function tideCaption(spot: Spot, tide: TideSources): string {
   }
 
   return parts.join(' ')
+}
+
+/**
+ * The month view's caption: the station, and what is wrong with the highs
+ * and lows if anything. Nothing about the curve or the gauge, since neither
+ * is on that screen.
+ */
+export function monthCaption(
+  spot: Spot,
+  hilo: Loaded<TideExtreme[]>,
+  today: string,
+): string {
+  return [
+    `Tide: ${stationWords(spot.tideStation)}.`,
+    ...hiloWords(hilo, today, spot.timeZone),
+  ].join(' ')
 }
 
 /** The weather caption. `today` is today's date at the spot. */

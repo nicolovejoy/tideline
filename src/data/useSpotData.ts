@@ -20,9 +20,19 @@ import { fetchForecast, isForecast } from './nws.ts'
 import type { Forecast } from './nws.ts'
 import { hasOwnGauge } from '../spot.ts'
 import type { Spot } from '../spot.ts'
-import { MINUTE, addDays, localDate, localDayStart } from '../time.ts'
+import {
+  MINUTE,
+  addDays,
+  addMonths,
+  localDate,
+  localDayStart,
+  monthOf,
+} from '../time.ts'
 
 const DAYS = 14
+
+/** How many months past this one the month view offers. */
+export const MONTHS_AHEAD = 3
 
 export interface SpotData {
   /** The current instant. Advances every minute and when the page is shown. */
@@ -34,6 +44,11 @@ export interface SpotData {
   day: Span
   /** The 14 local days starting today. */
   window: Span
+  /**
+   * From today to the end of the last month the month view offers. The
+   * highs and lows are fetched for all of it, in one request.
+   */
+  ahead: Span
   days: DayAstro[]
   /** When each of those days starts and ends, in the same order. */
   spans: Span[]
@@ -49,11 +64,14 @@ export interface SpotData {
   forecast: Loaded<Forecast>
 }
 
-/** The spans of time, and the sun and moon, for the 14 days from `today`. */
+/**
+ * The spans of time, and the sun and moon, for the 14 days from `today`, and
+ * `ahead`, which runs to the end of the third month ahead.
+ */
 export function frameFor(
   spot: Spot,
   today: string,
-): Pick<SpotData, 'day' | 'window' | 'days' | 'spans'> {
+): Pick<SpotData, 'day' | 'window' | 'ahead' | 'days' | 'spans'> {
   // One more local midnight than there are days: each day runs from its own
   // midnight to the next, which on a clock-change day is 23 or 25 hours on.
   const midnights = Array.from({ length: DAYS + 1 }, (_, i) =>
@@ -63,9 +81,15 @@ export function frameFor(
     start: midnights[i],
     end: midnights[i + 1],
   }))
+  const lastMonth = addMonths(monthOf(today), MONTHS_AHEAD)
+  const ahead = {
+    start: midnights[0],
+    end: localDayStart(`${addMonths(lastMonth, 1)}-01`, spot.timeZone),
+  }
   return {
     day: spans[0],
     window: { start: midnights[0], end: midnights[DAYS] },
+    ahead,
     days: astroForDays(spot, today, DAYS),
     spans,
   }
@@ -74,7 +98,7 @@ export function frameFor(
 /** What to load for the tide: which source, for which span, and how. */
 export function tideSpecs(
   spot: Spot,
-  frame: Pick<SpotData, 'day' | 'window'>,
+  frame: Pick<SpotData, 'day' | 'window' | 'ahead'>,
 ): {
   predictions: SourceSpec<TidePoint[]>
   hilo: SourceSpec<TideExtreme[]>
@@ -97,7 +121,10 @@ export function tideSpecs(
       spotId: spot.id,
       source: 'hilo',
       isData: isTideExtremes,
-      needed: frame.window,
+      // The month view lists highs and lows months ahead. They never change,
+      // so one longer request a month costs less than a shorter one every day
+      // (the old 14-day window's end moved daily).
+      needed: frame.ahead,
       fetch: (needed) => fetchHiLo(station, needed.start, needed.end),
       isEmpty: noPoints,
     },

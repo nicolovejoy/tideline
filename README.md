@@ -8,7 +8,7 @@ Live at https://tideline.ibuild4you.com
 
 ## Status
 
-Early. The first spot is Campus Point in Santa Barbara, California. The live page shows tonight's sunset and moon; four panels on one time axis for any of the next 14 days (the tide with today's observed water level drawn over it, wind, temperature and sky); that day's highs and lows; and a 14-day list. It can be added to an iPhone home screen. More spots and the month view are next. The roadmap is in the issues: https://github.com/nicolovejoy/tideline/issues
+Early. The first spot is Campus Point in Santa Barbara, California. The live page shows tonight's sunset and moon; four panels on one time axis for any of the next 14 days (the tide with today's observed water level drawn over it, wind, temperature and sky); that day's highs and lows; and a 14-day list. It can be added to an iPhone home screen. Three spots can be switched between, and a month view lists sunset, moon and highs and lows for this month and the next three. The roadmap is in the issues: https://github.com/nicolovejoy/tideline/issues
 
 ## Run it
 

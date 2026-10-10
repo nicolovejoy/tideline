@@ -149,7 +149,8 @@ h1 {
   row-gap: 0.25rem;
   margin-top: 0.75rem;
 }
-.tides-toggle {
+.tides-toggle,
+.text-button {
   padding: 0.5rem 0;
   border: 0;
   background: none;
@@ -159,7 +160,8 @@ h1 {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.tides-toggle:focus-visible {
+.tides-toggle:focus-visible,
+.text-button:focus-visible {
   outline: 2px solid var(--sea);
   outline-offset: 2px;
 }
@@ -432,6 +434,11 @@ h1 {
   font-size: 1.1333rem;
   font-weight: 600;
 }
+.days-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
 .days ol {
   margin: 0.5rem 0 0;
   padding: 0;
@@ -487,4 +494,63 @@ h1 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: 0.9em;
+}
+
+/* One month at a time. The rows are the 14-day rows without weather, and
+   today's row carries the tint the chosen day has there. */
+.month {
+  margin-top: 1rem;
+}
+.month-back {
+  padding-left: 0;
+}
+.month-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.month-head h2 {
+  flex: 1;
+  text-align: center;
+  font-size: 1.1333rem;
+  font-weight: 600;
+}
+.month-step {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.month-step:disabled {
+  color: var(--rule);
+  cursor: default;
+}
+.month-step:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 2px;
+}
+.month ol {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.month-row {
+  display: grid;
+  row-gap: 0.2rem;
+  margin: 0 -0.6rem;
+  padding: 0.6rem;
+  border-top: 1px solid var(--rule);
+}
+.month-row[aria-current='date'] {
+  background: var(--sea-fill);
+  box-shadow: inset 0.2rem 0 0 var(--sea);
 }

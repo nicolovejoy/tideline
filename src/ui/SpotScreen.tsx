@@ -11,6 +11,7 @@ import { readTidesShown, writeTidesShown } from './choices.ts'
 import { DayList } from './DayList.tsx'
 import { dayRows, tonightWords } from './dayList.ts'
 import { HiLoTable } from './HiLoTable.tsx'
+import { MonthView } from './MonthView.tsx'
 import { dayMarkers, selectedDay } from './selection.ts'
 import { TidesHidden } from './TidesHidden.tsx'
 import { tideView } from './tideView.ts'
@@ -29,8 +30,9 @@ interface SpotScreenProps {
 
 /**
  * Everything for one spot: tonight, the day's panels, its highs and lows,
- * the captions and the 14 days. Mounted afresh for each spot, so a switch
- * starts from saved data, today and a resting cursor, as a first open does.
+ * the captions and the 14 days, or the month view in their place. Mounted
+ * afresh for each spot, so a switch starts from saved data, today and a
+ * resting cursor, as a first open does.
  */
 export function SpotScreen({ spot }: SpotScreenProps) {
   const zone = spot.timeZone
@@ -40,6 +42,10 @@ export function SpotScreen({ spot }: SpotScreenProps) {
 
   const [pickedDay, setPickedDay] = useState<string | null>(null)
   const [pick, setPick] = useState<CursorPick | null>(null)
+  // The forecast, or one month at a time. Opens on the forecast; nothing
+  // about the view is remembered.
+  const [view, setView] = useState<'forecast' | 'month'>('forecast')
+  const [month, setMonth] = useState<string | null>(null)
   const selected = selectedDay(data, pickedDay)
   const tide = tideView(data, selected, pick, { spot, shown: tidesShown })
   const weather = weatherView(forecast, selected, tide.cursor, data.now)
@@ -75,9 +81,39 @@ export function SpotScreen({ spot }: SpotScreenProps) {
     dayTop.current?.scrollIntoView({ block: 'start' })
   }, [])
 
+  const openMonths = useCallback(() => {
+    setView('month')
+    window.scrollTo(0, 0)
+  }, [])
+  const backToForecast = () => {
+    setView('forecast')
+    setMonth(null)
+    // Today on the panels, with the cursor at rest, as on a first open.
+    setPickedDay(null)
+    setPick(null)
+    window.scrollTo(0, 0)
+  }
+
   const showTides = (shown: boolean) => {
     writeTidesShown(spot, shown)
     setTidesShown(shown)
+  }
+
+  if (view === 'month') {
+    return (
+      <MonthView
+        spot={spot}
+        today={data.today}
+        hilo={hilo}
+        tidesShown={tidesShown}
+        month={month}
+        hidden={tide.hidden}
+        canHide={tide.canHide}
+        onMonth={setMonth}
+        onBack={backToForecast}
+        onShowTides={showTides}
+      />
+    )
   }
 
   return (
@@ -186,7 +222,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
         <p className="caption">{weatherCaption(spot, forecast, data.today)}</p>
       </section>
 
-      <DayList rows={rows} onSelect={selectDay} />
+      <DayList rows={rows} onSelect={selectDay} onMonths={openMonths} />
     </>
   )
 }

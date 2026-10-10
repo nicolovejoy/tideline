@@ -1,6 +1,14 @@
 import { describe, expect, test } from 'vitest'
-import { dayRows, tonightWords } from './dayList.ts'
+import {
+  dayRows,
+  flagWords,
+  moonWords,
+  sunsetWords,
+  tideLines,
+  tonightWords,
+} from './dayList.ts'
 import type { DayAstro } from '../data/astro.ts'
+import type { Span } from '../data/cache.ts'
 import type { Loaded } from '../data/load.ts'
 import type { TideExtreme } from '../data/noaa.ts'
 import type { Forecast, ForecastHour } from '../data/nws.ts'
@@ -220,5 +228,46 @@ describe('dayRows', () => {
     expect(bare[0].sunset).toBe('Sunset 6:34 PM')
     expect(bare[0].tides).toEqual([])
     expect(bare[0].weather).toBeNull()
+  })
+})
+
+describe('the words of a row', () => {
+  const day: DayAstro = {
+    date: '2026-10-08',
+    sunset: Date.UTC(2026, 9, 9, 1, 34), // 6:34 PM
+    moonrise: Date.UTC(2026, 9, 9, 0, 12), // 5:12 PM
+    illumination: 0.0349,
+    phase: 'Waning Crescent',
+    moonriseNearSunset: Date.UTC(2026, 9, 9, 0, 12),
+  }
+
+  test('sunset', () => {
+    expect(sunsetWords(day, ZONE)).toBe('Sunset 6:34 PM')
+    expect(sunsetWords({ ...day, sunset: null }, ZONE)).toBe('No sunset')
+  })
+
+  test('the moon, with or without its phase', () => {
+    expect(moonWords(day, false)).toBe('Moon 3% lit')
+    expect(moonWords(day, true)).toBe('Moon 3% lit, waning crescent')
+  })
+
+  test('the moonrise flag', () => {
+    expect(flagWords(day, ZONE)).toBe('Moonrise 5:12 PM')
+    expect(flagWords({ ...day, moonriseNearSunset: null }, ZONE)).toBeNull()
+  })
+
+  test('the highs and lows on the day, and only those', () => {
+    const span: Span = { start: START, end: START + 24 * HOUR }
+    const events: TideExtreme[] = [
+      { t: START - HOUR, ft: 4.1, type: 'H' },
+      { t: START + 2 * HOUR + 35 * 60_000, ft: 0.24, type: 'L' },
+      { t: START + 9 * HOUR, ft: 5.03, type: 'H' },
+      { t: START + 24 * HOUR, ft: 0.9, type: 'L' },
+    ]
+    expect(tideLines(events, span, ZONE)).toEqual([
+      'Low 2:35 AM 0.2 ft',
+      'High 9:00 AM 5.0 ft',
+    ])
+    expect(tideLines([], span, ZONE)).toEqual([])
   })
 })

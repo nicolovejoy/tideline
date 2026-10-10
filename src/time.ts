@@ -77,6 +77,31 @@ export function addDays(date: string, days: number): string {
   ].join('-')
 }
 
+/** The month a date is in, as 'YYYY-MM'. */
+export function monthOf(date: string): string {
+  return date.slice(0, 7)
+}
+
+function parseMonth(month: string): [number, number] {
+  const [year, m] = month.split('-').map(Number)
+  return [year, m]
+}
+
+/** Calendar arithmetic on a 'YYYY-MM' month. No zone is involved. */
+export function addMonths(month: string, months: number): string {
+  const [year, m] = parseMonth(month)
+  const shifted = new Date(Date.UTC(year, m - 1 + months, 1))
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}`
+}
+
+/** Every date in a month, in order. */
+export function datesOfMonth(month: string): string[] {
+  const [year, m] = parseMonth(month)
+  // Day 0 of the next month is the last day of this one.
+  const count = new Date(Date.UTC(year, m, 0)).getUTCDate()
+  return Array.from({ length: count }, (_, i) => `${month}-${pad(i + 1)}`)
+}
+
 /** The hour of the day, 0 to 23, in a zone at instant t. */
 export function localHour(t: number, timeZone: string): number {
   return wallClock(t, timeZone).hour
@@ -148,4 +173,16 @@ export function formatDay(date: string): string {
   const [year, month, day] = parseDate(date)
   const part = partReader(dayFormat, Date.UTC(year, month - 1, day, 12))
   return `${part('weekday')} ${part('month')} ${part('day')}`
+}
+
+const monthFormat = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'UTC',
+  month: 'long',
+  year: 'numeric',
+})
+
+/** A month for display, such as 'October 2026'. No zone is involved. */
+export function formatMonth(month: string): string {
+  const [year, m] = parseMonth(month)
+  return monthFormat.format(Date.UTC(year, m - 1, 1, 12))
 }
