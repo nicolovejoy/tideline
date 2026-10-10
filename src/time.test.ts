@@ -1,12 +1,16 @@
 import { describe, expect, test, vi } from 'vitest'
 import {
   addDays,
+  addMonths,
+  datesOfMonth,
   formatDay,
+  formatMonth,
   formatTime,
   hourMarks,
   localDate,
   localDayStart,
   localHour,
+  monthOf,
 } from './time.ts'
 
 const LA = 'America/Los_Angeles'
@@ -158,5 +162,55 @@ describe('the display formatters', () => {
     } finally {
       built.mockRestore()
     }
+  })
+})
+
+describe('monthOf', () => {
+  test('is the year and month of a date', () => {
+    expect(monthOf('2026-10-10')).toBe('2026-10')
+    expect(monthOf('2027-01-31')).toBe('2027-01')
+  })
+})
+
+describe('addMonths', () => {
+  test('steps forward within a year', () => {
+    expect(addMonths('2026-10', 1)).toBe('2026-11')
+    expect(addMonths('2026-10', 0)).toBe('2026-10')
+  })
+
+  test('crosses the end of the year', () => {
+    expect(addMonths('2026-10', 3)).toBe('2027-01')
+    expect(addMonths('2026-11', 3)).toBe('2027-02')
+    expect(addMonths('2026-12', 1)).toBe('2027-01')
+  })
+
+  test('steps back', () => {
+    expect(addMonths('2027-01', -1)).toBe('2026-12')
+  })
+})
+
+describe('datesOfMonth', () => {
+  test('a 31-day month', () => {
+    const dates = datesOfMonth('2026-10')
+    expect(dates).toHaveLength(31)
+    expect(dates[0]).toBe('2026-10-01')
+    expect(dates[9]).toBe('2026-10-10')
+    expect(dates[30]).toBe('2026-10-31')
+  })
+
+  test('a 30-day month', () => {
+    expect(datesOfMonth('2026-11')).toHaveLength(30)
+  })
+
+  test('February in a leap year and in a common year', () => {
+    expect(datesOfMonth('2028-02')).toHaveLength(29)
+    expect(datesOfMonth('2027-02')).toHaveLength(28)
+  })
+})
+
+describe('formatMonth', () => {
+  test('names the month and the year', () => {
+    expect(formatMonth('2026-10')).toBe('October 2026')
+    expect(formatMonth('2027-01')).toBe('January 2027')
   })
 })
