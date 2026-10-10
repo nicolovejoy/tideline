@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Stage 1 is built; its phone check is down to one item. Stage 2 has begun: three spots are merged, the month view is merged, and the interpolated curve is on a pull request.
+Stage 1 is built; its phone check is down to one item. Stage 2 has begun: three spots, the month view and the interpolated curve are merged, and own spots from a map is on a pull request.
 
-- Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and tides hidden by default at La Cumbre; then the month view (this month and the next three, sunset, moon and highs and lows per day); then a curve interpolated from the highs and lows for stations that publish only those, labelled "interpolated" (no shipped spot uses it yet; #4 will).
-- Not built: everything after the interpolated curve. It is tracked as GitHub issues.
+- Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and tides hidden by default at La Cumbre; then the month view (this month and the next three, sunset, moon and highs and lows per day); then a curve interpolated from the highs and lows for stations that publish only those, labelled "interpolated" (no shipped spot uses it yet; #4 will); then your own spots: a pin on a map (Leaflet, OpenStreetMap tiles) or the device's location, named and saved on the device, with the NWS cell, nearest tide station and nearest gauge worked out from a baked station list (`scripts/bake-stations.mjs`, `src/data/stations.json`).
+- Not built: everything after own spots. It is tracked as GitHub issues.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
 
@@ -65,9 +65,10 @@ In every tracked file, commit message, issue, and pull request, that person is "
 - Static single-page app with no server: Vite, React, strict TypeScript, plain CSS. Hosted on Vercel.
 - The browser calls NOAA and NWS directly. Sun and moon are computed on the device.
 - Charts are hand-written SVG: stacked panels on one time axis with one shared cursor. The arithmetic is in `src/chart/scales.ts`. No charting library and no d3.
-- Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/selection.ts`, `src/ui/tideView.ts`, `src/ui/weatherView.ts`, `src/ui/dayList.ts`, `src/ui/monthView.ts`, `src/data/load.ts`, `src/data/interpolate.ts`), and the components are checked in a browser.
+- Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/selection.ts`, `src/ui/tideView.ts`, `src/ui/weatherView.ts`, `src/ui/dayList.ts`, `src/ui/monthView.ts`, `src/data/load.ts`, `src/data/interpolate.ts`, `src/data/geo.ts`, `src/data/stations.ts`, `src/data/resolve.ts`, `src/data/savedSpots.ts`, `src/ui/addSpotView.ts`), and the components are checked in a browser.
 - Weather is drawn as staircases, level across the hour each value is forecast for, so the line, the cursor's dot and the words always agree.
 - Data modules (NOAA, NWS, astronomy) are framework-free TypeScript so they can move behind a server function unchanged. Tested with Vitest against recorded real responses.
+- The map is Leaflet on OpenStreetMap tiles, loaded only with the add screen. No key. Changing the tile provider is one URL in `src/ui/SpotMap.tsx`.
 - Caching is on the device in Stage 1: draw from the last saved data, refresh behind it, show each source's "as of" time. A server cache is deferred to an issue.
 
 ## Decisions (2026-10-08)
@@ -101,9 +102,11 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 - Cell elevation is a cell average, not the spot: 3 ft for Campus Point, 157 ft for the Leadbetter cell, 3,258 ft for La Cumbre (summit is 3,997 ft).
 - `/forecast/hourly` has no wind gust or sky cover. The raw `/gridpoints/{wfo}/{x},{y}` endpoint has both, but in SI units with ISO 8601 `validTime` intervals of varying length.
 - Responses carry `cache-control: public, max-age` of about an hour.
+- `/points` answers 404 outside its grids and, for some open-ocean points inside them, HTTP 500 (seen at 20°N 115°W on 2026-10-10).
 
 **NOAA CO-OPS (`api.tidesandcurrents.noaa.gov`)** — data at `/api/prod/datagetter`, station metadata at `/mdapi/prod/webapi`.
 - 3,502 prediction stations, 302 water-level (observing) stations, 238 that are both. Most prediction stations have no observed data.
+- The station lists (`mdapi/prod/webapi/stations.json?type=tidepredictions` and `?type=waterlevels`) are baked into `src/data/stations.json` by `scripts/bake-stations.mjs`: 3,566 rows on 2026-10-10 (1,022 harmonic, 2,242 subordinate, 238 harmonic with a gauge, 64 gauges with no predictions, 52 of them on the Great Lakes). About 200 KB, loaded with the add screen.
 - 2,242 prediction stations are subordinate (`type: "S"`): they return high/low only, and a 6-minute request returns an error. For these the app interpolates a cosine curve between consecutive highs and lows (`src/data/interpolate.ts`) and says "interpolated" in the readout and the caption. Against Santa Barbara's own curve over 14 days: 0.19 ft rms, 95% within 0.33 ft, worst 1.15 ft in a 16-hour gap where NOAA's list skips a near-stand.
 - 9411340 Santa Barbara is harmonic and observing, and is the nearest station of both kinds to Campus Point (8.6 mi) and to La Cumbre Peak (6.3 mi south). 9411399 Gaviota State Park is harmonic with no observations, 0.2 mi from the beach; its nearest observing station is Santa Barbara, 31 mi east.
 - Highs and lows from today to the end of the third month ahead are one request of about 22 KB (432 events for Santa Barbara, 10 October 2026 to 31 January 2027); one month at 6-minute resolution is 7,440 points.
@@ -118,7 +121,7 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 ## Next Steps
 
 - Stage 1 (Campus Point) is built. Items 1 to 6 of the phone check in the pull request for `stage-1/weather-and-days` passed on 2026-10-09; item 7 remains: a reopen with a connection draws at once from saved data and the captions update when the refresh lands.
-- The interpolated-curve pull request (`stage-2/interpolated-curve`, issue #5) waits for the owner's review. It changes nothing on the three shipped spots.
+- The own-spots pull request (`stage-2/own-spots`, issue #4, first half) waits for the owner's phone check and review. Place-name search is the issue's second half.
 - Not yet tried: a screen reader on the cursor.
 - The first user: the two questions still open under Decisions (the sunset-hour row, the moon line wording).
 - Everything after Stage 1 is tracked as GitHub issues, in provisional order.
