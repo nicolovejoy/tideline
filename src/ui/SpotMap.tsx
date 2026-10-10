@@ -2,6 +2,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useEffectEvent, useRef } from 'react'
 import type { LatLon } from '../data/geo.ts'
+import type { Bounds } from '../data/geocode.ts'
 import { MAP, WORDS } from './addSpotView.ts'
 
 /** About 30 miles across a phone's width at mid latitudes. */
@@ -14,12 +15,20 @@ const PIN = {
   fillOpacity: 1,
 }
 
+/** Somewhere to show: a point, or a point with the extent to fit. */
+export interface Look extends LatLon {
+  bounds?: Bounds
+}
+
+/** No closer than this when fitting a place: about two miles across. */
+const FIT_MAX_ZOOM = 14
+
 interface SpotMapProps {
   /** Where the map opens. Read once. */
   center: LatLon
   pin: LatLon | null
-  /** Somewhere to pan to when it changes, such as the device's position. */
-  look: LatLon | null
+  /** Somewhere to go when it changes: the device's position, or a place. */
+  look: Look | null
   onPick: (at: LatLon) => void
 }
 
@@ -71,7 +80,20 @@ export function SpotMap({ center, pin, look, onPick }: SpotMapProps) {
   }, [pin])
 
   useEffect(() => {
-    if (look && map.current) map.current.setView([look.lat, look.lon], ZOOM)
+    const made = map.current
+    if (!look || !made) return
+    if (look.bounds) {
+      const { south, west, north, east } = look.bounds
+      made.fitBounds(
+        [
+          [south, west],
+          [north, east],
+        ],
+        { maxZoom: FIT_MAX_ZOOM },
+      )
+    } else {
+      made.setView([look.lat, look.lon], ZOOM)
+    }
   }, [look])
 
   return (

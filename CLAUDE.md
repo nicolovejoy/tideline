@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Stage 1 is built; its phone check is down to one item. Stage 2 has begun: three spots, the month view and the interpolated curve are merged, and own spots from a map is on a pull request.
+Stage 1 is built; its phone check is down to one item. Stage 2 has begun: three spots, the month view, the interpolated curve and own spots from a map are merged, and place search by name is on a pull request.
 
-- Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and tides hidden by default at La Cumbre; then the month view (this month and the next three, sunset, moon and highs and lows per day); then a curve interpolated from the highs and lows for stations that publish only those, labelled "interpolated" (a saved spot at a subordinate station uses it); then your own spots: a pin on a map (Leaflet, OpenStreetMap tiles) or the device's location, named and saved on the device, with the NWS cell, nearest tide station and nearest gauge worked out from a baked station list (`scripts/bake-stations.mjs`, `src/data/stations.json`).
-- Not built: everything after own spots. It is tracked as GitHub issues.
+- Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and tides hidden by default at La Cumbre; then the month view (this month and the next three, sunset, moon and highs and lows per day); then a curve interpolated from the highs and lows for stations that publish only those, labelled "interpolated" (a saved spot at a subordinate station uses it); then your own spots: a pin on a map (Leaflet, OpenStreetMap tiles) or the device's location, named and saved on the device, with the NWS cell, nearest tide station and nearest gauge worked out from a baked station list (`scripts/bake-stations.mjs`, `src/data/stations.json`); then a place name typed on the add screen, looked up with OpenStreetMap's Nominatim (`src/data/geocode.ts`), which pans the map there and drops the pin.
+- Not built: everything after place search. It is tracked as GitHub issues.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
 
@@ -65,10 +65,10 @@ In every tracked file, commit message, issue, and pull request, that person is "
 - Static single-page app with no server: Vite, React, strict TypeScript, plain CSS. Hosted on Vercel.
 - The browser calls NOAA and NWS directly. Sun and moon are computed on the device.
 - Charts are hand-written SVG: stacked panels on one time axis with one shared cursor. The arithmetic is in `src/chart/scales.ts`. No charting library and no d3.
-- Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/selection.ts`, `src/ui/tideView.ts`, `src/ui/weatherView.ts`, `src/ui/dayList.ts`, `src/ui/monthView.ts`, `src/data/load.ts`, `src/data/interpolate.ts`, `src/data/geo.ts`, `src/data/stations.ts`, `src/data/resolve.ts`, `src/data/savedSpots.ts`, `src/ui/addSpotView.ts`), and the components are checked in a browser.
+- Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/selection.ts`, `src/ui/tideView.ts`, `src/ui/weatherView.ts`, `src/ui/dayList.ts`, `src/ui/monthView.ts`, `src/data/load.ts`, `src/data/interpolate.ts`, `src/data/geo.ts`, `src/data/geocode.ts`, `src/data/stations.ts`, `src/data/resolve.ts`, `src/data/savedSpots.ts`, `src/ui/addSpotView.ts`), and the components are checked in a browser.
 - Weather is drawn as staircases, level across the hour each value is forecast for, so the line, the cursor's dot and the words always agree.
 - Data modules (NOAA, NWS, astronomy) are framework-free TypeScript so they can move behind a server function unchanged. Tested with Vitest against recorded real responses.
-- The map is Leaflet on OpenStreetMap tiles, loaded only with the add screen. No key. Changing the tile provider is one URL in `src/ui/SpotMap.tsx`.
+- The map is Leaflet on OpenStreetMap tiles, loaded only with the add screen. No key. Changing the tile provider is one URL in `src/ui/SpotMap.tsx`. Place search is OpenStreetMap's Nominatim, called from the browser on submit only, one query at a time, with answers remembered for the page; its usage policy is linked in `src/data/geocode.ts`, and changing provider is that one file.
 - Caching is on the device in Stage 1: draw from the last saved data, refresh behind it, show each source's "as of" time. A server cache is deferred to an issue.
 
 ## Decisions (2026-10-08)
@@ -121,7 +121,7 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 ## Next Steps
 
 - Stage 1 (Campus Point) is built. Items 1 to 6 of the phone check in the pull request for `stage-1/weather-and-days` passed on 2026-10-09; item 7 remains: a reopen with a connection draws at once from saved data and the captions update when the refresh lands.
-- The own-spots pull request (`stage-2/own-spots`, issue #4, first half) waits for the owner's phone check and review. Place-name search is the issue's second half.
+- Place search (`stage-2/place-search`, issue #35, the second half of #4) waits for the owner's phone check and review, and for the owner's decision on Nominatim's usage policy, which the pull request puts to him.
 - Not yet tried: a screen reader on the cursor.
 - The first user: the two questions still open under Decisions (the sunset-hour row, the moon line wording).
 - Everything after Stage 1 is tracked as GitHub issues, in provisional order.
