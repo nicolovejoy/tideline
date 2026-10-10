@@ -254,8 +254,10 @@ Inside `describe('tideSpecs', …)`, replace the test `'predictions and highs an
     vi.stubGlobal('fetch', fetchMock)
     await specs.hilo.fetch(frame.ahead)
     expect(fetchMock).toHaveBeenCalledTimes(1)
+    // The end date is the UTC date holding the span's last instant: local
+    // midnight on 1 February is 08:00 UTC that day.
     expect(fetchMock.mock.calls[0][0]).toContain(
-      'begin_date=20261008&end_date=20270131',
+      'begin_date=20261008&end_date=20270201',
     )
   })
 ```
@@ -675,7 +677,8 @@ describe('monthRows', () => {
     expect(rows[0].date).toBe('2027-01-01')
     expect(rows[30].date).toBe('2027-01-31')
     expect(rows.every((row) => !row.isToday)).toBe(true)
-    // A low that rounds to nothing is 0.0, never -0.0.
+    // A low that rounds to nothing is 0.0, never -0.0. (The fixture ends at
+    // 23:59 UTC on the 31st, before that evening's events in Pacific time.)
     expect(rows[30].tides).toEqual(['High 4:52 AM 5.0 ft', 'Low 12:52 PM 0.0 ft'])
   })
 
@@ -1310,7 +1313,7 @@ Expected: all pass.
 
 Start the dev server on a port of its own: `npx vite --port 5199` in the background. Then, with Playwright (the `mcp__playwright__browser_run_code_unsafe` tool, or a script run with `npx playwright` if that is what is available), at a 390 px wide viewport against `http://localhost:5199/`, with the live APIs and a fresh origin (clear `localStorage` first):
 
-1. **The entry.** On Campus Point, the 14-day list's heading reads "14 days" with "Months ahead" on its right. Record the network requests: exactly one NOAA request has `interval=hilo`, and its `begin_date` is today in UTC and its `end_date` the last day of the third month after this one (run in October 2026: `end_date=20270131`). Screenshot the heading.
+1. **The entry.** On Campus Point, the 14-day list's heading reads "14 days" with "Months ahead" on its right. Record the network requests: exactly one NOAA request has `interval=hilo`, and its `begin_date` is today in UTC and its `end_date` the UTC date holding the spot's midnight that ends the third month after this one (run in October 2026: `end_date=20270201`). Screenshot the heading.
 2. **Tap "Months ahead".** The page is at the top. The tonight strip, panels, table and list are gone. "‹ Back to forecast" is on its own line, then "‹", the current month's name and year, "›". The previous button is disabled. The first row is today's date, tinted, with "Sunset …", "Moon …% lit, …" and its highs and lows; the rows run to the last day of the month. Compare today's row's highs and lows with https://tidesandcurrents.noaa.gov/noaatidepredictions.html?id=9411340 for today: same times and heights. Screenshot.
 3. **Step forward three times.** Each tap changes the title to the next month and the rows to its full run of days, from the 1st. On the fourth month the next button is disabled. Find a row whose moon line ends in "full moon" and one in "new moon". Screenshot the last month. Step back once: the previous month is back.
 4. **Back to forecast.** Tap it. The page is at the top with the tonight strip, today's panels and the list, as on a first open.
