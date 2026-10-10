@@ -10,6 +10,8 @@ import {
   windParts,
 } from '../chart/readout.ts'
 import type { DayAstro } from '../data/astro.ts'
+import type { Span } from '../data/cache.ts'
+import type { TideExtreme } from '../data/noaa.ts'
 import type { SpotData } from '../data/useSpotData.ts'
 import { formatDay, formatTime } from '../time.ts'
 import { onDay, selectedDay } from './selection.ts'
@@ -53,6 +55,38 @@ export function tonightWords(
   }
 }
 
+/** 'Sunset 6:34 PM', or 'No sunset'. */
+export function sunsetWords(day: DayAstro, timeZone: string): string {
+  return day.sunset === null
+    ? 'No sunset'
+    : `Sunset ${formatTime(day.sunset, timeZone)}`
+}
+
+/** 'Moon 3% lit', and with the phase 'Moon 3% lit, waning crescent'. */
+export function moonWords(day: DayAstro, withPhase: boolean): string {
+  const words = `Moon ${lit(day)}`
+  return withPhase ? `${words}, ${day.phase.toLowerCase()}` : words
+}
+
+/** 'Moonrise 5:12 PM' where moonrise is within 2 hours of sunset, else null. */
+export function flagWords(day: DayAstro, timeZone: string): string | null {
+  return day.moonriseNearSunset === null
+    ? null
+    : `Moonrise ${formatTime(day.moonriseNearSunset, timeZone)}`
+}
+
+/** The day's highs and lows in order, such as 'Low 2:35 AM 0.2 ft'. */
+export function tideLines(
+  events: TideExtreme[],
+  span: Span,
+  timeZone: string,
+): string[] {
+  return onDay(events, span).map((event) => {
+    const kind = event.type === 'H' ? 'High' : 'Low'
+    return `${kind} ${formatTime(event.t, timeZone)} ${feet(event.ft)}`
+  })
+}
+
 export interface DayRow {
   date: string
   /** The weekday and date, such as 'Thu Oct 8'. */
@@ -85,7 +119,6 @@ export function dayRows(
   tidesShown: boolean,
 ): DayRow[] {
   const selected = selectedDay(data, picked).index
-  const time = (t: number) => formatTime(t, timeZone)
   const events = tidesShown ? (data.hilo.data ?? []) : []
   const hours = forecastHours(data.forecast, data.now)
 
@@ -101,16 +134,10 @@ export function dayRows(
       date: day.date,
       day: formatDay(day.date),
       selected: i === selected,
-      sunset: day.sunset === null ? 'No sunset' : `Sunset ${time(day.sunset)}`,
-      moon: `Moon ${lit(day)}`,
-      flag:
-        day.moonriseNearSunset === null
-          ? null
-          : `Moonrise ${time(day.moonriseNearSunset)}`,
-      tides: onDay(events, span).map((event) => {
-        const kind = event.type === 'H' ? 'High' : 'Low'
-        return `${kind} ${time(event.t)} ${feet(event.ft)}`
-      }),
+      sunset: sunsetWords(day, timeZone),
+      moon: moonWords(day, false),
+      flag: flagWords(day, timeZone),
+      tides: tideLines(events, span, timeZone),
       weather: weather.length > 0 ? ['At sunset', ...weather] : null,
     }
   })
