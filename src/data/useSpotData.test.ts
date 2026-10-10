@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { forecastSpec, frameFor, tideSpecs } from './useSpotData.ts'
-import { CAMPUS_POINT, spotById } from '../spot.ts'
+import { CAMPUS_POINT, hasOwnCurve, spotById } from '../spot.ts'
 
 const HOUR = 3_600_000
 
@@ -76,6 +76,21 @@ describe('frameFor', () => {
     expect(frame.ahead.start).toBe(Date.UTC(2026, 10, 15, 8))
     expect(frame.ahead.end).toBe(Date.UTC(2027, 2, 1, 8))
   })
+
+  test('the highs and lows span starts the day before today and ends with the months ahead', () => {
+    const frame = frameFor(CAMPUS_POINT, '2026-10-08')
+    expect(frame.hiloSpan).toEqual({
+      start: Date.UTC(2026, 9, 7, 7),
+      end: frame.ahead.end,
+    })
+    expect(frame.ahead.start).toBe(frame.day.start)
+  })
+
+  test("the day before is the spot's local day, 25 hours long when the clocks went back in it", () => {
+    // 1 November 2026 is the 25-hour day; 2 November is the day after.
+    const frame = frameFor(CAMPUS_POINT, '2026-11-02')
+    expect((frame.day.start - frame.hiloSpan.start) / HOUR).toBe(25)
+  })
 })
 
 describe('tideSpecs', () => {
@@ -84,9 +99,9 @@ describe('tideSpecs', () => {
 
   afterEach(() => vi.unstubAllGlobals())
 
-  test('predictions are needed for the 14 days, and highs and lows for the months ahead', () => {
+  test('predictions are needed for the 14 days, and highs and lows from the day before to the months ahead', () => {
     expect(specs.predictions.needed).toEqual(frame.window)
-    expect(specs.hilo.needed).toEqual(frame.ahead)
+    expect(specs.hilo.needed).toEqual(frame.hiloSpan)
   })
 
   test('the highs and lows are one request, to the last day of the last month', async () => {
@@ -160,6 +175,28 @@ describe('tideSpecs', () => {
     expect(urls[2]).toContain('station=9411340')
     expect(urls[3]).toContain('product=predictions&interval=6&')
     expect(urls[3]).toContain('station=9411340')
+  })
+})
+
+describe('a spot at a subordinate station', () => {
+  const gaviota = spotById('gaviota')
+  const ventura = {
+    ...gaviota,
+    id: 'ventura-test',
+    tideStation: {
+      id: '9411189',
+      name: 'Ventura',
+      distanceMi: 33,
+      direction: 'east',
+      type: 'subordinate' as const,
+    },
+  }
+
+  test('its tide specs still name its own station for the highs and lows', () => {
+    const specs = tideSpecs(ventura, frameFor(ventura, '2026-10-10'))
+    expect(specs.hilo.spotId).toBe('ventura-test')
+    expect(specs.predictions.spotId).toBe('ventura-test')
+    expect(hasOwnCurve(ventura)).toBe(false)
   })
 })
 
