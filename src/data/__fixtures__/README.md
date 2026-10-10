@@ -13,6 +13,8 @@ Real responses, saved so the parsers are tested against what the services actual
 - `nws-gridpoint-LOX-100-71.json`: the NWS raw forecast grid for the cell containing Campus Point. A live forecast, so tests assert its structure, not its numbers.
 - `nws-points-34.4046--119.844.json`: NWS `/points` for Campus Point, recorded on 2026-10-10: the cell LOX 100,71 and the zone America/Los_Angeles.
 - `nws-points-48.5--3.0.json`: NWS `/points` for a point in France, the 404 body that means "no forecast here".
+- `nominatim-santa-barbara.json`: OpenStreetMap Nominatim's answer to "Santa Barbara" with `format=jsonv2&countrycodes=us&limit=5`, recorded on 2026-10-10: the city, the county and Hatch, New Mexico (a fuzzy match), 3 places. The app asks for `limit=1`; the parser takes the first.
+- `nominatim-leadbetter-beach.json`: the same for "Leadbetter Beach", recorded on 2026-10-10: one place of type beach.
 - `usno-campus-point.ts`: sunset and moonrise from the US Naval Observatory API (`aa.usno.navy.mil/api/rstt/oneday`) for latitude 34.4046, longitude -119.8440.
 
 The NOAA requests all used `datum=MLLW&units=english&time_zone=gmt&format=json`.
