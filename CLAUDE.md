@@ -63,7 +63,7 @@ In every tracked file, commit message, issue, and pull request, that person is "
 ## Stack (approved 2026-10-08)
 
 - Static single-page app with no server: Vite, React, strict TypeScript, plain CSS. Hosted on Vercel.
-- The browser calls NOAA, NWS and Open-Meteo directly. Sun and moon are computed on the device.
+- The browser calls NOAA and NWS directly. Sun and moon are computed on the device.
 - Charts are hand-written SVG: stacked panels on one time axis with one shared cursor. The arithmetic is in `src/chart/scales.ts`. No charting library and no d3.
 - Components hold no arithmetic, no rules and no wording. Those live in plain modules with tests (`src/chart/`, `src/ui/captions.ts`, `src/ui/selection.ts`, `src/ui/tideView.ts`, `src/ui/weatherView.ts`, `src/ui/dayList.ts`, `src/ui/monthView.ts`, `src/data/load.ts`, `src/data/interpolate.ts`), and the components are checked in a browser.
 - Weather is drawn as staircases, level across the hour each value is forecast for, so the line, the cursor's dot and the words always agree.
@@ -76,14 +76,18 @@ Settled:
 - Audience is the first user and friends, non-commercial.
 - Units: feet above MLLW, °F, mph, 12-hour clock.
 
-Provisional. Nico gave these on the first user's behalf; the first user has not confirmed them:
+The first user confirmed these on 2026-10-09 (recorded by Nico on `stage-1/weather-and-days` after pull request 22; ported to main on 2026-10-10):
 - Stage 1 spot is Campus Point, UCSB.
-- Forecast horizon: add a second source for days 8 to 10 rather than stopping at 7.
-- Weather: temperature, wind, gusts, direction, cloud cover, rain chance, each with a way to dig in.
+- Weather: NWS only, 7 days. Days past the forecast say so in the list. The first user asked for NWS alone; the second source for days 8 to 10 was dropped (issue 1 closed).
+- Weather values: temperature, wind, gusts, direction, cloud cover, rain chance, drawn for the full day. A way to dig in is issue 8.
 - Where a spot's tide station has no gauge, show the nearest gauge's deviation from its own prediction. Do not redraw the spot's curve with that deviation applied.
 - Inland spots: tides hidden by default.
-- Sun and moon times should account for the spot's elevation, but after launch.
-- Sharing (is share-by-link enough?) is still unanswered.
+- Sun and moon times should account for the spot's elevation, after launch (issue 9).
+- Sharing: a link to chosen friends is enough. No accounts (issue 12 closed; issue 7 stays).
+- The cursor rests on the latest gauge reading today.
+- Working offline is not a Stage 1 goal (decided 2026-10-09). The data is saved on the device; the page itself is not.
+
+Still open with the first user, as of 2026-10-09: whether the forecast at the hour of sunset is the right moment for a day's row; and the wording of the moon line, which he wants as "Moonrise 5:00 AM".
 
 Display convention: times and calendar days are shown in the spot's own time zone (returned by NWS `/points`), not the viewer's. Never derive a day from a UTC ISO string; use `Intl.DateTimeFormat` with an explicit `timeZone`.
 
@@ -107,7 +111,7 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 - A 14-day predicted curve at 6-minute resolution is one request: 136 KB as JSON, 20 KB gzipped.
 - Responses carry `cache-control: no-store`, so any caching of tide data is ours to do. Predictions for a given date do not change.
 
-**Open-Meteo** — second source for days 8 to 10. Its `ncep_nbm_conus` model (NOAA National Blend, 2.5 km) returns 11 days. Free for non-commercial use with attribution.
+**Open-Meteo** — not used. Kept as a reference: its `ncep_nbm_conus` model (NOAA National Blend, 2.5 km) returned 11 days when checked on 2026-10-08. Free for non-commercial use with attribution.
 
 **Sun and moon** — computed locally with `astronomy-engine`. The USNO API (`aa.usno.navy.mil/api/rstt/oneday`) is the reference to test computed values against.
 
@@ -116,10 +120,10 @@ All three HTTP APIs below send `access-control-allow-origin: *`, need no key, an
 - Stage 1 (Campus Point) is built. Items 1 to 6 of the phone check in the pull request for `stage-1/weather-and-days` passed on 2026-10-09; item 7 remains: a reopen with a connection draws at once from saved data and the captions update when the refresh lands.
 - The interpolated-curve pull request (`stage-2/interpolated-curve`, issue #5) waits for the owner's review. It changes nothing on the three shipped spots.
 - Not yet tried: a screen reader on the cursor.
-- The first user: confirm or correct the provisional decisions above, and answer the sharing question.
+- The first user: the two questions still open under Decisions (the sunset-hour row, the moon line wording).
 - Everything after Stage 1 is tracked as GitHub issues, in provisional order.
 
-<!-- SHARED-CONVENTIONS:BEGIN v=28022362f01b — auto-managed, do not edit here; source: prompt-lab/workflow/claude-md-shared.md (edit + re-sync) -->
+<!-- SHARED-CONVENTIONS:BEGIN v=2ed9fb390e55 — auto-managed, do not edit here; source: prompt-lab/workflow/claude-md-shared.md (edit + re-sync) -->
 ## Shared conventions
 
 <!-- These are Nico's cross-repo output rules. They're materialized into each repo's
@@ -142,6 +146,8 @@ re-sync, never here. -->
 - **Codex branches are named `codex/<description>`.** When working in this repo via Codex CLI, always create a working branch under the `codex/` prefix (e.g. `codex/fix-flaky-test`) rather than working directly on `main` or an unprefixed branch. Claude Code has no visibility into other tools' running sessions (`ListAgents` only sees Claude sessions), so this prefix is the one signal a Claude session can check for — a local or remote `codex/*` branch means Codex has touched or is touching this repo, even though its session itself is invisible. Claude branches keep whatever naming they already use; only Codex adopts this new prefix.
 
 - **Codex: run commands in a form a rule can match.** Codex approval rules match a command's leading tokens, so a wrapped command never matches an existing allow and every variant prompts again, then leaves a dead one-off "don't ask again" rule behind (36 of them in five days, 2026-09-23). The program is the first token: call helpers and tools directly, never through `/bin/zsh -lc "…"`, never with a `PATH=…` or other `VAR=…` prefix, never with `$(…)` in the arguments. Work only inside your clone (one long-lived `~/src/<repo>-codex`, no worktrees, no scratch clones — everything outside it escalates, except the cross-repo handoff log at `~/src/.handoff`, which is granted). Redirect output only to files inside the workspace, and keep temp files in a gitignored `tmp/` there, never `/private/tmp`. If a tool is missing from `PATH`, report it: the fix belongs in `~/.zprofile` (Nico's edit), not in an inline `PATH=` prefix.
+
+- **Reader-facing text lives in content or copy files, not inline in components.** Some repos ship French alongside English (selected-projects mirrors the site under `/fr`; ibuild4you has French public pages). There, every new string goes in the repo's strings/copy module or content folder, with its translation, and an English copy edit means updating the French twin too. Elsewhere, keeping text out of components is what makes `/localize` cheap later. Terms and register: `prompt-lab/workflow/localization/fr-glossary.md`.
 
 - **A review another agent must act on goes on the PR.** A review that another agent must act on, or that must outlive the session, is posted as a PR comment (`gh pr comment`), where the next session or agent finds it. Live, in-session reviews between Nico and the agent stay in chat. There is no devlog.md: the history DB is the one session record.
 <!-- SHARED-CONVENTIONS:END -->
