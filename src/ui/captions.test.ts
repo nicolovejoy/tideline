@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { tideCaption, weatherCaption } from './captions.ts'
+import { monthCaption, tideCaption, weatherCaption } from './captions.ts'
 import type { Loaded } from '../data/load.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
 import type { Forecast } from '../data/nws.ts'
@@ -271,6 +271,55 @@ describe('weatherCaption', () => {
     const gaviota = spotById('gaviota')
     expect(weatherCaption(gaviota, forecast('ready'), TODAY)).toBe(
       'Weather: NWS forecast for the 2.5 km cell at this spot, 0 ft above sea level. Updated 7:26 AM.',
+    )
+  })
+})
+
+describe('monthCaption', () => {
+  test('names the station and nothing else when the highs and lows are current', () => {
+    expect(monthCaption(CAMPUS_POINT, HILO, TODAY)).toBe(STATION)
+  })
+
+  test('names the station alone while the first request is on its way', () => {
+    const hilo: Loaded<TideExtreme[]> = {
+      data: null,
+      fetchedAt: null,
+      span: null,
+      status: 'loading',
+    }
+    expect(monthCaption(CAMPUS_POINT, hilo, TODAY)).toBe(STATION)
+  })
+
+  test('says so when there are no highs and lows to show', () => {
+    const hilo: Loaded<TideExtreme[]> = {
+      data: null,
+      fetchedAt: null,
+      span: null,
+      status: 'unavailable',
+    }
+    expect(monthCaption(CAMPUS_POINT, hilo, TODAY)).toBe(
+      `${STATION} High and low times unavailable.`,
+    )
+  })
+
+  test('says when the highs and lows on screen are old ones', () => {
+    const hilo: Loaded<TideExtreme[]> = { ...HILO, status: 'stale' }
+    expect(monthCaption(CAMPUS_POINT, hilo, TODAY)).toBe(
+      `${STATION} Couldn't refresh the high and low times. Showing those from 2:05 PM.`,
+    )
+    const old: Loaded<TideExtreme[]> = {
+      ...HILO,
+      fetchedAt: DAYS_AGO,
+      status: 'stale',
+    }
+    expect(monthCaption(CAMPUS_POINT, old, TODAY)).toBe(
+      `${STATION} Couldn't refresh the high and low times. Showing those from Mon Oct 5, 1:33 AM.`,
+    )
+  })
+
+  test('at a spot with a gauge elsewhere, the station sentence has no "predictions only"', () => {
+    expect(monthCaption(spotById('gaviota'), HILO, TODAY)).toBe(
+      'Tide: NOAA 9411399 Gaviota State Park, 0.2 mi south.',
     )
   })
 })
