@@ -23,7 +23,11 @@ export const DayList = memo(function DayList({
     <section className="days">
       <header className="days-head">
         <h2>14 days</h2>
-        <button type="button" className="text-button" onClick={onMonths}>
+        <button
+          type="button"
+          className="text-button month-open"
+          onClick={onMonths}
+        >
           Months ahead
         </button>
       </header>

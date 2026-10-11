@@ -439,6 +439,14 @@ h1 {
   justify-content: space-between;
   align-items: baseline;
 }
+/* The way into the month view, beside the list's heading. Outlined like a
+   spot's name, so it reads as a button and not as a note. */
+.month-open {
+  min-height: 44px;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--sea);
+  border-radius: 999px;
+}
 .days ol {
   margin: 0.5rem 0 0;
   padding: 0;
@@ -689,11 +697,11 @@ h1 {
     grid-column: 1;
   }
   /* The 14 days come straight after the day, so they land in its row. Their
-     heading has a button beside it and a taller line, so a little less
-     room above puts it level with the day's. */
+     heading has a button beside it, 44px tall, and sits lower in its line,
+     so less room above puts it level with the day's. */
   main > .days {
     grid-column: 2;
-    margin-top: 1.6rem;
+    margin-top: 1.3667rem;
   }
   /* What is made for a phone's width keeps it. Stretched across the page
      their parts drift apart: the hint and its Dismiss, a tide's time and
