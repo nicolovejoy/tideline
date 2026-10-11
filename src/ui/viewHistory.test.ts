@@ -247,6 +247,38 @@ describe('opening while the browser is still going back', () => {
       { state: { tidelineView: 'add' }, url: '/' },
     ])
   })
+
+  test('a close before it arrives calls the opening off', () => {
+    const browser = fakeBrowser()
+    const store = createViewStore(browser.pages)
+    store.open('month')
+    store.close()
+    store.open('add')
+
+    store.close()
+    store.arrived(browser.land())
+
+    expect(store.current()).toBeNull()
+    expect(browser.pages.state).toBeNull()
+    expect(browser.backs()).toBe(1)
+  })
+
+  test('the last view asked for is the one that opens', () => {
+    const browser = fakeBrowser()
+    const store = createViewStore(browser.pages)
+    store.open('month')
+    store.close()
+    store.open('add')
+    store.open('month')
+
+    store.arrived(browser.land())
+
+    expect(store.current()).toBe('month')
+    expect(browser.entries).toEqual([
+      { state: null, url: '/' },
+      { state: { tidelineView: 'month' }, url: '/' },
+    ])
+  })
 })
 
 describe('clearing the address', () => {
@@ -294,5 +326,35 @@ describe('clearing the address', () => {
     store.arrived(browser.land())
 
     expect(browser.entries[0].url).toBe('/?name=B&at=3,4')
+  })
+
+  test('as a view is left and another waits to open, both entries end up clean', () => {
+    const browser = fakeBrowser([{ state: null, url: '/?name=A&at=1,2' }])
+    const store = createViewStore(browser.pages)
+    store.open('month')
+    store.close()
+    store.open('add')
+    store.clearAddress('/')
+
+    store.arrived(browser.land())
+
+    expect(store.current()).toBe('add')
+    expect(browser.entries).toEqual([
+      { state: null, url: '/' },
+      { state: { tidelineView: 'add' }, url: '/' },
+    ])
+  })
+
+  test("under a view that stays open, cleans the view's own entry only", () => {
+    const browser = fakeBrowser([{ state: null, url: '/?name=A&at=1,2' }])
+    const store = createViewStore(browser.pages)
+    store.open('month')
+
+    store.clearAddress('/')
+
+    expect(browser.entries).toEqual([
+      { state: null, url: '/?name=A&at=1,2' },
+      { state: { tidelineView: 'month' }, url: '/' },
+    ])
   })
 })

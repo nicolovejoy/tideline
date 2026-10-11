@@ -28,7 +28,11 @@ export interface ViewStore {
   open(view: View): void
   /** Back to the forecast, and the view's entry taken off the history. */
   close(): void
-  /** Puts the address back to `path`, on the entry under a view being left as well. */
+  /**
+   * Puts the address back to `path`. Called after `close`, it cleans the
+   * entry under the view being left as well; under a view that stays open
+   * only the view's own entry is cleaned.
+   */
   clearAddress(path: string): void
   /** The browser has gone back or forward, to an entry with this state. */
   arrived(state: unknown): void
@@ -53,7 +57,10 @@ export function createViewStore(pages: Pages): ViewStore {
   // From asking the browser to go back until it has. It answers a moment
   // later, and until then the entry on top is still the view's.
   let leaving = false
-  let onArrival: (() => void)[] = []
+  // What waits for the browser to arrive: an address to clear on the entry
+  // underneath, and a view asked for in the meantime.
+  let pathToClear: string | null = null
+  let viewToOpen: View | null = null
   const listeners = new Set<() => void>()
 
   const show = (next: View | null) => {
@@ -64,7 +71,7 @@ export function createViewStore(pages: Pages): ViewStore {
 
   const open = (view: View) => {
     if (leaving) {
-      onArrival.push(() => open(view))
+      viewToOpen = view
       return
     }
     if (view === current) return
@@ -77,6 +84,8 @@ export function createViewStore(pages: Pages): ViewStore {
   }
 
   const close = () => {
+    // A view that was waiting to open is called off.
+    viewToOpen = null
     if (current === null) return
     show(null)
     // Only a view's own entry is taken off. Any other entry on top is not
@@ -87,18 +96,21 @@ export function createViewStore(pages: Pages): ViewStore {
   }
 
   const clearAddress = (path: string) => {
-    const clear = () => pages.replaceState(pages.state, '', path)
-    clear()
+    pages.replaceState(pages.state, '', path)
     // The entry under a view that is being left carries the address too.
-    if (leaving) onArrival.push(clear)
+    if (leaving) pathToClear = path
   }
 
   const arrived = (state: unknown) => {
     leaving = false
-    const waiting = onArrival
-    onArrival = []
+    const path = pathToClear
+    const view = viewToOpen
+    pathToClear = null
+    viewToOpen = null
     show(viewOf(state))
-    for (const each of waiting) each()
+    // The address first, so that a view opening next takes the clean one.
+    if (path !== null) pages.replaceState(pages.state, '', path)
+    if (view !== null) open(view)
   }
 
   const subscribe = (listener: () => void) => {
