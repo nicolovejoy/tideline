@@ -83,9 +83,10 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
     setPickedDay(date)
     // The cursor goes back to rest, on this day and on the one left behind.
     setPick(null)
-    // The panels are above the list, usually off screen. The page jumps to
-    // them. A glide would move the list under a second tap and choose
-    // whichever row had arrived under the finger.
+    // On a phone the panels are above the list, usually off screen. In a
+    // wide window they are beside it, and not always all in the window. The
+    // page jumps to them either way. A glide would move the list under a
+    // second tap and choose whichever row had arrived under the finger.
     dayTop.current?.scrollIntoView({ block: 'start' })
   }, [])
 

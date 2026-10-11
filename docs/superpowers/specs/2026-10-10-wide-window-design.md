@@ -33,7 +33,7 @@ One media query at the end of `src/styles.css`, `(min-width: 1000px)`, and nothi
 - The month view's list becomes two CSS columns, and a day is never broken across them.
 - The few things in item 7 are held to `30rem`, the phone's column.
 
-The layout was tried against the live site with this stylesheet added by hand before it was written down. It has been checked in Chromium only. Safari on a Mac and on an iPad is the owner's check.
+The layout was tried against the live site with this stylesheet added by hand before it was written down. It was checked in Chromium. The owner checked Safari on a Mac on 2026-10-11: the two columns, choosing a day, the line at 1,000 px, the month view and the add screen all passed. An iPhone and an iPad are still his to check.
 
 ## Limits
 
@@ -59,5 +59,5 @@ The layout was tried against the live site with this stylesheet added by hand be
 5. **The month view becomes two columns of days**, not a calendar grid.
 6. **The add screen stays as wide as the left column**, and its fields as wide as a phone's. A map across the whole page is possible; a taller map may do more for it than a wider one.
 7. **Plain CSS, one media query.** The issue asks for this.
-8. **Choosing a day still brings the panels to the top of the window**, as on a phone. This is the one place the change falls short of the issue's own words, "so choosing a day does not scroll the page". The move is there because it is what gets all four panels into a window 800 px tall. Taking it away needs the page to know how it is laid out, which is the JavaScript the issue rules out, or a large `scroll-margin-top`, which leaves the last panel below the window. It is the owner's call, with the pull request's window-sized pictures in front of him.
+8. **Choosing a day still brings the panels to the top of the window**, as on a phone. This is the one place the change falls short of the issue's own words, "so choosing a day does not scroll the page". The move is there because it is what gets all four panels into a window 800 px tall. Taking it away needs the page to know how it is laid out, which is the JavaScript the issue rules out, or a large `scroll-margin-top`, which leaves the last panel below the window. It is the owner's call, with the pull request's window-sized pictures in front of him. He tried it in Safari on 2026-10-11 and kept the move.
 9. **Issue 33 stays open.**
