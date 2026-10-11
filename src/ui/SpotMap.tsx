@@ -30,14 +30,17 @@ interface SpotMapProps {
   /** Somewhere to go when it changes: the device's position, or a place. */
   look: Look | null
   onPick: (at: LatLon) => void
+  /** What the map shows, told as it opens and after each move or zoom. */
+  onView: (view: Bounds) => void
 }
 
 /**
- * Leaflet on OpenStreetMap tiles, in a div it owns. A tap reports a point;
- * the pin is drawn where the parent says it is. A circle marker, not
- * Leaflet's image marker, so there is no icon file for the bundler to lose.
+ * Leaflet on OpenStreetMap tiles, in a div it owns. A tap reports a point
+ * and a move reports the view; the pin is drawn where the parent says it
+ * is. A circle marker, not Leaflet's image marker, so there is no icon file
+ * for the bundler to lose.
  */
-export function SpotMap({ center, pin, look, onPick }: SpotMapProps) {
+export function SpotMap({ center, pin, look, onPick, onView }: SpotMapProps) {
   const host = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
   const marker = useRef<L.CircleMarker | null>(null)
@@ -45,6 +48,7 @@ export function SpotMap({ center, pin, look, onPick }: SpotMapProps) {
   const opening = useRef(center)
   // Calls the latest handler, so the map's one listener never goes stale.
   const pick = useEffectEvent((at: LatLon) => onPick(at))
+  const see = useEffectEvent((view: Bounds) => onView(view))
 
   useEffect(() => {
     if (!host.current) return
@@ -56,6 +60,18 @@ export function SpotMap({ center, pin, look, onPick }: SpotMapProps) {
     made.on('click', (event: L.LeafletMouseEvent) => {
       pick({ lat: event.latlng.lat, lon: event.latlng.lng })
     })
+    const tell = () => {
+      const shown = made.getBounds()
+      see({
+        south: shown.getSouth(),
+        north: shown.getNorth(),
+        west: shown.getWest(),
+        east: shown.getEast(),
+      })
+    }
+    // A zoom ends in a moveend too.
+    made.on('moveend', tell)
+    tell()
     map.current = made
     return () => {
       made.remove()
