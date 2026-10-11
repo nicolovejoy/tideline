@@ -4,6 +4,7 @@ import { SPOTS, allSpots, isSaved } from './spot.ts'
 import type { Spot } from './spot.ts'
 import { WORDS } from './ui/addSpotView.ts'
 import { AddSpotUnavailable } from './ui/AddSpotUnavailable.tsx'
+import { BuildStamp } from './ui/BuildStamp.tsx'
 import { forgetSavedSpot, readSpot, writeSpot } from './ui/choices.ts'
 import { InstallHint } from './ui/InstallHint.tsx'
 import { SpotScreen } from './ui/SpotScreen.tsx'
@@ -53,6 +54,7 @@ export default function App() {
             onCancel={() => setAdding(false)}
           />
         </Suspense>
+        <BuildStamp />
       </main>
     )
   }
@@ -78,6 +80,7 @@ export default function App() {
         spot={spot}
         onRemove={isSaved(spot) ? removeSpot : undefined}
       />
+      <BuildStamp />
     </main>
   )
 }

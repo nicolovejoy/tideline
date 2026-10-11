@@ -3,8 +3,10 @@ import {
   addDays,
   addMonths,
   datesOfMonth,
+  deviceTimeZone,
   formatDay,
   formatMonth,
+  formatMonthDay,
   formatTime,
   hourMarks,
   localDate,
@@ -139,6 +141,19 @@ describe('formatDay', () => {
     expect(formatDay('2026-10-08')).toBe('Thu Oct 8')
     expect(formatDay('2026-11-01')).toBe('Sun Nov 1')
     expect(formatDay('2027-01-01')).toBe('Fri Jan 1')
+  })
+})
+
+describe('formatMonthDay', () => {
+  test('month and day of the month, with no weekday', () => {
+    expect(formatMonthDay('2026-10-08')).toBe('Oct 8')
+    expect(formatMonthDay('2027-01-31')).toBe('Jan 31')
+  })
+})
+
+describe('deviceTimeZone', () => {
+  test("the zone the device is set to, which in these tests is Tokyo's", () => {
+    expect(deviceTimeZone()).toBe('Asia/Tokyo')
   })
 })
 
