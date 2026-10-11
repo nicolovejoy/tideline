@@ -129,7 +129,7 @@ All four HTTP APIs below send `access-control-allow-origin: *`, need no key, and
 
 **Open-Meteo** — not used. Kept as a reference: its `ncep_nbm_conus` model (NOAA National Blend, 2.5 km) returned 11 days when checked on 2026-10-08. Free for non-commercial use with attribution.
 
-**Sun and moon** — computed locally with `astronomy-engine`. The USNO API (`aa.usno.navy.mil/api/rstt/oneday`) is the reference to test computed values against. It is no reference for a height: asked for La Cumbre Peak on 2026-10-10 with `height=0` and with `height=1218` it gave the same times, 18:31 and 07:05. `astronomy-engine` takes the observer's height, and how far that is above the ground it looks out over as the last argument of `SearchRiseSet`; from 3,997 ft it puts sunset 6 to 7 minutes later and moonrise 6 to 7 minutes earlier.
+**Sun and moon** — computed locally with `astronomy-engine`. The USNO API (`aa.usno.navy.mil/api/rstt/oneday`) is the reference to test computed values against. It is no reference for a height: asked for La Cumbre Peak on 2026-10-10 with `height=0` and with `height=1218` it gave the same times, 18:31 and 07:05. `astronomy-engine` takes the observer's height, and how far that is above the ground it looks out over as the last argument of `SearchRiseSet`; from 3,997 ft it puts sunset about 6 to 7 minutes later and moonrise about 6 to 7 minutes earlier (7 minutes 14 seconds at the winter solstice).
 
 ## Next Steps
 

@@ -34,7 +34,7 @@ Otherwise they are worked out for a level horizon, as now, and as almanacs and w
 ## How it works
 
 - **`src/data/horizon.ts`**, a plain module with tests: `seenFromFt(spot)` gives the height in feet that the times are worked out from, or 0 for a level horizon. It reads the spot's own height and the distance to its tide station, and nothing else.
-- **`src/data/astro.ts`**: `dayAstro` places the observer at that height and tells `astronomy-engine` that the observer stands that far above the ground it looks out over (the last argument of `SearchRiseSet`). The library lowers the horizon by the dip and allows for the thinner air. At 0 nothing changes, so every existing test against the Naval Observatory stands as it is.
+- **`src/data/astro.ts`**: `dayAstro` places the observer at that height and tells `astronomy-engine` that the observer stands that far above the ground it looks out over (the last argument of `SearchRiseSet`). The library lowers the horizon by the dip for that height, and bends the light as it is bent for a ray that grazes the sea. At 0 nothing changes, so every existing test against the Naval Observatory stands as it is.
 - **`src/ui/captions.ts`**: `sunCaption(spot)` gives the caption, or null where the horizon is level.
 - **`src/ui/SpotScreen.tsx`** and **`src/ui/MonthView.tsx`** show the caption where there is one.
 

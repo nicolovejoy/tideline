@@ -174,6 +174,10 @@ describe("from the spot's own height", () => {
     expect(formatTime(flat.sunset!, zone)).toBe('6:31 PM')
     expect(formatTime(flat.moonrise!, zone)).toBe('7:05 AM')
 
+    // Both sunsets fall within two seconds of a half minute: 6:30:30 on a
+    // level horizon and 6:36:31 from the peak. If an upgrade of the library
+    // turns a pin here into the minute before, that is the rounding and not
+    // a regression. The bands in the next test are what the height does.
     const high = dayAstro(peak, '2026-10-10')
     expect(formatTime(high.sunset!, zone)).toBe('6:37 PM')
     expect(formatTime(high.moonrise!, zone)).toBe('6:59 AM')

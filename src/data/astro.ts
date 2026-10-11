@@ -96,8 +96,9 @@ function phaseName(dayStart: number, dayEnd: number, at: number): PhaseName {
 }
 
 export function dayAstro(spot: Place, date: string): DayAstro {
-  // The height the times are worked out from, or 0. It lowers the horizon,
-  // and the library also allows for the thinner air up there.
+  // The height the times are worked out from, or 0. The library lowers the
+  // horizon by the dip for that height, and bends the light as it is bent
+  // for a ray that grazes the sea.
   const observer = new Observer(spot.lat, spot.lon, seenFromFt(spot) * FT_TO_M)
   // The local day is 23 or 25 hours long when the clocks change.
   const start = localDayStart(date, spot.timeZone)
