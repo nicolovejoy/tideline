@@ -122,6 +122,8 @@ Append exactly this at the end of `src/styles.css`, after a blank line:
 }
 ```
 
+> **As shipped:** the whole-branch review moved the line from `60rem` to `1000px` (the widest iPhone on its side is 956 px, and a rem in a media query follows the reader's default font size), and held a few phone-width things to `30rem` in the wide layout: the hint to add the app to the home screen, the table of highs and lows, the month's heading and the add screen's fields. An empty `.facts` line also takes no room. The stylesheet in `src/styles.css` is the record; the block above is where it started.
+
 Run: `npm run format && npm run lint && npm run build`
 Expected: all pass.
 
