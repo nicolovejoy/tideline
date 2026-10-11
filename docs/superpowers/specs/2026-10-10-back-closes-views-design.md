@@ -51,6 +51,7 @@ Nothing is fetched, nothing is stored on the device, and no address changes.
 
 - A view's entry is the app's only while the app made it in this tab. A tab whose history was cleared underneath it has nothing to go back to, and going back leaves the site, as today.
 - The home-screen app has no back swipe. Nothing changes there.
+- After a reload on a view, the view's own button still asks the browser to go back. In Chromium that stays within the page. If a browser loads the page afresh there, the forecast is drawn again from saved data.
 
 ## Not in this change
 

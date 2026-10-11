@@ -500,6 +500,8 @@ export function createViewStore(pages: Pages): ViewStore {
 }
 ```
 
+> **As shipped:** the task review found that the list of callbacks above could run a waiting `open` before a waiting address-clear, leaving a shared link on the entry under the view. The store in `src/ui/viewHistory.ts` keeps one address and one view waiting in place of the list: on arrival the address is cleared first, and a `close` calls a waiting `open` off. It has 32 tests, not 26.
+
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/ui/viewHistory.test.ts`
