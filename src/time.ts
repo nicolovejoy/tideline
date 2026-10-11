@@ -175,6 +175,21 @@ export function formatDay(date: string): string {
   return `${part('weekday')} ${part('month')} ${part('day')}`
 }
 
+/** A calendar date with no weekday, such as 'Oct 8'. No zone is involved. */
+export function formatMonthDay(date: string): string {
+  const [year, month, day] = parseDate(date)
+  const part = partReader(dayFormat, Date.UTC(year, month - 1, day, 12))
+  return `${part('month')} ${part('day')}`
+}
+
+/**
+ * The zone the device is set to. For what is about the viewer and not a
+ * spot, which so far is only when the running build was made.
+ */
+export function deviceTimeZone(): string {
+  return new Intl.DateTimeFormat().resolvedOptions().timeZone
+}
+
 const monthFormat = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
   month: 'long',

@@ -637,3 +637,18 @@ h1 {
 .remove-spot {
   margin-top: 1rem;
 }
+
+/* Which build is running, for whoever is working on the app. The quietest
+   line on the page. */
+.build-stamp {
+  margin-top: 2.5rem;
+  color: var(--muted);
+  font-size: 0.7333rem;
+}
+.build-stamp a {
+  color: inherit;
+}
+.build-stamp a:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 2px;
+}
