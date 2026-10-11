@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Panel } from '../chart/Panel.tsx'
 import { PanelStack } from '../chart/PanelStack.tsx'
 import { cursorText } from '../chart/readout.ts'
@@ -90,25 +90,31 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
     dayTop.current?.scrollIntoView({ block: 'start' })
   }, [])
 
-  const openMonths = useCallback(() => {
-    // Today on the panels, with the cursor at rest, as on a first open. Set
-    // on the way in, so that every way back finds the forecast the same:
-    // the month view's own button, or the browser going back.
-    setPickedDay(null)
-    setPick(null)
-    setMonth(null)
-    openView('month')
-    window.scrollTo(0, 0)
-  }, [])
-  // When the month view has gone, however it went. The button pressed has
-  // gone with it; focus goes to the day's heading, not to the page.
+  const openMonths = useCallback(() => openView('month'), [])
+  // Each time the month view comes up or goes, by its own buttons or by
+  // the browser going back or forward. Before the screen is painted, so
+  // nothing of what was there before is seen.
   const wasMonth = useRef(monthOpen)
-  useEffect(() => {
-    if (wasMonth.current && !monthOpen) {
-      dayHeading.current?.focus({ preventScroll: true })
-      window.scrollTo(0, 0)
-    }
+  useLayoutEffect(() => {
+    if (wasMonth.current === monthOpen) return
     wasMonth.current = monthOpen
+    if (monthOpen) {
+      // Today on the panels, with the cursor at rest, and this month. Set
+      // on the way in, so that every way back finds the forecast as on a
+      // first open.
+      // Before paint, so the reset is seen by no one: the lint rule is for
+      // effects that run after it.
+      /* oxlint-disable react/set-state-in-effect */
+      setPickedDay(null)
+      setPick(null)
+      setMonth(null)
+      /* oxlint-enable react/set-state-in-effect */
+    } else {
+      // The button pressed has gone with the month view; focus goes to the
+      // day's heading, not to the page.
+      dayHeading.current?.focus({ preventScroll: true })
+    }
+    window.scrollTo(0, 0)
   }, [monthOpen])
 
   if (monthOpen) {

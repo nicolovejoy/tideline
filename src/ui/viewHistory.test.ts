@@ -206,6 +206,37 @@ describe('the browser going back and forward', () => {
     store.open('month')
     expect(listener).not.toHaveBeenCalled()
   })
+
+  test('arriving at the same entry twice changes nothing', () => {
+    const browser = fakeBrowser()
+    const store = createViewStore(browser.pages)
+    store.open('month')
+    const listener = vi.fn()
+    store.subscribe(listener)
+
+    store.arrived(browser.pages.state)
+    store.arrived(browser.pages.state)
+
+    expect(store.current()).toBe('month')
+    expect(listener).not.toHaveBeenCalled()
+    expect(browser.entries).toHaveLength(2)
+  })
+
+  test('an arrival ends the wait for a back, wherever it lands', () => {
+    // A page restored from the back-forward cache: it had asked to go back
+    // and is brought back still on the view's entry, with no popstate.
+    const browser = fakeBrowser()
+    const store = createViewStore(browser.pages)
+    store.open('month')
+    store.close()
+
+    store.arrived(browser.pages.state)
+
+    expect(store.current()).toBe('month')
+    // It is not left waiting: its own button works again.
+    store.close()
+    expect(browser.backs()).toBe(2)
+  })
 })
 
 describe('a reload', () => {

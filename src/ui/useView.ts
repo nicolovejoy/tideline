@@ -10,6 +10,13 @@ const store = createViewStore(window.history)
 
 window.addEventListener('popstate', (event) => store.arrived(event.state))
 
+// A page brought back from the browser's back-forward cache comes back as
+// it was left, and may never hear the popstate it was waiting for. It is
+// told where it is instead. Telling it twice does no harm.
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) store.arrived(window.history.state)
+})
+
 // Where the page is scrolled to after going back is the app's to say, as it
 // is after "Back to forecast". Left to the browser it differs from one
 // browser to the next.
