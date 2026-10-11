@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Stage 1 is built; its phone check is down to one item. Stage 2 has begun: three spots, the month view, the interpolated curve, own spots from a map and place search by name are merged and live.
 
-- Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and no tides at La Cumbre; then the month view (this month and the next three, sunset, moon and highs and lows per day); then a curve interpolated from the highs and lows for stations that publish only those, labelled "interpolated" (a saved spot at a subordinate station uses it); then your own spots: a pin on a map (Leaflet, OpenStreetMap tiles) or the device's location, named and saved on the device, with the NWS cell, the spot's own height from USGS, and the nearest tide station and nearest gauge worked out from a baked station list (`scripts/bake-stations.mjs`, `src/data/stations.json`); then a place name typed on the add screen, looked up with OpenStreetMap's Nominatim (`src/data/geocode.ts`), which prefers places in the map's view, pans the map there and drops the pin; then a link to share any spot by (`src/ui/shareView.ts`), which carries the spot's name and its coordinates to four places and nothing else: opening one shows the spot, looked up as a new pin is, with Save to keep a copy on the device and Close to leave it, and a link to a point the device already has a spot at opens that spot.
+- Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and no tides at La Cumbre; then the month view (this month and the next three, sunset, moon and highs and lows per day); then a curve interpolated from the highs and lows for stations that publish only those, labelled "interpolated" (a saved spot at a subordinate station uses it); then your own spots: a pin on a map (Leaflet, OpenStreetMap tiles) or the device's location, named and saved on the device, with the NWS cell, the spot's own height from USGS, and the nearest tide station and nearest gauge worked out from a baked station list (`scripts/bake-stations.mjs`, `src/data/stations.json`); then a place name typed on the add screen, looked up with OpenStreetMap's Nominatim (`src/data/geocode.ts`), which prefers places in the map's view, pans the map there and drops the pin; then a link to share any spot by (`src/ui/shareView.ts`), which carries the spot's name and its coordinates to four places and nothing else: opening one shows the spot, looked up as a new pin is, with Save to keep a copy on the device and Close to leave it, and a link to a point the device already has a spot at opens that spot; then sunset and moonrise worked out from the spot's own height where it is 100 ft up or more and near the sea (`src/data/horizon.ts`), with a caption that says so.
 - Not built: everything after share by link. It is tracked as GitHub issues.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
@@ -54,6 +54,7 @@ In every tracked file, commit message, issue, and pull request, that person is "
 - Today's tide: predicted curve overlaid with observed water level, so a deviation is visible.
 - Weather for the spot itself, not the city.
 - Moon phase per day; if moonrise is within 2 hours of sunset, flag it and show the time.
+- Sun and moon times count the spot's own height where it is 100 ft or more and a tide station is within 25 mi, over a sea-level horizon, and the screen says so. Everywhere else they are for a level horizon, as almanacs give them.
 - Default view is the forecast window; extended view is a month at a time, up to 3 months out, tide/sun/moon only.
 - Spots are named and saved by the user, shareable publicly or with specific friends.
 - Tides only at the coast: a spot has a tide when a tide station is within 25 mi and the spot itself is under 300 ft. It is a fact of the spot, with no switch. Where there is none the screen says why.
@@ -85,7 +86,7 @@ The first user confirmed these on 2026-10-09 (recorded by Nico on `stage-1/weath
 - Weather values: temperature, wind, gusts, direction, cloud cover, rain chance, drawn for the full day. A way to dig in is issue 8.
 - Where a spot's tide station has no gauge, show the nearest gauge's deviation from its own prediction. Do not redraw the spot's curve with that deviation applied.
 - Inland spots: tides hidden by default. Changed by the owner on 2026-10-10 to no tides inland at all, with no switch (see below).
-- Sun and moon times should account for the spot's elevation, after launch (issue 9).
+- Sun and moon times should account for the spot's elevation, after launch (issue 9). Built on 2026-10-10 for spots near the sea only; see the question below.
 - Sharing: a link to chosen friends is enough. No accounts (issue 12 closed; issue 7 stays).
 - The cursor rests on the latest gauge reading today.
 - Working offline is not a Stage 1 goal (decided 2026-10-09). The data is saved on the device; the page itself is not.
@@ -93,6 +94,8 @@ The first user confirmed these on 2026-10-09 (recorded by Nico on `stage-1/weath
 Decided by the owner on 2026-10-10, after trying own spots on a phone: tides only at the coast. A tick could show a tide curve on La Cumbre Peak, which means nothing there, and it could not be undone. The rule is in `src/data/tideRule.ts` and `hasTides` in `src/spot.ts`; a spot's height is its own, from USGS, because the NWS cell's average puts beaches under hills hundreds of feet up. The first user had confirmed the default it replaces and has not been told.
 
 Still open with the first user, as of 2026-10-09: whether the forecast at the hour of sunset is the right moment for a day's row; and the wording of the moon line, which he wants as "Moonrise 5:00 AM".
+
+Open with the first user since 2026-10-10: what a spot's height is counted above. He asked for sun and moon times to count the elevation. The app counts it only where the sea is near (a tide station within 25 mi), over a sea-level horizon, because inland the horizon may be as high as the spot: Denver's own height would put its sunset 7 minutes late. The rule is in `src/data/horizon.ts`. He has not been asked whether that is what he meant.
 
 Display convention: times and calendar days are shown in the spot's own time zone (returned by NWS `/points`), not the viewer's. Never derive a day from a UTC ISO string; use `Intl.DateTimeFormat` with an explicit `timeZone`.
 
@@ -126,7 +129,7 @@ All four HTTP APIs below send `access-control-allow-origin: *`, need no key, and
 
 **Open-Meteo** — not used. Kept as a reference: its `ncep_nbm_conus` model (NOAA National Blend, 2.5 km) returned 11 days when checked on 2026-10-08. Free for non-commercial use with attribution.
 
-**Sun and moon** — computed locally with `astronomy-engine`. The USNO API (`aa.usno.navy.mil/api/rstt/oneday`) is the reference to test computed values against.
+**Sun and moon** — computed locally with `astronomy-engine`. The USNO API (`aa.usno.navy.mil/api/rstt/oneday`) is the reference to test computed values against. It is no reference for a height: asked for La Cumbre Peak on 2026-10-10 with `height=0` and with `height=1218` it gave the same times, 18:31 and 07:05. `astronomy-engine` takes the observer's height, and how far that is above the ground it looks out over as the last argument of `SearchRiseSet`; from 3,997 ft it puts sunset 6 to 7 minutes later and moonrise 6 to 7 minutes earlier.
 
 ## Next Steps
 
@@ -134,11 +137,12 @@ All four HTTP APIs below send `access-control-allow-origin: *`, need no key, and
 - Own spots and place search (pull requests 37 and 40) are merged and live. The owner tried them on 2026-10-10, added several spots and said they work well, and issue #4 is closed.
 - Three things from that try are merged and live (pull request 41, 2026-10-10): tides only at the coast, a spot's own height from USGS (a new data source, which that pull request put to the owner), and one message for every pin outside the US. The owner ran its phone check on production on 2026-10-10: the first six steps passed, and the last two (pins outside the US, and Campus Point drawing as before) were not run.
 - Spots saved before that change have no height of their own. One in a forecast cell that averages 300 ft or more shows no tide until it is removed and added again.
+- Sun and moon times count a spot's own height near the sea (issue #9). Waiting for the owner's check, and for the first user's answer on what the height should be counted above. A spot saved before spots had heights stays at a level horizon until it is removed and added again.
 - Place search prefers the map's view (issue #42). Without a view Nominatim's first answer could be anywhere: "Ventura" gave the county, "Summerland Beach" a place in Ohio, "Rincon Point" one in Utah. With it all three and "Loon Point" come back on the Santa Barbara coast, and "Seattle" is still found. The owner's phone check on production passed on 2026-10-10 for "Summerland Beach", "Rincon Point", "Ventura" and "Seattle". If wrong matches survive it, a list of results to choose from is the next step.
 - The build stamp (issue #38) is merged and live; the owner saw the time and the commit's link on production on 2026-10-10.
 - Share by link (issue #7) is built and waiting for the owner's phone check. A link opens in Safari and may not reach the home-screen app, which keeps its own storage (issue #45), and views still have no addresses (issue #46).
 - Not yet tried: a screen reader on the cursor.
-- The first user: the two questions still open under Decisions (the sunset-hour row, the moon line wording).
+- The first user: the three questions still open under Decisions (the sunset-hour row, the moon line wording, what a spot's height is counted above).
 - Everything after Stage 1 is tracked as GitHub issues, in provisional order.
 
 <!-- SHARED-CONVENTIONS:BEGIN v=2ed9fb390e55 — auto-managed, do not edit here; source: prompt-lab/workflow/claude-md-shared.md (edit + re-sync) -->
