@@ -1,5 +1,6 @@
 // Sunset, moonrise and moon phase, computed on the device. Times are for a
-// flat sea-level horizon, which is what most weather sites show.
+// level horizon, which is what most weather sites show, except where the
+// spot's own height is counted (`horizon.ts`).
 
 import {
   Body,
@@ -11,6 +12,7 @@ import {
 } from 'astronomy-engine'
 import type { Spot } from '../spot.ts'
 import { DAY, HOUR, MINUTE, addDays, localDayStart } from '../time.ts'
+import { seenFromFt } from './horizon.ts'
 
 export type PhaseName =
   | 'New Moon'
@@ -36,8 +38,12 @@ export interface DayAstro {
   moonriseNearSunset: number | null
 }
 
-type Place = Pick<Spot, 'lat' | 'lon' | 'timeZone'>
+type Place = Pick<
+  Spot,
+  'lat' | 'lon' | 'timeZone' | 'elevationFt' | 'tideStation'
+>
 
+const FT_TO_M = 0.3048
 const RISE = 1
 const SET = -1
 const QUARTERS: PhaseName[] = [
@@ -70,6 +76,9 @@ function riseOrSet(
     direction,
     new Date(from),
     spanMs / DAY,
+    // The horizon is the sea, so the observer stands as far above the
+    // ground it looks out over as above sea level. Zero is a level horizon.
+    observer.height,
   )
   return found ? found.date.getTime() : null
 }
@@ -87,7 +96,9 @@ function phaseName(dayStart: number, dayEnd: number, at: number): PhaseName {
 }
 
 export function dayAstro(spot: Place, date: string): DayAstro {
-  const observer = new Observer(spot.lat, spot.lon, 0)
+  // The height the times are worked out from, or 0. It lowers the horizon,
+  // and the library also allows for the thinner air up there.
+  const observer = new Observer(spot.lat, spot.lon, seenFromFt(spot) * FT_TO_M)
   // The local day is 23 or 25 hours long when the clocks change.
   const start = localDayStart(date, spot.timeZone)
   const end = localDayStart(addDays(date, 1), spot.timeZone)
