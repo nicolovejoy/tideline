@@ -91,29 +91,29 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
   }, [])
 
   const openMonths = useCallback(() => openView('month'), [])
-  // Each time the month view comes up or goes, by its own buttons or by
-  // the browser going back or forward. Before the screen is painted, so
-  // nothing of what was there before is seen.
-  const wasMonth = useRef(monthOpen)
-  useLayoutEffect(() => {
-    if (wasMonth.current === monthOpen) return
-    wasMonth.current = monthOpen
+  // Each time the month view comes up, by its button or by the browser
+  // going forward, the forecast under it is put back to today, with the
+  // cursor at rest, and the month to this one. Set on the way in, so that
+  // every way back finds the forecast as on a first open. Done while
+  // drawing, as React asks of state that follows another value, so nothing
+  // of what was there before is seen.
+  const [wasMonth, setWasMonth] = useState(monthOpen)
+  if (wasMonth !== monthOpen) {
+    setWasMonth(monthOpen)
     if (monthOpen) {
-      // Today on the panels, with the cursor at rest, and this month. Set
-      // on the way in, so that every way back finds the forecast as on a
-      // first open.
-      // Before paint, so the reset is seen by no one: the lint rule is for
-      // effects that run after it.
-      /* oxlint-disable react/set-state-in-effect */
       setPickedDay(null)
       setPick(null)
       setMonth(null)
-      /* oxlint-enable react/set-state-in-effect */
-    } else {
-      // The button pressed has gone with the month view; focus goes to the
-      // day's heading, not to the page.
-      dayHeading.current?.focus({ preventScroll: true })
     }
+  }
+  // The page goes to its top each time the month view comes up or goes.
+  // When it goes, the button pressed has gone with it, and focus goes to
+  // the day's heading, not to the page.
+  const shownMonth = useRef(monthOpen)
+  useLayoutEffect(() => {
+    if (shownMonth.current === monthOpen) return
+    shownMonth.current = monthOpen
+    if (!monthOpen) dayHeading.current?.focus({ preventScroll: true })
     window.scrollTo(0, 0)
   }, [monthOpen])
 
