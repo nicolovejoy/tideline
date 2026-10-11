@@ -638,6 +638,21 @@ h1 {
   margin-top: 1rem;
 }
 
+/* The share line: the button, then what came of it. The remove line sits
+   close under it. A link shown to be copied by hand breaks wherever the
+   line ends, and one touch selects the whole of it. */
+.share-spot {
+  margin-top: 1rem;
+}
+.share-spot + .remove-spot {
+  margin-top: 0;
+}
+.share-link {
+  overflow-wrap: anywhere;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
 /* Which build is running, for whoever is working on the app. The quietest
    line on the page. */
 .build-stamp {
