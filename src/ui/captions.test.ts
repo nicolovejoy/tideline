@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   monthCaption,
   noTidesWords,
+  sunCaption,
   tideCaption,
   weatherCaption,
 } from './captions.ts'
@@ -464,5 +465,34 @@ describe('tideCaption at a spot whose station publishes highs and lows only', ()
     ).toBe(
       `${THEIRS} High and low times unavailable. ${GAUGE}, observed through 2:06 PM, preliminary.`,
     )
+  })
+})
+
+describe('sunCaption', () => {
+  const laCumbre = spotById('la-cumbre-peak')
+
+  test("says the height where the spot's own height is counted", () => {
+    expect(sunCaption(laCumbre)).toBe(
+      'Sun and moon: times as seen from 3,997 ft, over a sea-level horizon. Hills in the way are not counted.',
+    )
+  })
+
+  test('a height in whole feet', () => {
+    expect(sunCaption({ ...laCumbre, elevationFt: 583.4 })).toBe(
+      'Sun and moon: times as seen from 583 ft, over a sea-level horizon. Hills in the way are not counted.',
+    )
+  })
+
+  test('nothing where the times are for a level horizon', () => {
+    expect(sunCaption(CAMPUS_POINT)).toBeNull()
+    expect(sunCaption(spotById('gaviota'))).toBeNull()
+    expect(sunCaption({ ...laCumbre, elevationFt: null })).toBeNull()
+    expect(sunCaption({ ...laCumbre, elevationFt: 99 })).toBeNull()
+    expect(
+      sunCaption({
+        ...laCumbre,
+        tideStation: { ...laCumbre.tideStation, distanceMi: 636 },
+      }),
+    ).toBeNull()
   })
 })

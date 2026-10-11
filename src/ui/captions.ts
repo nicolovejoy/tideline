@@ -1,6 +1,7 @@
 // The small print under the panels: where the data comes from, how recent it
 // is, and what went wrong if something did. Plain functions.
 
+import { seenFromFt } from '../data/horizon.ts'
 import type { Loaded } from '../data/load.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
 import type { Forecast } from '../data/nws.ts'
@@ -179,4 +180,18 @@ export function weatherCaption(
     parts.push(`Couldn't refresh. Showing the forecast from ${saved}.`)
   }
   return parts.join(' ')
+}
+
+/**
+ * What sunset and moonrise are worked out from, where that is the spot's
+ * own height. Null where it is a level horizon, as it is at most spots and
+ * on most weather sites. Said under the weather's caption and under the
+ * month view's.
+ */
+export function sunCaption(
+  spot: Pick<Spot, 'elevationFt' | 'tideStation'>,
+): string | null {
+  const from = seenFromFt(spot)
+  if (from === 0) return null
+  return `Sun and moon: times as seen from ${feetHigh(from)}, over a sea-level horizon. Hills in the way are not counted.`
 }

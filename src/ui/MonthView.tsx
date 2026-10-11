@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import type { Loaded } from '../data/load.ts'
 import type { TideExtreme } from '../data/noaa.ts'
 import type { Spot } from '../spot.ts'
-import { monthCaption } from './captions.ts'
+import { monthCaption, sunCaption } from './captions.ts'
 import { monthNav, monthRows } from './monthView.ts'
 
 interface MonthViewProps {
@@ -32,6 +32,8 @@ export function MonthView({
   onBack,
 }: MonthViewProps) {
   const nav = monthNav(month, today)
+  // Said only where the spot's own height is counted.
+  const sun = sunCaption(spot)
   // The heading takes focus on entry and on each step. The button that was
   // pressed has gone, or is disabled at an end, and a screen reader reads
   // the heading it lands on, so the new month is announced.
@@ -102,6 +104,7 @@ export function MonthView({
       </ol>
 
       <p className="caption">{noTides ?? monthCaption(spot, hilo, today)}</p>
+      {sun !== null && <p className="caption">{sun}</p>}
     </section>
   )
 }
