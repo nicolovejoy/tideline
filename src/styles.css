@@ -667,3 +667,40 @@ h1 {
   outline: 2px solid var(--sea);
   outline-offset: 2px;
 }
+
+/* A wide window: the forecast in two columns, the 14 days beside the panels
+   they choose for. A rem here is the browser's own 16px, so this begins at
+   960px: wider than any phone on its side, so nothing moves on one. */
+@media (min-width: 60rem) {
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    column-gap: 3rem;
+    align-items: start;
+    max-width: 72rem;
+  }
+  /* Everything runs the full width, but for the day and what goes where
+     the day does. */
+  main > * {
+    grid-column: 1 / -1;
+  }
+  main > .day,
+  main > .add-spot {
+    grid-column: 1;
+  }
+  /* The 14 days come straight after the day, so they land in its row. Their
+     heading has a button beside it and a taller line, so a little less
+     room above puts it level with the day's. */
+  main > .days {
+    grid-column: 2;
+    margin-top: 1.6rem;
+  }
+  /* The month in two columns of days, and no day split between them. */
+  .month ol {
+    columns: 2;
+    column-gap: 4rem;
+  }
+  .month-row {
+    break-inside: avoid;
+  }
+}
