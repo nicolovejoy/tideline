@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { LatLon } from '../data/geo.ts'
 import { fetchPlace } from '../data/geocode.ts'
+import type { Bounds } from '../data/geocode.ts'
 import { fetchElevationFt, fetchPoints } from '../data/nws.ts'
 import { resolveSpot } from '../data/resolve.ts'
 import type { ResolveResult } from '../data/resolve.ts'
@@ -55,6 +56,9 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
   )
   const nameId = useId()
   const placeId = useId()
+
+  // What the map shows, for a search to prefer. Nothing is drawn from it.
+  const view = useRef<Bounds | null>(null)
 
   // A search that answers after the screen is gone sets nothing.
   const gone = useRef(false)
@@ -119,7 +123,7 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
     event.preventDefault()
     if (!canSearch(query, search)) return
     setSearch({ status: 'searching' })
-    fetchPlace(query).then(
+    fetchPlace(query, view.current).then(
       (place) => {
         if (gone.current) return
         if (!place) {
@@ -213,6 +217,9 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
         pin={pin}
         look={look}
         onPick={dropPin}
+        onView={(shown) => {
+          view.current = shown
+        }}
       />
 
       <p className="field">
