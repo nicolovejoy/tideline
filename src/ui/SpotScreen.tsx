@@ -15,6 +15,7 @@ import { dayRows, tonightWords } from './dayList.ts'
 import { HiLoTable } from './HiLoTable.tsx'
 import { MonthView } from './MonthView.tsx'
 import { dayMarkers, selectedDay } from './selection.ts'
+import { ShareSpot } from './ShareSpot.tsx'
 import { tideView } from './tideView.ts'
 import type { CursorPick } from './tideView.ts'
 import { TonightStrip } from './TonightStrip.tsx'
@@ -33,9 +34,9 @@ interface SpotScreenProps {
 
 /**
  * Everything for one spot: tonight, the day's panels, its highs and lows,
- * the captions and the 14 days, or the month view in their place. Mounted
- * afresh for each spot, so a switch starts from saved data, today and a
- * resting cursor, as a first open does.
+ * the captions, the line to share it from and the 14 days, or the month
+ * view in their place. Mounted afresh for each spot, so a switch starts
+ * from saved data, today and a resting cursor, as a first open does.
  */
 export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
   const zone = spot.timeZone
@@ -209,6 +210,7 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
             })}
         </p>
         <p className="caption">{weatherCaption(spot, forecast, data.today)}</p>
+        <ShareSpot spot={spot} />
         {onRemove &&
           (removing ? (
             <p className="caption remove-spot">
