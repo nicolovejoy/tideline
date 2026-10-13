@@ -439,6 +439,14 @@ h1 {
   justify-content: space-between;
   align-items: baseline;
 }
+/* The way into the month view, beside the list's heading. Outlined like a
+   spot's name, so it reads as a button and not as a note. */
+.month-open {
+  min-height: 44px;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--sea);
+  border-radius: 999px;
+}
 .days ol {
   margin: 0.5rem 0 0;
   padding: 0;
@@ -666,4 +674,58 @@ h1 {
 .build-stamp a:focus-visible {
   outline: 2px solid var(--sea);
   outline-offset: 2px;
+}
+
+/* A wide window: the forecast in two columns, the 14 days beside the panels
+   they choose for. It begins at 1000px: the widest iPhone on its side is
+   956px, so nothing moves on a phone. */
+@media (min-width: 1000px) {
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    column-gap: 3rem;
+    align-items: start;
+    max-width: 72rem;
+  }
+  /* Everything runs the full width, but for the day and what goes where
+     the day does. */
+  main > * {
+    grid-column: 1 / -1;
+  }
+  main > .day,
+  main > .add-spot {
+    grid-column: 1;
+  }
+  /* The 14 days come straight after the day, so they land in its row. Their
+     heading has a button beside it, 44px tall, and sits lower in its line,
+     so less room above puts it level with the day's. */
+  main > .days {
+    grid-column: 2;
+    margin-top: 1.3667rem;
+  }
+  /* What is made for a phone's width keeps it. Stretched across the page
+     their parts drift apart: the hint and its Dismiss, a tide's time and
+     its height, the month's two arrows, a field and its button. */
+  main > .install-hint,
+  .hilo,
+  .add-spot .field {
+    max-width: 30rem;
+  }
+  .month-head {
+    max-width: 30rem;
+    margin-inline: auto;
+  }
+  /* An empty line takes no room in a column, where its margins fold away.
+     In a grid it would hold them. */
+  main > .facts:empty {
+    margin-top: 0;
+  }
+  /* The month in two columns of days, and no day split between them. */
+  .month ol {
+    columns: 2;
+    column-gap: 4rem;
+  }
+  .month-row {
+    break-inside: avoid;
+  }
 }

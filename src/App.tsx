@@ -13,6 +13,7 @@ import { openedLink, sharedSpotId } from './ui/shareView.ts'
 import type { SharedPoint } from './ui/shareView.ts'
 import { SpotScreen } from './ui/SpotScreen.tsx'
 import { SpotSwitcher } from './ui/SpotSwitcher.tsx'
+import { clearAddress, closeView, openView, useView } from './ui/useView.ts'
 
 // Leaflet and the station list come with it, the first time it is opened.
 // Offline, or in a home-screen app left open past a deploy, the fetch fails;
@@ -20,11 +21,6 @@ import { SpotSwitcher } from './ui/SpotSwitcher.tsx'
 const AddSpot = lazy(() =>
   import('./ui/AddSpot.tsx').catch(() => ({ default: AddSpotUnavailable })),
 )
-
-/** Puts the address back to `/`, so a reload does not open the link again. */
-function clearAddress() {
-  window.history.replaceState(null, '', window.location.pathname)
-}
 
 export default function App() {
   const [saved, setSaved] = useState<Spot[]>(readSavedSpots)
@@ -40,7 +36,9 @@ export default function App() {
   const [shared, setShared] = useState<SharedPoint | null>(
     opened.kind === 'new' ? opened.point : null,
   )
-  const [adding, setAdding] = useState(false)
+  // The add screen has an entry in the browser's history, so going back
+  // closes it.
+  const adding = useView() === 'add'
   // The id of a spot that could not be kept on the device, said on its screen.
   const [notKept, setNotKept] = useState<string | null>(null)
   const spots = allSpots(saved)
@@ -56,12 +54,13 @@ export default function App() {
   const selectSpot = (next: Spot) => {
     writeSpot(next)
     setSpot(next)
+    // A spot opens on its forecast, whichever view was up.
+    closeView()
   }
   const saveSpot = (next: Spot) => {
     setNotKept(addSpot(next) ? null : next.id)
     setSaved([...saved, next])
     selectSpot(next)
-    setAdding(false)
     window.scrollTo(0, 0)
   }
   const removeSpot = () => {
@@ -80,6 +79,8 @@ export default function App() {
     // What was fetched for a spot that was not kept does not stay.
     forgetSpot(sharedSpotId(point))
     setShared(null)
+    // Before the address is cleared, so the entry under the view is too.
+    closeView()
     clearAddress()
     window.scrollTo(0, 0)
   }
@@ -102,11 +103,7 @@ export default function App() {
       <main>
         <h1>{WORDS.heading}</h1>
         <Suspense fallback={<p className="notice">{WORDS.loadingMap}</p>}>
-          <AddSpot
-            from={spot}
-            onSave={saveSpot}
-            onCancel={() => setAdding(false)}
-          />
+          <AddSpot from={spot} onSave={saveSpot} onCancel={closeView} />
         </Suspense>
         <BuildStamp />
       </main>
@@ -120,7 +117,7 @@ export default function App() {
         spots={spots}
         current={spot}
         onSelect={selectSpot}
-        onAdd={() => setAdding(true)}
+        onAdd={() => openView('add')}
       />
       <InstallHint />
       {notKept === spot.id && (
