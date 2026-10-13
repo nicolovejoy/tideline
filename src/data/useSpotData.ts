@@ -19,6 +19,12 @@ import type { TideExtreme, TidePoint } from './noaa.ts'
 import { curveFromHiLo } from './interpolate.ts'
 import { fetchForecast, isForecast } from './nws.ts'
 import type { Forecast } from './nws.ts'
+import { fetchStations } from './nwsStations.ts'
+import { fetchObservations } from './nwsObservations.ts'
+import { REPORT_WITHIN, isObservedDay, observedDay } from './observed.ts'
+import type { ObservedDay } from './observed.ts'
+import { chooseStation, isStationChoice } from './weatherRule.ts'
+import type { StationChoice } from './weatherRule.ts'
 import { hasOwnCurve, hasOwnGauge } from '../spot.ts'
 import type { Spot } from '../spot.ts'
 import {
@@ -69,6 +75,10 @@ export interface SpotData {
    */
   gaugePredictions: Loaded<TidePoint[]>
   forecast: Loaded<Forecast>
+  /** The weather station whose reports stand for the spot, or that none does. */
+  station: Loaded<StationChoice>
+  /** Today's reports from that station, one row an hour. */
+  observedWeather: Loaded<ObservedDay>
 }
 
 /**
@@ -183,6 +193,59 @@ export function forecastSpec(
   }
 }
 
+/**
+ * Which weather station serves the spot. Looked up once from the cell's
+ * list and kept for 30 days. A cell with no station that serves is an
+ * answer, not a failure, so the screen can say why today is forecast only.
+ */
+export function stationSpec(
+  spot: Spot,
+  frame: Pick<SpotData, 'window'>,
+): SourceSpec<StationChoice> {
+  const { office, gridX, gridY } = spot.nws
+  const at = { lat: spot.lat, lon: spot.lon }
+  const heightFt = spot.elevationFt ?? spot.nws.elevationFt
+  return {
+    spotId: spot.id,
+    source: 'weather-station',
+    isData: isStationChoice,
+    needed: frame.window,
+    fetch: async () =>
+      chooseStation(at, heightFt, await fetchStations(office, gridX, gridY)),
+    isEmpty: () => false,
+  }
+}
+
+/**
+ * Today's reports from the station, as rows. Asked for from half an hour
+ * before the day begins, so the first hour can take a report from the last
+ * minutes of the day before. The rows are cut at `now`, the clock reading of
+ * the check that fetched them.
+ */
+export function observedWeatherSpec(
+  spot: Spot,
+  frame: Pick<SpotData, 'day'>,
+  stationId: string | null,
+  now: number,
+): SourceSpec<ObservedDay> {
+  return {
+    spotId: spot.id,
+    source: 'observed-weather',
+    isData: isObservedDay,
+    needed: frame.day,
+    fetch: async (needed) => {
+      if (stationId === null) throw new Error('no station serves this spot')
+      const reports = await fetchObservations(
+        stationId,
+        needed.start - REPORT_WITHIN,
+      )
+      return observedDay(stationId, reports, needed, now)
+    },
+    // Just after midnight there are no reports yet, and that is fine.
+    isEmpty: () => false,
+  }
+}
+
 function useClock(): Pick<SpotData, 'now' | 'shown'> {
   const [clock, setClock] = useState(() => ({ now: Date.now(), shown: 0 }))
   useEffect(() => {
@@ -248,6 +311,14 @@ export function useSpotData(spot: Spot, tidal: boolean): SpotData {
   const gaugeOwn = useLoaded(specs.gaugePredictions, now, tidal && !ownGauge)
   const gaugePredictions = ownGauge ? predictions : gaugeOwn
   const forecast = useLoaded(forecastSpec(spot, frame), now, true)
+  const station = useLoaded(stationSpec(spot, frame), now, true)
+  const serving = station.data?.serves?.id ?? null
+  // Asked for only once a station is known to serve, and only for today.
+  const observedWeather = useLoaded(
+    observedWeatherSpec(spot, frame, serving, now),
+    now,
+    serving !== null,
+  )
 
   return {
     now,
@@ -259,5 +330,7 @@ export function useSpotData(spot: Spot, tidal: boolean): SpotData {
     observed,
     gaugePredictions,
     forecast,
+    station,
+    observedWeather,
   }
 }

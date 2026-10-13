@@ -1,6 +1,16 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { forecastSpec, frameFor, tideSpecs } from './useSpotData.ts'
+import {
+  forecastSpec,
+  frameFor,
+  observedWeatherSpec,
+  stationSpec,
+  tideSpecs,
+} from './useSpotData.ts'
+import { isObservedDay } from './observed.ts'
+import { isStationChoice } from './weatherRule.ts'
 import { CAMPUS_POINT, hasOwnCurve, spotById } from '../spot.ts'
+import stationsRaw from './__fixtures__/nws-stations-LOX-100-71.json?raw'
+import ksbaRaw from './__fixtures__/nws-observations-KSBA.json?raw'
 
 const HOUR = 3_600_000
 
@@ -240,5 +250,85 @@ describe('forecastSpec', () => {
       rainPct: 0,
     }
     expect(spec.isEmpty({ updatedAt: 1, hours: [hour] })).toBe(false)
+  })
+})
+
+describe('stationSpec', () => {
+  const frame = frameFor(CAMPUS_POINT, '2026-10-13')
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  test("asks NWS for the spot's cell's stations and picks the one that serves", async () => {
+    const fetch = vi.fn(async () => new Response(stationsRaw, { status: 200 }))
+    vi.stubGlobal('fetch', fetch)
+    const spec = stationSpec(CAMPUS_POINT, frame)
+    const choice = await spec.fetch(spec.needed)
+    expect(fetch).toHaveBeenCalledWith(
+      'https://api.weather.gov/gridpoints/LOX/100,71/stations?limit=500',
+      { headers: { Accept: 'application/geo+json' } },
+    )
+    expect(choice.serves?.id).toBe('KSBA')
+    expect(spec.isEmpty(choice)).toBe(false)
+  })
+
+  test('is saved and checked as the weather station, and a cell with none is still an answer', () => {
+    const spec = stationSpec(CAMPUS_POINT, frame)
+    expect(spec.spotId).toBe('campus-point')
+    expect(spec.source).toBe('weather-station')
+    expect(spec.isData).toBe(isStationChoice)
+    expect(spec.isEmpty({ serves: null, nearest: null })).toBe(false)
+  })
+
+  test("goes by the spot's own height where it has one, so La Cumbre Peak gets no station", async () => {
+    vi.stubGlobal(
+      'fetch',
+      async () => new Response(stationsRaw, { status: 200 }),
+    )
+    const peak = spotById('la-cumbre-peak')
+    const spec = stationSpec(peak, frameFor(peak, '2026-10-13'))
+    const choice = await spec.fetch(spec.needed)
+    expect(choice.serves).toBeNull()
+    expect(choice.nearest?.id).toBe('LPOC1')
+  })
+})
+
+describe('observedWeatherSpec', () => {
+  const frame = frameFor(CAMPUS_POINT, '2026-10-13')
+  // 10:42 AM Pacific.
+  const NOW = Date.UTC(2026, 9, 13, 17, 42)
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  test("asks for the station's reports from half an hour before the day begins, and keeps the rows", async () => {
+    const fetch = vi.fn(async () => new Response(ksbaRaw, { status: 200 }))
+    vi.stubGlobal('fetch', fetch)
+    const spec = observedWeatherSpec(CAMPUS_POINT, frame, 'KSBA', NOW)
+    expect(spec.needed).toEqual(frame.day)
+    const day = await spec.fetch(spec.needed)
+    expect(fetch).toHaveBeenCalledWith(
+      'https://api.weather.gov/stations/KSBA/observations?start=2026-10-13T06:30:00Z&limit=500',
+      { headers: { Accept: 'application/geo+json' } },
+    )
+    expect(day.stationId).toBe('KSBA')
+    // The fixture's reports are 9:30 to 10:40 AM Pacific; 9 AM has ended, 10 AM is current.
+    expect(day.hours.map((hour) => hour.t)).toEqual([
+      Date.UTC(2026, 9, 13, 16),
+      Date.UTC(2026, 9, 13, 17),
+    ])
+    expect(day.through).toBe(Date.UTC(2026, 9, 13, 17, 40))
+  })
+
+  test('is saved and checked as the observed weather, and a day with no rows yet is not a failure', () => {
+    const spec = observedWeatherSpec(CAMPUS_POINT, frame, 'KSBA', NOW)
+    expect(spec.source).toBe('observed-weather')
+    expect(spec.isData).toBe(isObservedDay)
+    expect(spec.isEmpty({ stationId: 'KSBA', through: null, hours: [] })).toBe(
+      false,
+    )
+  })
+
+  test('with no station it fetches nothing', async () => {
+    const spec = observedWeatherSpec(CAMPUS_POINT, frame, null, NOW)
+    await expect(spec.fetch(spec.needed)).rejects.toThrow(/no station/)
   })
 })

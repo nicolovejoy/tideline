@@ -261,6 +261,20 @@ describe('isStale', () => {
     expect(isStale('observed', at(NOW - 7 * MINUTE), NOW, WINDOW)).toBe(true)
   })
 
+  test('the weather station chosen is good for 30 days', () => {
+    const fresh = at(NOW - 29 * DAY)
+    expect(isStale('weather-station', fresh, NOW, WINDOW)).toBe(false)
+    const old = at(NOW - 31 * DAY)
+    expect(isStale('weather-station', old, NOW, WINDOW)).toBe(true)
+  })
+
+  test('the hours observed go stale after 6 minutes, as the observed tide does', () => {
+    const fresh = at(NOW - 5 * MINUTE)
+    expect(isStale('observed-weather', fresh, NOW, WINDOW)).toBe(false)
+    const old = at(NOW - 7 * MINUTE)
+    expect(isStale('observed-weather', old, NOW, WINDOW)).toBe(true)
+  })
+
   test.each(['predictions', 'hilo'] as const)(
     '%s stay fresh while they cover the window, however old',
     (source) => {
@@ -309,13 +323,15 @@ describe('isStale', () => {
 
 describe('forgetSpot', () => {
   afterEach(() => vi.unstubAllGlobals())
-  test('removes the five entries for that spot and no other', () => {
+  test('removes the seven entries for that spot and no other', () => {
     const storage = fakeStorage({
       'tideline:v2:spot-abc:predictions': '1',
       'tideline:v2:spot-abc:hilo': '1',
       'tideline:v2:spot-abc:observed': '1',
       'tideline:v2:spot-abc:gauge-predictions': '1',
       'tideline:v2:spot-abc:forecast': '1',
+      'tideline:v2:spot-abc:weather-station': '1',
+      'tideline:v2:spot-abc:observed-weather': '1',
       'tideline:v2:campus-point:forecast': '1',
     })
     vi.stubGlobal('localStorage', storage)
