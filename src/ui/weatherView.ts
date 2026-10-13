@@ -2,6 +2,8 @@
 // is on screen and where the cursor is. A plain function, so the rules have
 // tests and App.tsx only arranges the result.
 
+import { arrowAngle, isCalm } from '../chart/arrows.ts'
+import type { Arrow } from '../chart/arrows.ts'
 import type { Dot, Rule, Series } from '../chart/Panel.tsx'
 import {
   hourAt,
@@ -29,6 +31,8 @@ export interface WeatherPanelView {
   rules: Rule[]
   /** One staircase per value, each point holding for an hour. */
   series: Series[]
+  /** The wind panel's arrows, one per hour that has a speed. None elsewhere. */
+  arrows: Arrow[]
   /** Where the cursor meets each value the hour under it has. */
   dots: Dot[]
 }
@@ -60,8 +64,10 @@ type Field = Exclude<keyof ForecastHour, 't'>
 
 interface PanelSpec {
   title: string
-  /** The series, in the order drawn: each one's name and the field it draws. */
+  /** The staircases, in the order drawn: each one's name and the field it draws. */
   fields: [name: string, field: Field][]
+  /** The values the cursor's dots sit on: the staircases, and for the wind its speed. */
+  dots: [name: string, field: Field][]
   /** How far apart the rules are, and the unit written on each label. */
   every: number
   unit: string
@@ -69,7 +75,9 @@ interface PanelSpec {
 
 const WIND: PanelSpec = {
   title: 'Wind',
-  fields: [
+  // The wind's speed is drawn as arrows, not a line; see `windArrows`.
+  fields: [['gust', 'gustMph']],
+  dots: [
     ['wind', 'windMph'],
     ['gust', 'gustMph'],
   ],
@@ -79,6 +87,7 @@ const WIND: PanelSpec = {
 const TEMP: PanelSpec = {
   title: 'Temperature',
   fields: [['temp', 'tempF']],
+  dots: [['temp', 'tempF']],
   every: 10,
   unit: '°F',
 }
@@ -88,8 +97,28 @@ const SKY: PanelSpec = {
     ['cloud', 'cloudPct'],
     ['rain', 'rainPct'],
   ],
+  dots: [
+    ['cloud', 'cloudPct'],
+    ['rain', 'rainPct'],
+  ],
   every: 50,
   unit: '%',
+}
+
+/**
+ * One arrow per hour that has a wind speed, drawn at the middle of its hour
+ * at that speed, pointing where the wind is going. A calm hour, or one with
+ * no direction, is a dot.
+ */
+function windArrows(hours: ForecastHour[]): Arrow[] {
+  return hours.flatMap((hour) => {
+    if (hour.windMph === null) return []
+    const angle =
+      hour.windDeg === null || isCalm(hour.windMph)
+        ? null
+        : arrowAngle(hour.windDeg)
+    return [{ t: hour.t + HOUR / 2, v: hour.windMph, angle }]
+  })
 }
 
 function panel(
@@ -98,9 +127,10 @@ function panel(
   bounds: [number, number],
   hours: ForecastHour[],
   at: ForecastHour | null,
+  arrows: Arrow[] = [],
 ): WeatherPanelView {
   const dots: Dot[] = []
-  for (const [name, field] of spec.fields) {
+  for (const [name, field] of spec.dots) {
     const v = at ? at[field] : null
     if (v !== null) dots.push({ name, v })
   }
@@ -121,6 +151,7 @@ function panel(
         return v === null ? [] : [{ t: hour.t, v }]
       }),
     })),
+    arrows,
     dots,
   }
 }
@@ -177,7 +208,14 @@ export function weatherView(
   )
   const tempBounds = steppedBounds(values(all, ['tempF']), 10)
 
-  const wind = panel(WIND, windParts(at), windBounds, hours, at)
+  const wind = panel(
+    WIND,
+    windParts(at),
+    windBounds,
+    hours,
+    at,
+    windArrows(hours),
+  )
   const temp = panel(TEMP, tempParts(at), tempBounds, hours, at)
   const sky = panel(SKY, skyParts(at), [0, 100], hours, at)
   // For a screen reader. Each panel is named, so "No forecast here" never

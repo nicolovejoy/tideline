@@ -70,13 +70,10 @@ const FIRST = START + 5 * HOUR
 const week = loaded(hourly(FIRST, 185))
 
 describe('what is drawn', () => {
-  test('one staircase per value, over the hours of the day on screen', () => {
+  test('one staircase per value but the wind, over the hours of the day on screen', () => {
     const view = weatherView(week, day(0), NOW, NOW)
     expect(view.notice).toBeNull()
-    expect(view.wind.series.map((series) => series.name)).toEqual([
-      'wind',
-      'gust',
-    ])
+    expect(view.wind.series.map((series) => series.name)).toEqual(['gust'])
     expect(view.temp.series.map((series) => series.name)).toEqual(['temp'])
     expect(view.sky.series.map((series) => series.name)).toEqual([
       'cloud',
@@ -87,7 +84,7 @@ describe('what is drawn', () => {
     expect(temps).toHaveLength(19)
     expect(temps[0]).toEqual({ t: FIRST, v: 55 })
     expect(temps.at(-1)).toEqual({ t: END - HOUR, v: 73 })
-    expect(view.wind.series[1].points[0]).toEqual({ t: FIRST, v: 12 })
+    expect(view.wind.series[0].points[0]).toEqual({ t: FIRST, v: 12 })
   })
 
   test('another day has its own hours, midnight to midnight', () => {
@@ -109,7 +106,58 @@ describe('what is drawn', () => {
       gap,
     )
     expect(view.temp.series[0].points).toHaveLength(18)
-    expect(view.wind.series[0].points.map((point) => point.t)).toContain(gap)
+    expect(view.wind.arrows.map((arrow) => arrow.t)).toContain(gap + HOUR / 2)
+  })
+
+  test('the wind is an arrow per hour, at the middle of the hour, at its speed, pointing where it goes', () => {
+    const view = weatherView(week, day(0), NOW, NOW)
+    expect(view.wind.arrows).toHaveLength(19)
+    // A wind from the west (270) points right (90).
+    expect(view.wind.arrows[0]).toEqual({
+      t: FIRST + HOUR / 2,
+      v: 9,
+      angle: 90,
+    })
+    expect(view.wind.arrows.at(-1)!.t).toBe(END - HOUR / 2)
+    expect(view.temp.arrows).toEqual([])
+    expect(view.sky.arrows).toEqual([])
+  })
+
+  test('a calm hour is a dot, and so is an hour with no direction', () => {
+    const calmAtTen = START + 10 * HOUR
+    const blindAtEleven = START + 11 * HOUR
+    const patchy = loaded(
+      hourly(FIRST, 185, (hour) => {
+        if (hour.t === calmAtTen) hour.windMph = 0.3
+        if (hour.t === blindAtEleven) hour.windDeg = null
+      }),
+    )
+    const arrows = weatherView(patchy, day(0), NOW, NOW).wind.arrows
+    expect(arrows.find((a) => a.t === calmAtTen + HOUR / 2)).toEqual({
+      t: calmAtTen + HOUR / 2,
+      v: 0.3,
+      angle: null,
+    })
+    expect(arrows.find((a) => a.t === blindAtEleven + HOUR / 2)).toEqual({
+      t: blindAtEleven + HOUR / 2,
+      v: 9,
+      angle: null,
+    })
+  })
+
+  test('an hour with no speed has no arrow', () => {
+    const noSpeed = START + 12 * HOUR
+    const patchy = loaded(
+      hourly(FIRST, 185, (hour) => {
+        if (hour.t === noSpeed) hour.windMph = null
+      }),
+    )
+    const view = weatherView(patchy, day(0), NOW, NOW)
+    expect(view.wind.arrows).toHaveLength(18)
+    expect(view.wind.arrows.map((a) => a.t)).not.toContain(noSpeed + HOUR / 2)
+    // The gust line and the range do not change.
+    expect(view.wind.series[0].points).toHaveLength(19)
+    expect(view.wind.bounds).toEqual([0, 20])
   })
 
   test('one vertical range for every day, on round numbers', () => {
@@ -256,6 +304,7 @@ describe('when the panels are not drawn', () => {
     [view.wind, view.temp, view.sky].every(
       (panel) =>
         panel.dots.length === 0 &&
+        panel.arrows.length === 0 &&
         panel.series.every((series) => series.points.length === 0),
     )
 
