@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'vitest'
 import {
   ARROW_GAP,
+  ARROW_PATH,
   arrowAngle,
   arrowStep,
+  DOT_RADIUS,
   hourWidth,
   isCalm,
   thinArrows,
@@ -115,5 +117,12 @@ describe('thinArrows', () => {
     const kept = thinArrows(week, START, 2) // step 6
     expect(kept).toHaveLength(28)
     expect(kept[1].t).toBe(START + 6 * HOUR + HOUR / 2)
+  })
+})
+
+describe('the glyph', () => {
+  test('the shaft is ARROW_LENGTH long through the origin, and the dot is 2 px', () => {
+    expect(ARROW_PATH.startsWith('M0,5V-5')).toBe(true)
+    expect(DOT_RADIUS).toBe(2)
   })
 })

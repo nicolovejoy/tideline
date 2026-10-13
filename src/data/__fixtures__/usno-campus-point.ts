@@ -1,5 +1,6 @@
 // Sunrise, sunset and moonrise from the US Naval Observatory for Campus Point
-// (latitude 34.4046, longitude -119.8440), recorded on 2026-10-08 from
+// (latitude 34.4046, longitude -119.8440), the sunsets and moonrises recorded
+// on 2026-10-08 and the sunrises on 2026-10-13, all from
 // https://aa.usno.navy.mil/api/rstt/oneday. Local clock times, rounded to the
 // minute by the Observatory. utcOffset is hours from UTC for those times.
 

@@ -319,7 +319,7 @@ describe('night', () => {
     expect(day.night).toEqual([])
   })
 
-  /** The sun's altitude, unrefracted, over a level horizon. */
+  /** The sun's refracted altitude, over a level horizon. */
   function sunAltitude(t: number): number {
     const observer = new Observer(utqiagvik.lat, utqiagvik.lon, 0)
     const eq = Equator(Body.Sun, new Date(t), observer, true, true)

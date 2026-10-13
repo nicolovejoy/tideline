@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { ARROW_LENGTH } from './arrows.ts'
+import { ARROW_PATH, DOT_RADIUS } from './arrows.ts'
 import type { Arrow } from './arrows.ts'
 import { areaPath, linePath, stepPath } from './scales.ts'
 import type { Point, Scale } from './scales.ts'
@@ -66,10 +66,6 @@ interface PanelProps {
   dots: Dot[]
 }
 
-// An arrow pointing up, centred on the origin: a shaft and two barbs.
-const HALF = ARROW_LENGTH / 2
-const ARROW_PATH = `M0,${HALF}V${-HALF}M${-3.5},${-HALF + 3.5}L0,${-HALF}L3.5,${-HALF + 3.5}`
-
 /**
  * One chart on the shared time axis: a title, a readout, and a plot, with
  * bands shaded behind the series and arrows drawn over them.
@@ -134,7 +130,7 @@ export function Panel({
               className="arrow-dot"
               cx={x(arrow.t)}
               cy={y(arrow.v)}
-              r={2}
+              r={DOT_RADIUS}
             />
           ) : (
             <g

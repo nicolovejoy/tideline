@@ -7,6 +7,11 @@ import type { Scale } from './scales.ts'
 
 /** How long an arrow is drawn, in px. */
 export const ARROW_LENGTH = 10
+const HALF = ARROW_LENGTH / 2
+/** An arrow pointing up, centred on the origin: a shaft and two barbs. */
+export const ARROW_PATH = `M0,${HALF}V${-HALF}M${-3.5},${-HALF + 3.5}L0,${-HALF}L3.5,${-HALF + 3.5}`
+/** The dot's radius, in px: a calm hour, or one with no direction. */
+export const DOT_RADIUS = 2
 /** The least distance between arrows, in px. Closer than this they are thinned. */
 export const ARROW_GAP = 12
 
