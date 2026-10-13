@@ -62,10 +62,7 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
   const cursorTime = formatTime(tide.cursor, zone)
   const markers = dayMarkers(selected, data.now)
 
-  const tonight = useMemo(
-    () => tonightWords(days[0], data.now, zone),
-    [days, data.now, zone],
-  )
+  const tonight = useMemo(() => tonightWords(days[0], zone), [days, zone])
   // The rows do not depend on the cursor, so they are not worked out again,
   // and the list is not drawn again, each time it moves. They are worked out
   // again once a minute, with the clock.
