@@ -1,5 +1,6 @@
 // The values under the cursor, and how they are worded. Plain functions.
 
+import { isCalm } from './arrows.ts'
 import type { TidePoint } from '../data/noaa.ts'
 import { compassPoint } from '../data/nws.ts'
 import type { ForecastHour } from '../data/nws.ts'
@@ -149,23 +150,31 @@ export interface ReadoutPart {
 }
 
 /**
- * The wind in an hour, as '9 mph', 'gusts 12', 'from W'. Each part is there
- * only if the forecast has it.
+ * The wind in an hour: '9 mph from W', then 'gusts 12'. The words say where
+ * the wind comes from; the arrow on the panel points where it goes. A calm
+ * hour is 'Calm', with no direction. Each part is there only if the
+ * forecast has it, and the unit is given once, by the first number.
  */
 export function windParts(hour: ForecastHour | null): ReadoutPart[] {
   if (!hour) return []
   const parts: ReadoutPart[] = []
+  const from =
+    hour.windDeg === null ? null : `from ${compassPoint(hour.windDeg)}`
+  let unitGiven = false
   if (hour.windMph !== null) {
-    parts.push({ key: 'wind', text: `${whole(hour.windMph)} mph` })
+    if (isCalm(hour.windMph)) {
+      parts.push({ key: 'wind', text: 'Calm' })
+    } else {
+      const speed = `${whole(hour.windMph)} mph`
+      parts.push({ key: 'wind', text: from ? `${speed} ${from}` : speed })
+      unitGiven = true
+    }
   }
   if (hour.gustMph !== null) {
-    // The unit is given once, by whichever number comes first.
-    const unit = hour.windMph === null ? ' mph' : ''
+    const unit = unitGiven ? '' : ' mph'
     parts.push({ key: 'gust', text: `gusts ${whole(hour.gustMph)}${unit}` })
   }
-  if (hour.windDeg !== null) {
-    parts.push({ key: null, text: `from ${compassPoint(hour.windDeg)}` })
-  }
+  if (hour.windMph === null && from) parts.push({ key: null, text: from })
   return parts
 }
 

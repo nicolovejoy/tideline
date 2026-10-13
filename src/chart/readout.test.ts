@@ -206,34 +206,42 @@ describe('the weather under the cursor', () => {
   })
 
   describe('windParts', () => {
-    test('speed, gusts and a compass point, in whole numbers', () => {
+    test('the speed and where it comes from as one part, then the gusts', () => {
       const parts = windParts(hour(NOON))
       expect(parts).toEqual([
-        { key: 'wind', text: '9 mph' },
+        { key: 'wind', text: '9 mph from W' },
         { key: 'gust', text: 'gusts 12' },
-        { key: null, text: 'from W' },
       ])
-      expect(partsText(parts)).toBe('9 mph, gusts 12, from W')
+      expect(partsText(parts)).toBe('9 mph from W, gusts 12')
     })
 
     test('leaves out what the forecast does not have', () => {
       expect(partsText(windParts(hour(NOON, { gustMph: null })))).toBe(
-        '9 mph, from W',
+        '9 mph from W',
       )
       expect(partsText(windParts(hour(NOON, { windDeg: null })))).toBe(
         '9 mph, gusts 12',
       )
     })
 
-    test('gusts carry the unit when there is no speed to carry it', () => {
-      expect(partsText(windParts(hour(NOON, { windMph: null })))).toBe(
-        'gusts 12 mph, from W',
-      )
+    test('with no speed, the gusts carry the unit and the direction stands alone', () => {
+      expect(windParts(hour(NOON, { windMph: null }))).toEqual([
+        { key: 'gust', text: 'gusts 12 mph' },
+        { key: null, text: 'from W' },
+      ])
     })
 
-    test('calm is 0 mph, not nothing', () => {
-      const calm = hour(NOON, { windMph: 0, gustMph: 0 })
-      expect(partsText(windParts(calm))).toBe('0 mph, gusts 0, from W')
+    test('calm is the word, with no direction, and the gusts carry the unit', () => {
+      expect(windParts(hour(NOON, { windMph: 0.4, gustMph: 3 }))).toEqual([
+        { key: 'wind', text: 'Calm' },
+        { key: 'gust', text: 'gusts 3 mph' },
+      ])
+      expect(partsText(windParts(hour(NOON, { windMph: 0, gustMph: 0 })))).toBe(
+        'Calm, gusts 0 mph',
+      )
+      expect(
+        partsText(windParts(hour(NOON, { windMph: 0, gustMph: null }))),
+      ).toBe('Calm')
     })
 
     test('no hour, or an hour with no wind at all, is no parts', () => {

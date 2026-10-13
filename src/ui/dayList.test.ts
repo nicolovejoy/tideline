@@ -33,6 +33,7 @@ describe('tonightWords', () => {
   const day: DayAstro = {
     date: '2026-10-08',
     sunset: Date.UTC(2026, 9, 9, 1, 34), // 6:34 PM
+    night: [],
     moonrise: Date.UTC(2026, 9, 8, 12, 0), // 5:00 AM
     illumination: 0.0349,
     phase: 'Waning Crescent',
@@ -172,7 +173,7 @@ describe('dayRows', () => {
     expect(rows[0].weather).toEqual([
       'At sunset',
       '68°F',
-      '9 mph, gusts 12, from WSW',
+      '9 mph from WSW, gusts 12',
       '30% cloud, 2% rain',
     ])
   })
@@ -180,7 +181,7 @@ describe('dayRows', () => {
   test('an hour with only some values gives those', () => {
     expect(rows[1].weather).toEqual([
       'At sunset',
-      '9 mph, gusts 12, from WSW',
+      '9 mph from WSW, gusts 12',
       '30% cloud, 2% rain',
     ])
   })
@@ -224,6 +225,7 @@ describe('the words of a row', () => {
   const day: DayAstro = {
     date: '2026-10-08',
     sunset: Date.UTC(2026, 9, 9, 1, 34), // 6:34 PM
+    night: [],
     moonrise: Date.UTC(2026, 9, 9, 0, 12), // 5:12 PM
     illumination: 0.0349,
     phase: 'Waning Crescent',

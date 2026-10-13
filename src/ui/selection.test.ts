@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest'
-import { dayMarkers, onDay, selectedDay } from './selection.ts'
+import { dayBands, dayMarkers, onDay, selectedDay } from './selection.ts'
 import { frameFor } from '../data/useSpotData.ts'
 import { CAMPUS_POINT } from '../spot.ts'
-import { HOUR } from '../time.ts'
+import { HOUR, MINUTE, localDayStart } from '../time.ts'
 
 const frame = frameFor(CAMPUS_POINT, '2026-10-08')
 const NOW = Date.UTC(2026, 9, 8, 22, 36) // 3:36 PM
@@ -101,5 +101,29 @@ describe('onDay', () => {
 
   test('nothing on the day is an empty list', () => {
     expect(onDay([], frame.spans[0])).toEqual([])
+  })
+})
+
+describe('dayBands', () => {
+  test('a night band before sunrise and one after sunset', () => {
+    const today = selectedDay(frame, null)
+    const bands = dayBands(today)
+    expect(bands).toEqual([
+      { name: 'night', start: frame.day.start, end: today.astro.night[0].end },
+      { name: 'night', start: today.astro.sunset, end: frame.day.end },
+    ])
+    expect(bands[0].end).toBe(
+      localDayStart('2026-10-08', CAMPUS_POINT.timeZone) +
+        6 * HOUR +
+        59 * MINUTE,
+    )
+  })
+
+  test('a day with no night has no band', () => {
+    const polar = {
+      days: [{ ...frame.days[0], night: [] }],
+      spans: [frame.spans[0]],
+    }
+    expect(dayBands(selectedDay(polar, null))).toEqual([])
   })
 })

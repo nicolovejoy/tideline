@@ -12,7 +12,7 @@ import { DayList } from './DayList.tsx'
 import { dayRows, tonightWords } from './dayList.ts'
 import { HiLoTable } from './HiLoTable.tsx'
 import { MonthView } from './MonthView.tsx'
-import { dayMarkers, selectedDay } from './selection.ts'
+import { dayBands, dayMarkers, selectedDay } from './selection.ts'
 import { ShareSpot } from './ShareSpot.tsx'
 import { tideView } from './tideView.ts'
 import type { CursorPick } from './tideView.ts'
@@ -56,6 +56,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
   const weather = weatherView(forecast, selected, tide.cursor, data.now)
   const cursorTime = formatTime(tide.cursor, zone)
   const markers = dayMarkers(selected, data.now)
+  const bands = dayBands(selected)
 
   const tonight = useMemo(() => tonightWords(days[0], zone), [days, zone])
   // The rows do not depend on the cursor, so they are not worked out again,
@@ -181,6 +182,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
                   y={linearScale(tide.bounds, [TIDE_HEIGHT, HEADROOM])}
                   rules={tide.rules}
                   series={tide.series}
+                  bands={bands}
                   markers={markers}
                   cursor={tide.cursor}
                   dots={tide.dots}
@@ -192,6 +194,8 @@ export function SpotScreen({ spot }: SpotScreenProps) {
                 x={x}
                 markers={markers}
                 cursor={tide.cursor}
+                start={selected.span.start}
+                bands={bands}
               />
             </>
           )}

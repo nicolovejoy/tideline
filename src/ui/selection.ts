@@ -1,6 +1,7 @@
-// Which of the 14 days is on screen, and the vertical lines drawn across its
-// panels. Plain functions.
+// Which of the 14 days is on screen, the vertical lines drawn across its
+// panels and the spans shaded on them. Plain functions.
 
+import type { Band } from '../chart/Panel.tsx'
 import type { DayAstro } from '../data/astro.ts'
 import type { Span } from '../data/cache.ts'
 import type { SpotData } from '../data/useSpotData.ts'
@@ -66,4 +67,9 @@ export function dayMarkers(
   if (sunset !== null) markers.push({ name: 'sunset', t: sunset })
   if (moonrise !== null) markers.push({ name: 'moonrise', t: moonrise })
   return markers
+}
+
+/** The spans to shade across every panel: the parts of the day the sun is down. */
+export function dayBands(selected: Selected): Band[] {
+  return selected.astro.night.map((span) => ({ name: 'night', ...span }))
 }

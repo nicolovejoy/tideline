@@ -1,8 +1,9 @@
+import { Body, Equator, Horizon, Observer } from 'astronomy-engine'
 import { describe, expect, test } from 'vitest'
 import { astroForDays, dayAstro } from './astro.ts'
 import { USNO_CAMPUS_POINT } from './__fixtures__/usno-campus-point.ts'
 import { CAMPUS_POINT, spotById } from '../spot.ts'
-import { formatTime } from '../time.ts'
+import { addDays, formatTime, localDayStart } from '../time.ts'
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
@@ -18,13 +19,21 @@ function usnoInstant(date: string, clock: string, utcOffset: number): number {
 
 describe('against the US Naval Observatory', () => {
   test.each(USNO_CAMPUS_POINT)(
-    '$date: sunset and moonrise agree within 90 seconds',
+    '$date: sunrise, sunset and moonrise agree within 90 seconds',
     (row) => {
       const day = dayAstro(CAMPUS_POINT, row.date)
 
       const sunset = usnoInstant(row.date, row.sunset, row.utcOffset)
       expect(day.sunset).not.toBeNull()
       expect(Math.abs(day.sunset! - sunset)).toBeLessThanOrEqual(TOLERANCE)
+      const sunrise = usnoInstant(row.date, row.sunrise, row.utcOffset)
+      expect(day.night).toHaveLength(2)
+      expect(Math.abs(day.night[0].end - sunrise)).toBeLessThanOrEqual(
+        TOLERANCE,
+      )
+      expect(Math.abs(day.night[1].start - sunset)).toBeLessThanOrEqual(
+        TOLERANCE,
+      )
 
       if (row.moonrise === null) {
         expect(day.moonrise).toBeNull()
@@ -234,5 +243,122 @@ describe("from the spot's own height", () => {
     expect(day.moonrise).toBeNull()
     expect(day.moonriseNearSunset).toBeNull()
     expect(formatTime(day.sunset!, zone)).toBe('5:10 PM')
+  })
+})
+
+describe('night', () => {
+  const zone = CAMPUS_POINT.timeZone
+
+  test('midnight to sunrise, and sunset to midnight', () => {
+    const day = dayAstro(CAMPUS_POINT, '2026-10-08')
+    const start = localDayStart('2026-10-08', zone)
+    const end = localDayStart('2026-10-09', zone)
+    expect(day.night).toEqual([
+      { start, end: day.night[0].end },
+      { start: day.sunset!, end },
+    ])
+    expect(formatTime(day.night[0].end, zone)).toBe('6:59 AM')
+    expect(formatTime(day.night[1].start, zone)).toBe('6:34 PM')
+  })
+
+  test('the 25-hour day of 1 November is shaded to its own end', () => {
+    const day = dayAstro(CAMPUS_POINT, '2026-11-01')
+    const end = localDayStart('2026-11-02', zone)
+    expect(end - localDayStart('2026-11-01', zone)).toBe(25 * HOUR)
+    expect(day.night[1].end).toBe(end)
+    // Standard time from 2 AM: the clock reads an hour earlier than the day before.
+    expect(formatTime(day.night[0].end, zone)).toBe('6:20 AM')
+    expect(formatTime(day.night[1].start, zone)).toBe('5:06 PM')
+  })
+
+  test('to the minute, like every time in the record', () => {
+    const day = dayAstro(CAMPUS_POINT, '2026-10-08')
+    for (const span of day.night) {
+      expect(span.start % MINUTE).toBe(0)
+      expect(span.end % MINUTE).toBe(0)
+    }
+  })
+
+  test("from the spot's own height, the night is shorter", () => {
+    const peak = spotById('la-cumbre-peak')
+    const high = dayAstro(peak, '2026-10-10')
+    const flat = dayAstro({ ...peak, elevationFt: null }, '2026-10-10')
+    // Sunrise earlier and sunset later, by 5 to 8 minutes each.
+    expect(flat.night[0].end - high.night[0].end).toBeGreaterThanOrEqual(
+      5 * MINUTE,
+    )
+    expect(high.night[1].start - flat.night[1].start).toBeGreaterThanOrEqual(
+      5 * MINUTE,
+    )
+  })
+
+  // Utqiaġvik, Alaska, at 71.3° N: polar night in December, midnight sun in
+  // June, and in late July and early August a sun that sets just after one
+  // midnight and again just before the next.
+  const utqiagvik = {
+    ...CAMPUS_POINT,
+    lat: 71.29,
+    lon: -156.79,
+    timeZone: 'America/Anchorage',
+  }
+
+  test('polar night: the whole day', () => {
+    const day = dayAstro(utqiagvik, '2026-12-21')
+    expect(day.sunset).toBeNull()
+    expect(day.night).toEqual([
+      {
+        start: localDayStart('2026-12-21', utqiagvik.timeZone),
+        end: localDayStart('2026-12-22', utqiagvik.timeZone),
+      },
+    ])
+  })
+
+  test('midnight sun: none of the day', () => {
+    const day = dayAstro(utqiagvik, '2026-06-21')
+    expect(day.sunset).toBeNull()
+    expect(day.night).toEqual([])
+  })
+
+  /** The sun's refracted altitude, over a level horizon. */
+  function sunAltitude(t: number): number {
+    const observer = new Observer(utqiagvik.lat, utqiagvik.lon, 0)
+    const eq = Equator(Body.Sun, new Date(t), observer, true, true)
+    return Horizon(new Date(t), observer, eq.ra, eq.dec, 'normal').altitude
+  }
+
+  test('where the sun sets twice in a day, both nights are shaded: dark at the middle of each span, light between them', () => {
+    // The midnight sun ends in the first days of August, with a sunset
+    // near 2:30 AM (solar midnight here) that comes earlier each day. Within
+    // these three weeks is a day whose first sunset is just after midnight
+    // and whose second is just before the next.
+    const dates = Array.from({ length: 21 }, (_, i) => addDays('2026-07-28', i))
+    let twoSunsets = 0
+    for (const date of dates) {
+      const start = localDayStart(date, utqiagvik.timeZone)
+      const end = localDayStart(addDays(date, 1), utqiagvik.timeZone)
+      const { night } = dayAstro(utqiagvik, date)
+      // In order, inside the day, each with some length.
+      let last = start
+      for (const span of night) {
+        expect(span.start).toBeGreaterThanOrEqual(last)
+        expect(span.end).toBeGreaterThan(span.start)
+        expect(span.end).toBeLessThanOrEqual(end)
+        last = span.end
+      }
+      // Dark in the middle of each span, light in the middle of each gap.
+      // The sun grazes the horizon here, so only the middles are checked,
+      // and only where the span or the gap is over 20 minutes long.
+      const edges = [start, ...night.flatMap((s) => [s.start, s.end]), end]
+      for (let i = 0; i + 1 < edges.length; i++) {
+        const [a, b] = [edges[i], edges[i + 1]]
+        if (b - a < 20 * MINUTE) continue
+        const dark = i % 2 === 1
+        const altitude = sunAltitude((a + b) / 2)
+        if (dark) expect(altitude).toBeLessThan(0)
+        else expect(altitude).toBeGreaterThan(-1)
+      }
+      if (night.length === 2 && night[0].start > start) twoSunsets++
+    }
+    expect(twoSunsets).toBeGreaterThan(0)
   })
 })

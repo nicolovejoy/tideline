@@ -1,6 +1,6 @@
 # Wind as an arrow per hour, and night shaded on every panel
 
-Date: 2026-10-12. Status: approved by the owner on 2026-10-12 as the second of three pieces of this stage, before anything was built. The decisions this spec makes beyond what he approved are listed at the end for review on the pull request.
+Date: 2026-10-12. Status: approved by the owner on 2026-10-12 as the second of three pieces of this stage; built on 2026-10-13 from `docs/superpowers/plans/2026-10-13-wind-arrows-and-night.md`. The decisions this spec makes beyond what he approved are listed at the end for review on the pull request.
 
 Issue: https://github.com/nicolovejoy/tideline/issues/55
 
