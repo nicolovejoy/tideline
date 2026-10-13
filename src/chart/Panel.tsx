@@ -23,6 +23,13 @@ export interface Marker {
   t: number
 }
 
+/** A span of time shaded across the plot, behind everything. Its class is `band-<name>`. */
+export interface Band {
+  name: string
+  start: number
+  end: number
+}
+
 /** A horizontal rule across the plot, and its label. */
 export interface Rule {
   v: number
