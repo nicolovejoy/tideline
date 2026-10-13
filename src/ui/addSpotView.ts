@@ -175,6 +175,19 @@ export function pinMoved(
   )
 }
 
+/**
+ * Whether the pin is a point to look up: any pin on the add screen, and
+ * on the edit screen only a pin moved off the spot's own point. No pin
+ * needs nothing.
+ */
+export function needsLookup(
+  editing: Pick<Spot, 'lat' | 'lon'> | undefined,
+  pin: LatLon | null,
+): boolean {
+  if (pin === null) return false
+  return editing === undefined || pinMoved(editing, pin)
+}
+
 export type Edit =
   | { kind: 'nothing' }
   | { kind: 'rename'; spot: Spot }

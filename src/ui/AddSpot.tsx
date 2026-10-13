@@ -20,7 +20,7 @@ import {
   factsLines,
   edited,
   failureWords,
-  pinMoved,
+  needsLookup,
   removeQuestion,
   searchLine,
   spotFacts,
@@ -115,8 +115,7 @@ export default function AddSpot({
   // look-up found is cleared by the tap that asks again, below. A spot
   // being edited is already known: its pin is looked up only once moved.
   useEffect(() => {
-    if (!pin || !stations) return
-    if (editing && !pinMoved(editing, pin)) return
+    if (!pin || !stations || !needsLookup(editing, pin)) return
     let gone = false
     resolveSpot(pin.lat, pin.lon, {
       fetchPoints,
@@ -134,10 +133,10 @@ export default function AddSpot({
   const dropPin = (at: LatLon) => {
     setPin(at)
     // Back on the spot's own point, what was saved for it stands.
-    setResult(editing && !pinMoved(editing, at) ? known : null)
+    setResult(needsLookup(editing, at) ? null : known)
   }
   const tryAgain = () => {
-    setResult(null)
+    setResult(needsLookup(editing, pin) ? null : known)
     // Once the list is in, the look-up below runs by itself.
     if (stationsFailed) {
       setStationsFailed(false)
@@ -277,7 +276,7 @@ export default function AddSpot({
       <div className="facts" aria-live="polite">
         {pin === null ? (
           <p className="caption">{WORDS.tapToStart}</p>
-        ) : stationsFailed ? (
+        ) : stationsFailed && needsLookup(editing, pin) ? (
           <>
             <p className="caption">{failureWords('unreachable')}</p>
             <button type="button" className="text-button" onClick={tryAgain}>

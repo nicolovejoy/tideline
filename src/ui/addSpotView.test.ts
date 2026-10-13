@@ -9,6 +9,7 @@ import {
   edited,
   factsLines,
   failureWords,
+  needsLookup,
   pinMoved,
   removeQuestion,
   searchLine,
@@ -273,6 +274,22 @@ describe('pinMoved', () => {
     expect(pinMoved(HENDRYS, { lat: 34.4026, lon: -119.7437 + 360 })).toBe(
       false,
     )
+  })
+})
+
+describe('needsLookup', () => {
+  const here = { lat: HENDRYS.lat, lon: HENDRYS.lon }
+  const there = { lat: 34.41, lon: -119.75 }
+  test('no pin needs nothing', () => {
+    expect(needsLookup(undefined, null)).toBe(false)
+    expect(needsLookup(HENDRYS, null)).toBe(false)
+  })
+  test('on the add screen any pin is looked up', () => {
+    expect(needsLookup(undefined, here)).toBe(true)
+  })
+  test("on the edit screen only a pin off the spot's own point is", () => {
+    expect(needsLookup(HENDRYS, here)).toBe(false)
+    expect(needsLookup(HENDRYS, there)).toBe(true)
   })
 })
 
