@@ -6,14 +6,19 @@ import {
   canSave,
   canSearch,
   cleanName,
+  edited,
   factsLines,
   failureWords,
+  pinMoved,
   removeQuestion,
   searchLine,
+  spotFacts,
   suggestedName,
 } from './addSpotView.ts'
 import type { SpotFacts } from '../data/resolve.ts'
 import type { Place } from '../data/geocode.ts'
+import { CAMPUS_POINT } from '../spot.ts'
+import type { Spot } from '../spot.ts'
 
 const CAMPUS: SpotFacts = {
   lat: 34.4046,
@@ -225,5 +230,118 @@ describe('canSearch', () => {
   test('a word can, unless a search is running', () => {
     expect(canSearch('Gaviota', { status: 'idle' })).toBe(true)
     expect(canSearch('Gaviota', { status: 'searching' })).toBe(false)
+  })
+})
+
+const HENDRYS: Spot = {
+  ...CAMPUS_POINT,
+  id: 'spot-abc',
+  name: "Hendry's Beach",
+  lat: 34.4026,
+  lon: -119.7437,
+  elevationFt: 12,
+}
+
+describe('WORDS for an edit', () => {
+  test('the heading and the button', () => {
+    expect(WORDS.editHeading).toBe('Edit spot')
+    expect(WORDS.edit).toBe('Edit')
+  })
+})
+
+describe('spotFacts', () => {
+  test('is the spot without its id and name', () => {
+    const facts = spotFacts(HENDRYS)
+    expect(facts).not.toHaveProperty('id')
+    expect(facts).not.toHaveProperty('name')
+    expect(facts.lat).toBe(34.4026)
+    expect(facts.tideStation).toEqual(HENDRYS.tideStation)
+  })
+})
+
+describe('pinMoved', () => {
+  test('the same point, or one that rounds to it, is not a move', () => {
+    expect(pinMoved(HENDRYS, { lat: 34.4026, lon: -119.7437 })).toBe(false)
+    expect(pinMoved(HENDRYS, { lat: 34.40264, lon: -119.74366 })).toBe(false)
+  })
+  test('a point that rounds elsewhere is a move', () => {
+    expect(pinMoved(HENDRYS, { lat: 34.4027, lon: -119.7437 })).toBe(true)
+    expect(pinMoved(HENDRYS, { lat: 34.4026, lon: -119.7436 })).toBe(true)
+  })
+  // A tap on a world copy of the map is the same place.
+  test('the same point on a world copy is not a move', () => {
+    expect(pinMoved(HENDRYS, { lat: 34.4026, lon: -119.7437 + 360 })).toBe(
+      false,
+    )
+  })
+})
+
+describe('edited', () => {
+  const here = { lat: HENDRYS.lat, lon: HENDRYS.lon }
+  const there = { lat: 34.41, lon: -119.75 }
+  const found = {
+    ok: true as const,
+    facts: { ...spotFacts(HENDRYS), lat: 34.41, lon: -119.75, elevationFt: 30 },
+  }
+
+  test('the same name and pin is nothing', () => {
+    expect(edited(HENDRYS, "Hendry's Beach", here, null, 'spot-new')).toEqual({
+      kind: 'nothing',
+    })
+  })
+  test('the same name with spaces round it is still nothing', () => {
+    expect(
+      edited(HENDRYS, "  Hendry's Beach ", here, null, 'spot-new'),
+    ).toEqual({ kind: 'nothing' })
+  })
+  test('a blank name cannot save', () => {
+    expect(edited(HENDRYS, '   ', here, null, 'spot-new')).toBeNull()
+  })
+  test('a new name with the pin in place is a rename under the same id', () => {
+    expect(edited(HENDRYS, 'Arroyo Burro', here, null, 'spot-new')).toEqual({
+      kind: 'rename',
+      spot: { ...HENDRYS, name: 'Arroyo Burro' },
+    })
+  })
+  test('a long name is cut to the limit', () => {
+    const edit = edited(HENDRYS, 'x'.repeat(50), here, null, 'spot-new')
+    expect(edit?.kind).toBe('rename')
+    expect(edit?.kind === 'rename' && edit.spot.name).toHaveLength(NAME_MAX)
+  })
+  test('a moved pin not yet looked up, or looked up and failed, cannot save', () => {
+    expect(
+      edited(HENDRYS, "Hendry's Beach", there, null, 'spot-new'),
+    ).toBeNull()
+    expect(
+      edited(
+        HENDRYS,
+        "Hendry's Beach",
+        there,
+        { ok: false, reason: 'outside' },
+        'spot-new',
+      ),
+    ).toBeNull()
+  })
+  test('a moved pin that was looked up is a move, under the new id', () => {
+    expect(edited(HENDRYS, "Hendry's Beach", there, found, 'spot-new')).toEqual(
+      {
+        kind: 'move',
+        spot: { ...found.facts, id: 'spot-new', name: "Hendry's Beach" },
+      },
+    )
+  })
+  test('a move can rename too', () => {
+    const edit = edited(HENDRYS, 'Arroyo Burro', there, found, 'spot-new')
+    expect(edit?.kind === 'move' && edit.spot.name).toBe('Arroyo Burro')
+  })
+  test('a moved pin with a blank name cannot save', () => {
+    expect(edited(HENDRYS, '', there, found, 'spot-new')).toBeNull()
+  })
+  // The pin went away and came back: the saved facts stand, whatever the
+  // look-up said in between.
+  test('the pin back where it was is not a move', () => {
+    expect(edited(HENDRYS, "Hendry's Beach", here, found, 'spot-new')).toEqual({
+      kind: 'nothing',
+    })
   })
 })

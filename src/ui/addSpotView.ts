@@ -1,5 +1,6 @@
 // The words of the add screen, and whether it can save. No React here.
 
+import { wrapLon } from '../data/geo.ts'
 import type { LatLon } from '../data/geo.ts'
 import type { Place } from '../data/geocode.ts'
 import type {
@@ -9,13 +10,15 @@ import type {
 } from '../data/resolve.ts'
 // Imports nothing itself, so it brings no station code with it.
 import { TIDES_WITHIN_MI } from '../data/tideRule.ts'
-import type { Station } from '../spot.ts'
+import type { Spot, Station } from '../spot.ts'
 import { noTidesWords } from './captions.ts'
 
 export const NAME_MAX = 40
 
 export const WORDS = {
   heading: 'New spot',
+  editHeading: 'Edit spot',
+  edit: 'Edit',
   addSpot: 'Add a spot',
   locate: 'Use my location',
   locating: 'Finding you…',
@@ -147,4 +150,55 @@ export function canSearch(query: string, search: SearchState): boolean {
 
 export function removeQuestion(name: string): string {
   return `Remove ${name}?`
+}
+
+/** Everything the spot has apart from what the user gave it. */
+export function spotFacts(spot: Spot): SpotFacts {
+  const { id: _id, name: _name, ...facts } = spot
+  return facts
+}
+
+const round4 = (n: number) => Math.round(n * 1e4) / 1e4
+
+/**
+ * Whether the pin is somewhere other than the spot, at the four decimal
+ * places a spot's point is kept to. The longitude is wrapped first: a tap
+ * on a world copy of the map is the same place.
+ */
+export function pinMoved(
+  spot: Pick<Spot, 'lat' | 'lon'>,
+  pin: LatLon,
+): boolean {
+  return (
+    round4(pin.lat) !== round4(spot.lat) ||
+    round4(wrapLon(pin.lon)) !== round4(spot.lon)
+  )
+}
+
+export type Edit =
+  | { kind: 'nothing' }
+  | { kind: 'rename'; spot: Spot }
+  | { kind: 'move'; spot: Spot }
+
+/**
+ * What Save would do to `spot` with the screen as it stands, and the spot
+ * it would save; null when it cannot save. A rename keeps the id and
+ * everything looked up before. A move is a new spot under `newId`, from
+ * what the look-up found for the new pin.
+ */
+export function edited(
+  spot: Spot,
+  name: string,
+  pin: LatLon,
+  result: ResolveResult | null,
+  newId: string,
+): Edit | null {
+  const clean = cleanName(name)
+  if (clean === '') return null
+  if (pinMoved(spot, pin)) {
+    if (result?.ok !== true) return null
+    return { kind: 'move', spot: { ...result.facts, id: newId, name: clean } }
+  }
+  if (clean === spot.name) return { kind: 'nothing' }
+  return { kind: 'rename', spot: { ...spot, name: clean } }
 }
