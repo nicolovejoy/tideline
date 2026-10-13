@@ -32,14 +32,10 @@ export interface TonightWords {
 }
 
 /**
- * What the strip at the top says about today. `now` decides the tense of
- * the moon line: by evening the day's moonrise is usually hours past.
+ * What the strip at the top says about today. The moon line gives the
+ * time with no tense, which is the first user's wording.
  */
-export function tonightWords(
-  day: DayAstro,
-  now: number,
-  timeZone: string,
-): TonightWords {
+export function tonightWords(day: DayAstro, timeZone: string): TonightWords {
   const time = (t: number) => formatTime(t, timeZone)
   return {
     sunset: day.sunset === null ? 'No sunset today' : time(day.sunset),
@@ -47,7 +43,7 @@ export function tonightWords(
     moonrise:
       day.moonrise === null
         ? 'No moonrise today'
-        : `${day.moonrise < now ? 'Rose' : 'Rises'} ${time(day.moonrise)}`,
+        : `Moonrise ${time(day.moonrise)}`,
     flag:
       day.moonriseNearSunset === null
         ? null

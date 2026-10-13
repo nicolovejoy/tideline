@@ -39,41 +39,30 @@ describe('tonightWords', () => {
     moonriseNearSunset: null,
   }
 
-  const morning = Date.UTC(2026, 9, 8, 11, 0) // 4:00 AM, before the moonrise
-  const evening = Date.UTC(2026, 9, 9, 1, 0) // 6:00 PM, long after it
-
   test('sunset, the moon and moonrise', () => {
-    expect(tonightWords(day, morning, ZONE)).toEqual({
+    expect(tonightWords(day, ZONE)).toEqual({
       sunset: '6:34 PM',
       moon: '3% lit, waning crescent',
-      moonrise: 'Rises 5:00 AM',
+      moonrise: 'Moonrise 5:00 AM',
       flag: null,
     })
   })
 
-  test('a moonrise that has passed is in the past tense', () => {
-    expect(tonightWords(day, evening, ZONE).moonrise).toBe('Rose 5:00 AM')
-  })
-
-  test('the very minute of moonrise still reads as coming', () => {
-    expect(tonightWords(day, day.moonrise!, ZONE).moonrise).toBe(
-      'Rises 5:00 AM',
-    )
+  // The first user's wording, chosen on 2026-10-09: no tense, whether or
+  // not the moon has risen.
+  test('the moon line does not say whether the moonrise has passed', () => {
+    expect(tonightWords(day, ZONE).moonrise).not.toMatch(/^R(o|i)ses?/)
   })
 
   test('a moonrise near sunset is flagged with its time', () => {
     const flagged = { ...day, moonriseNearSunset: Date.UTC(2026, 9, 9, 0, 45) }
-    expect(tonightWords(flagged, morning, ZONE).flag).toBe(
+    expect(tonightWords(flagged, ZONE).flag).toBe(
       'Moonrise near sunset: 5:45 PM',
     )
   })
 
   test('a day with no moonrise, or no sunset, says so', () => {
-    const words = tonightWords(
-      { ...day, sunset: null, moonrise: null },
-      morning,
-      ZONE,
-    )
+    const words = tonightWords({ ...day, sunset: null, moonrise: null }, ZONE)
     expect(words.sunset).toBe('No sunset today')
     expect(words.moonrise).toBe('No moonrise today')
   })

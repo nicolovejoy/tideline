@@ -74,6 +74,23 @@ h1 {
   font-weight: 600;
 }
 
+/* The spot's name, and for a saved spot the button to edit it, on one
+   line. The button keeps its tap target but adds no height to the row,
+   so the chips below do not move between a built-in spot and a saved one. */
+.spot-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  column-gap: 1rem;
+}
+.spot-head h1 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.spot-head .text-button {
+  margin-block: -0.5rem;
+}
+
 /* A short bar in a series' or a marker's colour, in front of its name. */
 .key::before {
   content: '';
@@ -642,18 +659,16 @@ h1 {
 .spot-add {
   border-style: dashed;
 }
+/* Under Save and Cancel on the edit screen, set apart from them. */
 .remove-spot {
-  margin-top: 1rem;
+  margin-top: 1.5rem;
 }
 
-/* The share line: the button, then what came of it. The remove line sits
-   close under it. A link shown to be copied by hand breaks wherever the
-   line ends, and one touch selects the whole of it. */
+/* The share line: the button, then what came of it. A link shown to be
+   copied by hand breaks wherever the line ends, and one touch selects the
+   whole of it. */
 .share-spot {
   margin-top: 1rem;
-}
-.share-spot + .remove-spot {
-  margin-top: 0;
 }
 .share-link {
   overflow-wrap: anywhere;

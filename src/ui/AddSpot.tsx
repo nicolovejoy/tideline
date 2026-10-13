@@ -18,8 +18,12 @@ import {
   canSearch,
   cleanName,
   factsLines,
+  edited,
   failureWords,
+  needsLookup,
+  removeQuestion,
   searchLine,
+  spotFacts,
   suggestedName,
 } from './addSpotView.ts'
 import type { SearchState } from './addSpotView.ts'
@@ -31,29 +35,50 @@ const LOCATE_TIMEOUT = 15_000
 export interface AddSpotProps {
   /** The spot the user came from: where the map opens. */
   from: Spot
+  /** The spot being edited, when the screen is for one. The pin starts at it. */
+  editing?: Spot
   onSave: (spot: Spot) => void
   onCancel: () => void
+  /** Given with `editing`: the spot can be removed from here. */
+  onRemove?: () => void
 }
 
 /**
  * A pin on a map or the device's position, a name, and what the pin gets:
  * its forecast cell, its height, and its stations or why it has no tide.
- * Loaded only when opened, with Leaflet and the station list.
+ * For a spot being edited the pin, the name and the facts start from the
+ * spot, and nothing is looked up until the pin moves. Loaded only when
+ * opened, with Leaflet and the station list.
  */
-export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
-  const [pin, setPin] = useState<LatLon | null>(null)
+export default function AddSpot({
+  from,
+  editing,
+  onSave,
+  onCancel,
+  onRemove,
+}: AddSpotProps) {
+  // What is known of the spot being edited, shown until the pin moves and
+  // again if it comes back.
+  const known: ResolveResult | null = editing
+    ? { ok: true, facts: spotFacts(editing) }
+    : null
+  const [pin, setPin] = useState<LatLon | null>(
+    editing ? { lat: editing.lat, lon: editing.lon } : null,
+  )
   const [look, setLook] = useState<Look | null>(null)
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState<SearchState>({ status: 'idle' })
-  const [name, setName] = useState('')
+  const [name, setName] = useState(editing?.name ?? '')
   const [stations, setStations] = useState<StationRow[] | null>(null)
   const [stationsFailed, setStationsFailed] = useState(false)
   const [stationsAttempt, setStationsAttempt] = useState(0)
-  const [result, setResult] = useState<ResolveResult | null>(null)
+  const [result, setResult] = useState<ResolveResult | null>(known)
   const [attempt, setAttempt] = useState(0)
   const [locating, setLocating] = useState<'idle' | 'finding' | 'failed'>(
     'idle',
   )
+  // Removing asks once, on the line itself.
+  const [removing, setRemoving] = useState(false)
   const nameId = useId()
   const placeId = useId()
 
@@ -87,9 +112,10 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
   }, [stationsAttempt])
 
   // Each pin, and each try-again, looks the pin up afresh. What the last
-  // look-up found is cleared by the tap that asks again, below.
+  // look-up found is cleared by the tap that asks again, below. A spot
+  // being edited is already known: its pin is looked up only once moved.
   useEffect(() => {
-    if (!pin || !stations) return
+    if (!pin || !stations || !needsLookup(editing, pin)) return
     let gone = false
     resolveSpot(pin.lat, pin.lon, {
       fetchPoints,
@@ -102,14 +128,15 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
     return () => {
       gone = true
     }
-  }, [pin, stations, attempt])
+  }, [pin, stations, attempt, editing])
 
   const dropPin = (at: LatLon) => {
     setPin(at)
-    setResult(null)
+    // Back on the spot's own point, what was saved for it stands.
+    setResult(needsLookup(editing, at) ? null : known)
   }
   const tryAgain = () => {
-    setResult(null)
+    setResult(needsLookup(editing, pin) ? null : known)
     // Once the list is in, the look-up below runs by itself.
     if (stationsFailed) {
       setStationsFailed(false)
@@ -162,10 +189,22 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
     )
   }
 
+  // For an edit, what Save would do. Null when it cannot save yet.
+  const edit =
+    editing && pin ? edited(editing, name, pin, result, newSpotId()) : null
   const save = () => {
-    if (!pin || !result?.ok) return
+    if (!pin) return
+    if (editing) {
+      if (edit === null) return
+      // Nothing changed: the screen closes, as Cancel does.
+      if (edit.kind === 'nothing') onCancel()
+      else onSave(edit.spot)
+      return
+    }
+    if (!result?.ok) return
     onSave({ ...result.facts, id: newSpotId(), name: cleanName(name) })
   }
+  const saveable = editing ? edit !== null : canSave(pin, name, result)
 
   const facts = result?.ok ? factsLines(result.facts) : []
 
@@ -213,7 +252,7 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
       </div>
 
       <SpotMap
-        center={{ lat: from.lat, lon: from.lon }}
+        center={{ lat: (editing ?? from).lat, lon: (editing ?? from).lon }}
         pin={pin}
         look={look}
         onPick={dropPin}
@@ -237,7 +276,7 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
       <div className="facts" aria-live="polite">
         {pin === null ? (
           <p className="caption">{WORDS.tapToStart}</p>
-        ) : stationsFailed ? (
+        ) : stationsFailed && needsLookup(editing, pin) ? (
           <>
             <p className="caption">{failureWords('unreachable')}</p>
             <button type="button" className="text-button" onClick={tryAgain}>
@@ -269,7 +308,7 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
           type="button"
           className="spot-choice"
           onClick={save}
-          disabled={!canSave(pin, name, result)}
+          disabled={!saveable}
         >
           {WORDS.save}
         </button>
@@ -277,6 +316,33 @@ export default function AddSpot({ from, onSave, onCancel }: AddSpotProps) {
           {WORDS.cancel}
         </button>
       </div>
+      {onRemove &&
+        (removing ? (
+          <p className="caption remove-spot">
+            <span>{removeQuestion(editing?.name ?? '')}</span>{' '}
+            <button type="button" className="text-button" onClick={onRemove}>
+              {WORDS.removeYes}
+            </button>{' '}
+            <span aria-hidden="true">{WORDS.separator}</span>{' '}
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setRemoving(false)}
+            >
+              {WORDS.removeNo}
+            </button>
+          </p>
+        ) : (
+          <p className="caption remove-spot">
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setRemoving(true)}
+            >
+              {WORDS.remove}
+            </button>
+          </p>
+        ))}
     </section>
   )
 }
