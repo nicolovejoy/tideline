@@ -569,70 +569,50 @@ describe('observedCaption', () => {
   }
 
   test('names the station, its distance, its height and the latest report', () => {
-    expect(
-      observedCaption(CAMPUS_POINT, serves, day(reported), TODAY, true),
-    ).toBe(
+    expect(observedCaption(CAMPUS_POINT, serves, day(reported), true)).toBe(
       `${NAMED}, through 2:06 PM. Sky is the cloud layer that covers most. Rain chance is forecast.`,
     )
   })
 
   test('a station that reports no sky says so', () => {
     const noSky = { ...reported, hours: [{ ...hour, sky: null }] }
-    expect(observedCaption(CAMPUS_POINT, serves, day(noSky), TODAY, true)).toBe(
+    expect(observedCaption(CAMPUS_POINT, serves, day(noSky), true)).toBe(
       `${NAMED}, through 2:06 PM. It reports no sky, so sky is forecast. Rain chance is forecast.`,
     )
   })
 
   test('before the first report of the day', () => {
     const none = { stationId: 'KSBA', through: null, hours: [] }
-    expect(observedCaption(CAMPUS_POINT, serves, day(none), TODAY, true)).toBe(
+    expect(observedCaption(CAMPUS_POINT, serves, day(none), true)).toBe(
       `${NAMED}. No reports yet today.`,
     )
   })
 
   test('what went wrong with the reports, if anything', () => {
     expect(
-      observedCaption(
-        CAMPUS_POINT,
-        serves,
-        day(reported, 'stale'),
-        TODAY,
-        true,
-      ),
+      observedCaption(CAMPUS_POINT, serves, day(reported, 'stale'), true),
     ).toBe(
       `${NAMED}, through 2:06 PM. Sky is the cloud layer that covers most. Rain chance is forecast. Couldn't refresh the reports.`,
     )
     expect(
-      observedCaption(
-        CAMPUS_POINT,
-        serves,
-        day(null, 'unavailable'),
-        TODAY,
-        true,
-      ),
+      observedCaption(CAMPUS_POINT, serves, day(null, 'unavailable'), true),
     ).toBe(`${NAMED}. Reports unavailable.`)
     expect(
-      observedCaption(CAMPUS_POINT, serves, day(null, 'loading'), TODAY, true),
+      observedCaption(CAMPUS_POINT, serves, day(null, 'loading'), true),
     ).toBe(`${NAMED}. Loading reports.`)
   })
 
   test('rows saved from another station are not counted', () => {
     const theirs = { ...reported, stationId: 'KIZA' }
-    expect(
-      observedCaption(CAMPUS_POINT, serves, day(theirs), TODAY, true),
-    ).toBe(`${NAMED}. Loading reports.`)
+    expect(observedCaption(CAMPUS_POINT, serves, day(theirs), true)).toBe(
+      `${NAMED}. Loading reports.`,
+    )
   })
 
   test('a spot with no station near says why: too far, or too high or low', () => {
     const far = station({ serves: null, nearest: KIZA })
     expect(
-      observedCaption(
-        spotById('gaviota'),
-        far,
-        day(null, 'loading'),
-        TODAY,
-        true,
-      ),
+      observedCaption(spotById('gaviota'), far, day(null, 'loading'), true),
     ).toBe(
       'Today is forecast only: the nearest weather station, KIZA Santa Ynez, Santa Ynez Airport, is 12.8 mi away.',
     )
@@ -642,7 +622,6 @@ describe('observedCaption', () => {
         spotById('la-cumbre-peak'),
         low,
         day(null, 'loading'),
-        TODAY,
         true,
       ),
     ).toBe(
@@ -656,7 +635,6 @@ describe('observedCaption', () => {
         CAMPUS_POINT,
         station({ serves: null, nearest: null }),
         day(null, 'loading'),
-        TODAY,
         true,
       ),
     ).toBe(
@@ -667,7 +645,6 @@ describe('observedCaption', () => {
         CAMPUS_POINT,
         station(null, 'unavailable'),
         day(null, 'loading'),
-        TODAY,
         true,
       ),
     ).toBe(
@@ -681,12 +658,11 @@ describe('observedCaption', () => {
         CAMPUS_POINT,
         station(null, 'loading'),
         day(null, 'loading'),
-        TODAY,
         true,
       ),
     ).toBeNull()
     expect(
-      observedCaption(CAMPUS_POINT, serves, day(reported), TODAY, false),
+      observedCaption(CAMPUS_POINT, serves, day(reported), false),
     ).toBeNull()
   })
 })

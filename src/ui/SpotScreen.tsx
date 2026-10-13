@@ -71,7 +71,6 @@ export function SpotScreen({ spot }: SpotScreenProps) {
     spot,
     data.station,
     data.observedWeather,
-    data.today,
     selected.isToday,
   )
   const cursorTime = formatTime(tide.cursor, zone)

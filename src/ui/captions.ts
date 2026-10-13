@@ -211,7 +211,6 @@ export function observedCaption(
   spot: Spot,
   station: Loaded<StationChoice>,
   observed: Loaded<ObservedDay>,
-  _today: string,
   isToday: boolean,
 ): string | null {
   if (!isToday) return null
