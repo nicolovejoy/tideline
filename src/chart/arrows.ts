@@ -12,8 +12,12 @@ export const ARROW_LENGTH = 10
 const HALF = ARROW_LENGTH / 2
 /** An arrow pointing up, centred on the origin: a shaft and two barbs. */
 export const ARROW_PATH = `M0,${HALF}V${-HALF}M${-3.5},${-HALF + 3.5}L0,${-HALF}L3.5,${-HALF + 3.5}`
+/** The same arrow with its head closed, so it can be filled: an observed hour. */
+export const ARROW_SOLID_PATH = `${ARROW_PATH}Z`
 /** The dot's radius, in px: a calm hour, or one with no direction. */
 export const DOT_RADIUS = 2
+/** The dot for an observed calm hour, a little larger so the two sides tell apart. */
+export const DOT_RADIUS_OBSERVED = 3
 /** The least distance between arrows, in px. Closer than this they are thinned. */
 export const ARROW_GAP = 12
 
@@ -27,6 +31,8 @@ export interface Arrow {
   v: number
   /** Degrees clockwise from up, or null for a dot: calm, or no direction. */
   angle: number | null
+  /** Drawn solid, as what the station reported. Absent for the forecast. */
+  observed?: boolean
 }
 
 /** A speed that rounds to 0 mph. */

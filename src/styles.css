@@ -357,6 +357,26 @@ h1 {
   fill: var(--ink);
 }
 
+/* Today's observed side: what the station reported, heavier than the
+   forecast beside it, and its arrows filled. */
+.series-temp-observed .line,
+.series-cloud-observed .line {
+  stroke: var(--observed);
+  stroke-width: 3.5;
+}
+.series-gust-observed .line {
+  stroke: var(--muted);
+  stroke-width: 2.5;
+}
+.arrow-observed path {
+  fill: var(--observed);
+  stroke: var(--observed);
+  stroke-width: 2;
+}
+.arrow-dot-observed {
+  fill: var(--observed);
+}
+
 /* Drawn in the text colour at low strength, so the rules show over both the
    background and the filled curve. */
 .rule line {
@@ -410,6 +430,15 @@ h1 {
 }
 .dot-gust,
 .dot-rain {
+  fill: var(--muted);
+}
+
+.dot-wind-observed,
+.dot-temp-observed,
+.dot-cloud-observed {
+  fill: var(--observed);
+}
+.dot-gust-observed {
   fill: var(--muted);
 }
 

@@ -143,4 +143,39 @@ describe('stepPath', () => {
   test('no points is an empty path', () => {
     expect(stepPath([], x, y, HOUR)).toBe('')
   })
+
+  test('cut to keep what is before an instant: the step containing it ends there, and later steps are not drawn', () => {
+    const points = [
+      { t: 0, v: 20 },
+      { t: HOUR, v: 50 },
+      { t: 2 * HOUR, v: 50 },
+    ]
+    const cut = { at: HOUR + 30 * 60_000, keep: 'before' as const }
+    expect(stepPath(points, x, y, HOUR, cut)).toBe('M0.0,80.0H30.0V50.0H45.0')
+  })
+
+  test('cut to keep what is after an instant: the step containing it starts there, and earlier steps are drawn whole', () => {
+    const points = [
+      { t: 0, v: 20 },
+      { t: HOUR, v: 50 },
+      { t: 2 * HOUR, v: 50 },
+    ]
+    const cut = { at: HOUR + 30 * 60_000, keep: 'after' as const }
+    expect(stepPath(points, x, y, HOUR, cut)).toBe(
+      'M0.0,80.0H30.0M45.0,50.0H60.0V50.0H90.0',
+    )
+  })
+
+  test('an instant on a step boundary leaves nothing of that step before it, and all of it after', () => {
+    const points = [
+      { t: 0, v: 20 },
+      { t: HOUR, v: 50 },
+    ]
+    expect(stepPath(points, x, y, HOUR, { at: HOUR, keep: 'before' })).toBe(
+      'M0.0,80.0H30.0',
+    )
+    expect(stepPath(points, x, y, HOUR, { at: HOUR, keep: 'after' })).toBe(
+      'M0.0,80.0H30.0V50.0H60.0',
+    )
+  })
 })
