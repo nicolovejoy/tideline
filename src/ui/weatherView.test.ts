@@ -160,6 +160,51 @@ describe('what is drawn', () => {
     expect(view.wind.bounds).toEqual([0, 20])
   })
 
+  test('a gust that does not stand out from the wind is left off the staircase and has no dot, but still counts in the range', () => {
+    // 3 PM, the hour under the cursor: 34 over 30 reaches neither bar, and
+    // is the day's highest gust. 4 PM: 30 over 20 does. 5 PM: 26 over 20
+    // does, by 5 mph or more.
+    const three = START + 15 * HOUR
+    const quiet = loaded(
+      hourly(FIRST, 185, (hour) => {
+        if (hour.t === three) {
+          hour.windMph = 30
+          hour.gustMph = 34
+        }
+        if (hour.t === three + HOUR) {
+          hour.windMph = 20
+          hour.gustMph = 30
+        }
+        if (hour.t === three + 2 * HOUR) {
+          hour.windMph = 20
+          hour.gustMph = 26
+        }
+      }),
+    )
+    const view = weatherView(quiet, day(0), NOW, NOW)
+    const gusts = view.wind.series[0].points
+    expect(gusts).toHaveLength(18)
+    expect(gusts.map((point) => point.t)).not.toContain(three)
+    expect(gusts.find((point) => point.t === three + HOUR)).toEqual({
+      t: three + HOUR,
+      v: 30,
+    })
+    expect(gusts.find((point) => point.t === three + 2 * HOUR)).toEqual({
+      t: three + 2 * HOUR,
+      v: 26,
+    })
+    expect(view.wind.readout).toEqual([{ key: 'wind', text: '30 mph from W' }])
+    expect(view.wind.dots).toEqual([{ name: 'wind', v: 30 }])
+    // The arrow is drawn whatever the gust.
+    expect(view.wind.arrows.find((a) => a.t === three + HOUR / 2)).toEqual({
+      t: three + HOUR / 2,
+      v: 30,
+      angle: 90,
+    })
+    // The range still reaches the hidden gust's height, so it does not jump.
+    expect(view.wind.bounds).toEqual([0, 40])
+  })
+
   test('one vertical range for every day, on round numbers', () => {
     const afternoon = START + 3 * DAY + 15 * HOUR
     const stormy = loaded(

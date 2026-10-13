@@ -334,6 +334,10 @@ h1 {
   stroke: var(--muted);
   stroke-width: 1.5;
 }
+/* The gusts are the lighter line: dotted, so the arrows carry the panel. */
+.series-gust .line {
+  stroke-dasharray: 0.5 3.5;
+}
 
 /* The night, behind everything. */
 .band-night {

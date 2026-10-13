@@ -1,7 +1,9 @@
 // The wind's arrows: one per hour, at the hour's speed, pointing where the
-// wind is going. Plain functions, so the thinning rule has tests and is
-// ready for a panel that shows more than a day.
+// wind is going; and which gusts are worth showing beside them. Plain
+// functions, so the thinning rule has tests and is ready for a panel that
+// shows more than a day.
 
+import type { ForecastHour } from '../data/nws.ts'
 import { HOUR } from '../time.ts'
 import type { Scale } from './scales.ts'
 
@@ -30,6 +32,33 @@ export interface Arrow {
 /** A speed that rounds to 0 mph. */
 export function isCalm(mph: number): boolean {
   return Math.round(mph) === 0
+}
+
+/** A gust stands out from the wind above this ratio to it… */
+export const GUST_RATIO = 1.25
+/** …or from this many mph above it. */
+export const GUST_MARGIN_MPH = 5
+
+/**
+ * Whether a gust stands out from the hour's wind: more than 1.25 times it,
+ * or 5 mph or more above it. Over a calm wind the ratio means nothing, since
+ * any gust is many times nothing, so only the margin counts there.
+ */
+export function gustStandsOut(windMph: number, gustMph: number): boolean {
+  if (gustMph - windMph >= GUST_MARGIN_MPH) return true
+  return !isCalm(windMph) && gustMph > windMph * GUST_RATIO
+}
+
+/**
+ * The hour's gust where it is worth showing, else none: a gust that stands
+ * out from the hour's wind, or any gust where the hour has no wind speed to
+ * set it against. The staircase, the cursor's dot and the words all use it,
+ * so they agree.
+ */
+export function shownGust(hour: ForecastHour): number | null {
+  if (hour.gustMph === null) return null
+  if (hour.windMph === null) return hour.gustMph
+  return gustStandsOut(hour.windMph, hour.gustMph) ? hour.gustMph : null
 }
 
 /**

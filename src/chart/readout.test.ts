@@ -173,7 +173,7 @@ describe('the weather under the cursor', () => {
       t,
       tempF: 73.6,
       windMph: 9.4,
-      gustMph: 11.5,
+      gustMph: 12.4,
       windDeg: 268,
       cloudPct: 3,
       rainPct: 0,
@@ -231,13 +231,31 @@ describe('the weather under the cursor', () => {
       ])
     })
 
-    test('calm is the word, with no direction, and the gusts carry the unit', () => {
-      expect(windParts(hour(NOON, { windMph: 0.4, gustMph: 3 }))).toEqual([
+    test('a gust that does not stand out from the wind is left out', () => {
+      // 24 is 1.2 times 20 and 4 mph above it: neither bar is reached.
+      expect(
+        partsText(windParts(hour(NOON, { windMph: 20, gustMph: 24 }))),
+      ).toBe('20 mph from W')
+      // Exactly 1.25 times is not more than it.
+      expect(
+        partsText(windParts(hour(NOON, { windMph: 8, gustMph: 10 }))),
+      ).toBe('8 mph from W')
+      expect(
+        partsText(windParts(hour(NOON, { windMph: 8, gustMph: 10.1 }))),
+      ).toBe('8 mph from W, gusts 10')
+    })
+
+    test('calm is the word, with no direction, and a gust 5 mph or more carries the unit', () => {
+      expect(windParts(hour(NOON, { windMph: 0.4, gustMph: 6 }))).toEqual([
         { key: 'wind', text: 'Calm' },
-        { key: 'gust', text: 'gusts 3 mph' },
+        { key: 'gust', text: 'gusts 6 mph' },
       ])
+      // A breath of 3 mph over a calm hour is no gust worth the words.
+      expect(
+        partsText(windParts(hour(NOON, { windMph: 0.4, gustMph: 3 }))),
+      ).toBe('Calm')
       expect(partsText(windParts(hour(NOON, { windMph: 0, gustMph: 0 })))).toBe(
-        'Calm, gusts 0 mph',
+        'Calm',
       )
       expect(
         partsText(windParts(hour(NOON, { windMph: 0, gustMph: null }))),

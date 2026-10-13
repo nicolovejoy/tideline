@@ -2,7 +2,7 @@
 // is on screen and where the cursor is. A plain function, so the rules have
 // tests and App.tsx only arranges the result.
 
-import { arrowAngle, isCalm } from '../chart/arrows.ts'
+import { arrowAngle, isCalm, shownGust } from '../chart/arrows.ts'
 import type { Arrow } from '../chart/arrows.ts'
 import type { Dot, Rule, Series } from '../chart/Panel.tsx'
 import {
@@ -121,6 +121,16 @@ function windArrows(hours: ForecastHour[]): Arrow[] {
   })
 }
 
+/**
+ * The hours with only the gusts worth showing: an hour whose gust does not
+ * stand out from its wind has none. The staircase, the dot and the words
+ * then agree. The vertical range is worked out from the hours as given, so
+ * the panel does not jump as the rule hides a gust.
+ */
+function withShownGusts<T extends ForecastHour | null>(hour: T): T {
+  return hour === null ? hour : { ...hour, gustMph: shownGust(hour) }
+}
+
 function panel(
   spec: PanelSpec,
   readout: ReadoutPart[],
@@ -212,8 +222,8 @@ export function weatherView(
     WIND,
     windParts(at),
     windBounds,
-    hours,
-    at,
+    hours.map(withShownGusts),
+    withShownGusts(at),
     windArrows(hours),
   )
   const temp = panel(TEMP, tempParts(at), tempBounds, hours, at)
