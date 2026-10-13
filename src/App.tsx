@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { forgetSpot } from './data/cache.ts'
-import { readSavedSpots, addSpot } from './data/savedSpots.ts'
+import { readSavedSpots, addSpot, replaceSpot } from './data/savedSpots.ts'
 import { SPOTS, allSpots, isSaved } from './spot.ts'
 import type { Spot } from './spot.ts'
 import { WORDS } from './ui/addSpotView.ts'
@@ -36,9 +36,16 @@ export default function App() {
   const [shared, setShared] = useState<SharedPoint | null>(
     opened.kind === 'new' ? opened.point : null,
   )
-  // The add screen has an entry in the browser's history, so going back
-  // closes it.
-  const adding = useView() === 'add'
+  // The add screen and the edit screen each have an entry in the browser's
+  // history, so going back closes them. An edit is only of a saved spot: a
+  // reload can bring the edit view up with a built-in one chosen, and then
+  // the forecast is shown and the entry taken off.
+  const view = useView()
+  const adding = view === 'add'
+  const editing = view === 'edit' && isSaved(spot)
+  useEffect(() => {
+    if (view === 'edit' && !isSaved(spot)) closeView()
+  }, [view, spot])
   // The id of a spot that could not be kept on the device, said on its screen.
   const [notKept, setNotKept] = useState<string | null>(null)
   const spots = allSpots(saved)
@@ -60,6 +67,16 @@ export default function App() {
   const saveSpot = (next: Spot) => {
     setNotKept(addSpot(next) ? null : next.id)
     setSaved([...saved, next])
+    selectSpot(next)
+    window.scrollTo(0, 0)
+  }
+  // A rename keeps the id and what was fetched. A move is a new id, in the
+  // old one's place; what was fetched for the old point is dropped, so a
+  // late answer for it cannot be drawn for the new one.
+  const editSpot = (next: Spot) => {
+    if (next.id !== spot.id) forgetSpot(spot.id)
+    setNotKept(replaceSpot(spot.id, next) ? null : next.id)
+    setSaved(saved.map((each) => (each.id === spot.id ? next : each)))
     selectSpot(next)
     window.scrollTo(0, 0)
   }
@@ -98,12 +115,19 @@ export default function App() {
     )
   }
 
-  if (adding) {
+  if (adding || editing) {
     return (
       <main>
-        <h1>{WORDS.heading}</h1>
+        <h1>{editing ? WORDS.editHeading : WORDS.heading}</h1>
         <Suspense fallback={<p className="notice">{WORDS.loadingMap}</p>}>
-          <AddSpot from={spot} onSave={saveSpot} onCancel={closeView} />
+          <AddSpot
+            key={editing ? spot.id : 'new'}
+            from={spot}
+            editing={editing ? spot : undefined}
+            onSave={editing ? editSpot : saveSpot}
+            onCancel={closeView}
+            onRemove={editing ? removeSpot : undefined}
+          />
         </Suspense>
         <BuildStamp />
       </main>
@@ -112,7 +136,18 @@ export default function App() {
 
   return (
     <main>
-      <h1>{spot.name}</h1>
+      <header className="spot-head">
+        <h1>{spot.name}</h1>
+        {isSaved(spot) && (
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => openView('edit')}
+          >
+            {WORDS.edit}
+          </button>
+        )}
+      </header>
       <SpotSwitcher
         spots={spots}
         current={spot}
@@ -126,11 +161,7 @@ export default function App() {
         </p>
       )}
       {/* Keyed, so a switch mounts the screen afresh, as a first open does. */}
-      <SpotScreen
-        key={spot.id}
-        spot={spot}
-        onRemove={isSaved(spot) ? removeSpot : undefined}
-      />
+      <SpotScreen key={spot.id} spot={spot} />
       <BuildStamp />
     </main>
   )
