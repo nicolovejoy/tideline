@@ -77,7 +77,7 @@ type Field = Exclude<keyof ForecastHour, 't'>
  * An observed row in the forecast's shape, so the same rules word and draw
  * it: its sky at the middle of its category's range, and no chance of rain.
  */
-export function asForecastHour(row: ObservedHour): ForecastHour {
+function asForecastHour(row: ObservedHour): ForecastHour {
   return {
     t: row.t,
     tempF: row.tempF,
@@ -175,11 +175,16 @@ function arrowFor(hour: ForecastHour, observed: boolean): Arrow | null {
  * One arrow per hour that has a wind speed, drawn at the middle of its hour
  * at that speed, pointing where the wind is going. A calm hour, or one with
  * no direction, is a dot. An hour the station reported takes its arrow from
- * the report, drawn solid.
+ * the report, drawn solid, only while its middle is left of the line at the
+ * current time: right of the line everything is the forecast's.
  */
-function windArrows(hours: TodayHour[]): Arrow[] {
+function windArrows(hours: TodayHour[], now: number | null): Arrow[] {
   return hours.flatMap((hour) => {
-    const observed = hour.observed !== null && hour.observed.windMph !== null
+    const observed =
+      now !== null &&
+      hour.t + HOUR / 2 < now &&
+      hour.observed !== null &&
+      hour.observed.windMph !== null
     const from = observed ? hour.observed : hour.forecast
     const arrow = from === null ? null : arrowFor(from, observed)
     return arrow === null ? [] : [arrow]
@@ -271,14 +276,12 @@ function panel(
   }
 }
 
-function values(hours: (ForecastHour | null)[], fields: Field[]): number[] {
+function values(hours: ForecastHour[], fields: Field[]): number[] {
   return hours.flatMap((hour) =>
-    hour === null
-      ? []
-      : fields.flatMap((field) => {
-          const v = hour[field]
-          return v === null ? [] : [v]
-        }),
+    fields.flatMap((field) => {
+      const v = hour[field]
+      return v === null ? [] : [v]
+    }),
   )
 }
 
@@ -367,7 +370,7 @@ export function weatherView(
   const left = today !== null && cursorT < now
 
   // One vertical range for every day, so one day can be compared with another.
-  const observedHours = rows.map(asForecastHour)
+  const observedHours = observed.map(asForecastHour)
   const windBounds = steppedBounds(
     [0, ...values([...all, ...observedHours], ['windMph', 'gustMph'])],
     10,
@@ -389,7 +392,7 @@ export function weatherView(
     hours,
     today,
     dotsFor(WIND, atSide),
-    windArrows(hours),
+    windArrows(hours, today),
   )
   const temp = panel(
     TEMP,
@@ -435,7 +438,19 @@ function readoutFor(
   const forecast: SourceWord | undefined = labelled ? 'forecast' : undefined
   const wind = rowStands(at, 'windMph')
     ? windParts(at.observed, 'observed')
-    : windParts(at.forecast, forecast)
+    : at.observed === null
+      ? windParts(at.forecast, forecast)
+      : [
+          // The row lacks the wind: the forecast's wind, and the row's gust or none.
+          ...windParts(
+            at.forecast && { ...at.forecast, gustMph: null },
+            forecast,
+          ),
+          ...windParts(
+            { ...at.observed, windMph: null, windDeg: null },
+            'observed',
+          ),
+        ]
   const temp = rowStands(at, 'tempF')
     ? tempParts(at.observed, 'observed')
     : tempParts(at.forecast, forecast)

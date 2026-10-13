@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { partsText } from '../chart/readout.ts'
 import type { Selected } from './selection.ts'
 import { forecastHours, weatherView } from './weatherView.ts'
 import type { Loaded } from '../data/load.ts'
@@ -605,6 +606,54 @@ describe('today with a station', () => {
     const view = weatherView(week, day(0), NOW, NOW, hot)
     expect(view.temp.bounds).toEqual([50, 100])
     expect(view.wind.bounds).toEqual([0, 40])
+    expect(weatherView(week, day(1), NOW, NOW, hot).temp.bounds).toEqual([
+      50, 100,
+    ])
+  })
+
+  test("in the first half of the current hour its arrow is the forecast's, right of the line", () => {
+    const now = START + 15 * HOUR + 10 * 60_000
+    const view = weatherView(week, day(0), now, now, observed(now))
+    const arrows = view.wind.arrows
+    expect(
+      arrows.find((arrow) => arrow.t === START + 15 * HOUR + HOUR / 2),
+    ).toEqual({ t: START + 15 * HOUR + HOUR / 2, v: 9, angle: 90 })
+    expect(
+      arrows.find((arrow) => arrow.t === START + 14 * HOUR + HOUR / 2)
+        ?.observed,
+    ).toBe(true)
+  })
+
+  test('with the current time exactly on the hour, the new hour is the forecast whole, and the observed side stops at the line', () => {
+    const now = START + 15 * HOUR
+    const view = weatherView(week, day(0), now, now, observed(now))
+    expect(view.temp.series[0].cut).toEqual({ at: now, keep: 'before' })
+    expect(view.temp.series[1].points[0].t).toBe(START + 15 * HOUR)
+    expect(view.temp.series[1].cut).toEqual({ at: now, keep: 'after' })
+    const arrow = view.wind.arrows.find(
+      (a) => a.t === START + 15 * HOUR + HOUR / 2,
+    )
+    expect(arrow?.observed).toBeUndefined()
+  })
+
+  test('a row without the wind speed reads the forecast wind and its own gust, if any', () => {
+    const cursor = START + 14 * HOUR + 30 * 60_000
+    const gust = (gustMph: number | null) =>
+      observed(NOW, (row) => {
+        if (row.t === START + 14 * HOUR) {
+          row.windMph = null
+          row.windDeg = null
+          row.gustMph = gustMph
+        }
+      })
+    expect(
+      partsText(weatherView(week, day(0), cursor, NOW, gust(15)).wind.readout),
+    ).toBe('9 mph from W, forecast; gusts 15 mph, observed')
+    expect(
+      partsText(
+        weatherView(week, day(0), cursor, NOW, gust(null)).wind.readout,
+      ),
+    ).toBe('9 mph from W, forecast')
   })
 
   test('on another day the rows are ignored', () => {
