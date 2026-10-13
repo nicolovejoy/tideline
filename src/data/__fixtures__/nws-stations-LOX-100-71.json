@@ -1,0 +1,273 @@
+{
+  "@context": [
+    "https://geojson.org/geojson-ld/geojson-context.jsonld",
+    {
+      "@version": "1.1",
+      "wx": "https://api.weather.gov/ontology#",
+      "s": "https://schema.org/",
+      "geo": "http://www.opengis.net/ont/geosparql#",
+      "unit": "http://codes.wmo.int/common/unit/",
+      "@vocab": "https://api.weather.gov/ontology#",
+      "geometry": {
+        "@id": "s:GeoCoordinates",
+        "@type": "geo:wktLiteral"
+      },
+      "city": "s:addressLocality",
+      "state": "s:addressRegion",
+      "distance": {
+        "@id": "s:Distance",
+        "@type": "s:QuantitativeValue"
+      },
+      "bearing": {
+        "@type": "s:QuantitativeValue"
+      },
+      "value": {
+        "@id": "s:value"
+      },
+      "unitCode": {
+        "@id": "s:unitCode",
+        "@type": "@id"
+      },
+      "forecastOffice": {
+        "@type": "@id"
+      },
+      "forecastGridData": {
+        "@type": "@id"
+      },
+      "publicZone": {
+        "@type": "@id"
+      },
+      "county": {
+        "@type": "@id"
+      },
+      "observationStations": {
+        "@container": "@list",
+        "@type": "@id"
+      }
+    }
+  ],
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "id": "https://api.weather.gov/stations/KSBA",
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -119.84361,
+          34.42611
+        ]
+      },
+      "properties": {
+        "@id": "https://api.weather.gov/stations/KSBA",
+        "@type": "wx:ObservationStation",
+        "elevation": {
+          "unitCode": "wmoUnit:m",
+          "value": 3.048
+        },
+        "stationIdentifier": "KSBA",
+        "name": "Santa Barbara, Santa Barbara Municipal Airport",
+        "timeZone": "America/Los_Angeles",
+        "provider": "ASOS-HFM",
+        "subProvider": "",
+        "distance": {
+          "unitCode": "wmoUnit:m",
+          "value": 1647.5032793165
+        },
+        "bearing": {
+          "unitCode": "wmoUnit:degree_(angle)",
+          "value": 10
+        },
+        "forecast": "https://api.weather.gov/zones/forecast/CAZ350",
+        "county": "https://api.weather.gov/zones/county/CAC083",
+        "fireWeatherZone": "https://api.weather.gov/zones/fire/CAZ350"
+      }
+    },
+    {
+      "id": "https://api.weather.gov/stations/LPOC1",
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -119.79129,
+          34.5444
+        ]
+      },
+      "properties": {
+        "@id": "https://api.weather.gov/stations/LPOC1",
+        "@type": "wx:ObservationStation",
+        "elevation": {
+          "unitCode": "wmoUnit:m",
+          "value": 299.3136
+        },
+        "stationIdentifier": "LPOC1",
+        "name": "LOS PRIETOS",
+        "timeZone": "America/Los_Angeles",
+        "provider": "RAWS",
+        "subProvider": "",
+        "distance": {
+          "unitCode": "wmoUnit:m",
+          "value": 15626.22095489
+        },
+        "bearing": {
+          "unitCode": "wmoUnit:degree_(angle)",
+          "value": 18
+        },
+        "forecast": "https://api.weather.gov/zones/forecast/CAZ353",
+        "county": "https://api.weather.gov/zones/county/CAC083",
+        "fireWeatherZone": "https://api.weather.gov/zones/fire/CAZ353"
+      }
+    },
+    {
+      "id": "https://api.weather.gov/stations/MOIC1",
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -119.62583,
+          34.445
+        ]
+      },
+      "properties": {
+        "@id": "https://api.weather.gov/stations/MOIC1",
+        "@type": "wx:ObservationStation",
+        "elevation": {
+          "unitCode": "wmoUnit:m",
+          "value": 86.868
+        },
+        "stationIdentifier": "MOIC1",
+        "name": "MONTECITO #2",
+        "timeZone": "America/Los_Angeles",
+        "provider": "RAWS",
+        "subProvider": "",
+        "distance": {
+          "unitCode": "wmoUnit:m",
+          "value": 20605.881507057
+        },
+        "bearing": {
+          "unitCode": "wmoUnit:degree_(angle)",
+          "value": 79
+        },
+        "forecast": "https://api.weather.gov/zones/forecast/CAZ350",
+        "county": "https://api.weather.gov/zones/county/CAC083",
+        "fireWeatherZone": "https://api.weather.gov/zones/fire/CAZ350"
+      }
+    },
+    {
+      "id": "https://api.weather.gov/stations/KIZA",
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.07556,
+          34.60694
+        ]
+      },
+      "properties": {
+        "@id": "https://api.weather.gov/stations/KIZA",
+        "@type": "wx:ObservationStation",
+        "elevation": {
+          "unitCode": "wmoUnit:m",
+          "value": 205.1304
+        },
+        "stationIdentifier": "KIZA",
+        "name": "Santa Ynez, Santa Ynez Airport",
+        "timeZone": "America/Los_Angeles",
+        "provider": "OTHER-MTR",
+        "subProvider": "",
+        "distance": {
+          "unitCode": "wmoUnit:m",
+          "value": 30190.888632613
+        },
+        "bearing": {
+          "unitCode": "wmoUnit:degree_(angle)",
+          "value": 316
+        },
+        "forecast": "https://api.weather.gov/zones/forecast/CAZ348",
+        "county": "https://api.weather.gov/zones/county/CAC083",
+        "fireWeatherZone": "https://api.weather.gov/zones/fire/CAZ348"
+      }
+    },
+    {
+      "id": "https://api.weather.gov/stations/WBPC1",
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -119.66444,
+          34.69056
+        ]
+      },
+      "properties": {
+        "@id": "https://api.weather.gov/stations/WBPC1",
+        "@type": "wx:ObservationStation",
+        "elevation": {
+          "unitCode": "wmoUnit:m",
+          "value": 1938.528
+        },
+        "stationIdentifier": "WBPC1",
+        "name": "West Big Pine",
+        "timeZone": "America/Los_Angeles",
+        "provider": "",
+        "subProvider": "",
+        "distance": {
+          "unitCode": "wmoUnit:m",
+          "value": 35236.222108056
+        },
+        "bearing": {
+          "unitCode": "wmoUnit:degree_(angle)",
+          "value": 28
+        },
+        "forecast": "https://api.weather.gov/zones/forecast/CAZ353",
+        "county": "https://api.weather.gov/zones/county/CAC083",
+        "fireWeatherZone": "https://api.weather.gov/zones/fire/CAZ353"
+      }
+    },
+    {
+      "id": "https://api.weather.gov/stations/KLAX",
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -118.38889,
+          33.93806
+        ]
+      },
+      "properties": {
+        "@id": "https://api.weather.gov/stations/KLAX",
+        "@type": "wx:ObservationStation",
+        "elevation": {
+          "unitCode": "wmoUnit:m",
+          "value": 38.1
+        },
+        "stationIdentifier": "KLAX",
+        "name": "Los Angeles, Los Angeles International Airport",
+        "timeZone": "America/Los_Angeles",
+        "provider": "ASOS-HFM",
+        "subProvider": "",
+        "distance": {
+          "unitCode": "wmoUnit:m",
+          "value": 144081.41876886
+        },
+        "bearing": {
+          "unitCode": "wmoUnit:degree_(angle)",
+          "value": 111
+        },
+        "forecast": "https://api.weather.gov/zones/forecast/CAZ366",
+        "county": "https://api.weather.gov/zones/county/CAC037",
+        "fireWeatherZone": "https://api.weather.gov/zones/fire/CAZ366"
+      }
+    }
+  ],
+  "observationStations": [
+    "https://api.weather.gov/stations/KSBA",
+    "https://api.weather.gov/stations/LPOC1",
+    "https://api.weather.gov/stations/MOIC1",
+    "https://api.weather.gov/stations/KIZA",
+    "https://api.weather.gov/stations/WBPC1",
+    "https://api.weather.gov/stations/KLAX"
+  ],
+  "pagination": {
+    "next": "https://api.weather.gov/stations?id%5B0%5D=AIDC1&id%5B1%5D=ANIC1&id%5B2%5D=AOMC1&id%5B3%5D=ATNC1&id%5B4%5D=BPNC1&id%5B5%5D=BRHC1&id%5B6%5D=CAZC1&id%5B7%5D=CEEC1&id%5B8%5D=CHOC1&id%5B9%5D=CMOC1&id%5B10%5D=CNIC1&id%5B11%5D=CQ074&id%5B12%5D=CSVC1&id%5B13%5D=CUUC1&id%5B14%5D=CYMC1&id%5B15%5D=DLVC1&id%5B16%5D=ER&id%5B17%5D=FGMC1&id%5B18%5D=FHMC1&id%5B19%5D=GMTC1&id%5B20%5D=KAVX&id%5B21%5D=KBUR&id%5B22%5D=KCMA&id%5B23%5D=KHHR&id%5B24%5D=KIZA&id%5B25%5D=KLAX&id%5B26%5D=KLGB&id%5B27%5D=KNTD&id%5B28%5D=KOXR&id%5B29%5D=KPMD&id%5B30%5D=KPRB&id%5B31%5D=KSBA&id%5B32%5D=KSBP&id%5B33%5D=KSDB&id%5B34%5D=KSMO&id%5B35%5D=KSMX&id%5B36%5D=KVBG&id%5B37%5D=KVNY&id%5B38%5D=KWJF&id%5B39%5D=LCBC1&id%5B40%5D=LPOC1&id%5B41%5D=LPZC1&id%5B42%5D=MOIC1&id%5B43%5D=OJ&id%5B44%5D=OX1MB&id%5B45%5D=OX1SL&id%5B46%5D=OZNC1&id%5B47%5D=PPPC1&id%5B48%5D=PU&id%5B49%5D=ROVC1&id%5B50%5D=SAUC1&id%5B51%5D=SBIC1&id%5B52%5D=SDLC1&id%5B53%5D=SNCC1&id%5B54%5D=SRIC1&id%5B55%5D=STFC1&id%5B56%5D=SV&id%5B57%5D=TABC1&id%5B58%5D=TCLC1&id%5B59%5D=TO&id%5B60%5D=TPGC1&id%5B61%5D=UCRM&id%5B62%5D=VLYC1&id%5B63%5D=VTUC1&id%5B64%5D=WBPC1&id%5B65%5D=WMSC1&id%5B66%5D=WTHC1&id%5B67%5D=WTPC1&cursor=eyJzIjo1MDB9"
+  }
+}

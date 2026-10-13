@@ -37,23 +37,34 @@ interface GridLayer {
 }
 
 const KMH_TO_MPH = 0.621371
+export const FT_PER_M = 3.28084
 const asIs = (value: number) => value
+
+/** Kilometres an hour as NWS sends speeds, to miles an hour. */
+export function kmhToMph(kmh: number): number {
+  return kmh * KMH_TO_MPH
+}
+
+/** Celsius as NWS sends temperatures, to Fahrenheit. */
+export function celsiusToF(celsius: number): number {
+  return (celsius * 9) / 5 + 32
+}
 
 const LAYERS: Record<Field, LayerSpec> = {
   tempF: {
     layer: 'temperature',
     unit: 'wmoUnit:degC',
-    convert: (celsius) => (celsius * 9) / 5 + 32,
+    convert: celsiusToF,
   },
   windMph: {
     layer: 'windSpeed',
     unit: 'wmoUnit:km_h-1',
-    convert: (kmh) => kmh * KMH_TO_MPH,
+    convert: kmhToMph,
   },
   gustMph: {
     layer: 'windGust',
     unit: 'wmoUnit:km_h-1',
-    convert: (kmh) => kmh * KMH_TO_MPH,
+    convert: kmhToMph,
   },
   windDeg: {
     layer: 'windDirection',
@@ -220,8 +231,6 @@ export async function fetchPoints(lat: number, lon: number): Promise<NwsCell> {
   if (!response.ok) throw new Error(`NWS: HTTP ${response.status}`)
   return parsePoints(await response.json())
 }
-
-const FT_PER_M = 3.28084
 
 /** A cell's average height in whole feet, from the gridpoint response. */
 export function parseElevationFt(json: unknown): number {
