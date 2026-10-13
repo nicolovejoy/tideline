@@ -74,12 +74,21 @@ h1 {
   font-weight: 600;
 }
 
-/* The spot's name, and for a saved spot the button to edit it, on one line. */
+/* The spot's name, and for a saved spot the button to edit it, on one
+   line. The button keeps its tap target but adds no height to the row,
+   so the chips below do not move between a built-in spot and a saved one. */
 .spot-head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   column-gap: 1rem;
+}
+.spot-head h1 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.spot-head .text-button {
+  margin-block: -0.5rem;
 }
 
 /* A short bar in a series' or a marker's colour, in front of its name. */
