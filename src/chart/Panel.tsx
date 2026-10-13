@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { ARROW_LENGTH } from './arrows.ts'
+import type { Arrow } from './arrows.ts'
 import { areaPath, linePath, stepPath } from './scales.ts'
 import type { Point, Scale } from './scales.ts'
 
@@ -53,6 +55,10 @@ interface PanelProps {
   /** Values to draw a horizontal rule and a label at. */
   rules: Rule[]
   series: Series[]
+  /** Spans shaded behind everything, such as the night. */
+  bands: Band[]
+  /** One small arrow per instant, at a value, turned to an angle; a dot where there is no angle. */
+  arrows?: Arrow[]
   /** Vertical lines at instants that matter, such as sunset. */
   markers: Marker[]
   cursor: number
@@ -60,7 +66,14 @@ interface PanelProps {
   dots: Dot[]
 }
 
-/** One chart on the shared time axis: a title, a readout, and a plot. */
+// An arrow pointing up, centred on the origin: a shaft and two barbs.
+const HALF = ARROW_LENGTH / 2
+const ARROW_PATH = `M0,${HALF}V${-HALF}M${-3.5},${-HALF + 3.5}L0,${-HALF}L3.5,${-HALF + 3.5}`
+
+/**
+ * One chart on the shared time axis: a title, a readout, and a plot, with
+ * bands shaded behind the series and arrows drawn over them.
+ */
 export function Panel({
   title,
   readout,
@@ -70,6 +83,8 @@ export function Panel({
   y,
   rules,
   series,
+  bands,
+  arrows = [],
   markers,
   cursor,
   dots,
@@ -87,6 +102,16 @@ export function Panel({
         viewBox={`0 0 ${width} ${height}`}
         aria-hidden="true"
       >
+        {bands.map((band) => (
+          <rect
+            key={`${band.name}-${band.start}`}
+            className={`band band-${band.name}`}
+            x={x(band.start)}
+            y={0}
+            width={x(band.end) - x(band.start)}
+            height={height}
+          />
+        ))}
         {series.map((one) => (
           <g key={one.name} className={`series series-${one.name}`}>
             {one.filled && (
@@ -102,6 +127,25 @@ export function Panel({
             />
           </g>
         ))}
+        {arrows.map((arrow) =>
+          arrow.angle === null ? (
+            <circle
+              key={arrow.t}
+              className="arrow-dot"
+              cx={x(arrow.t)}
+              cy={y(arrow.v)}
+              r={2}
+            />
+          ) : (
+            <g
+              key={arrow.t}
+              className="arrow"
+              transform={`translate(${x(arrow.t).toFixed(1)} ${y(arrow.v).toFixed(1)}) rotate(${arrow.angle})`}
+            >
+              <path d={ARROW_PATH} />
+            </g>
+          ),
+        )}
         {rules.map((rule) => (
           <g key={rule.v} className="rule">
             <line x1={0} x2={width} y1={y(rule.v)} y2={y(rule.v)} />
