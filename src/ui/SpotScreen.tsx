@@ -1,5 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Panel } from '../chart/Panel.tsx'
 import { PanelStack } from '../chart/PanelStack.tsx'
 import { cursorText } from '../chart/readout.ts'
@@ -19,6 +18,7 @@ import { ShareSpot } from './ShareSpot.tsx'
 import { tideView } from './tideView.ts'
 import type { CursorPick } from './tideView.ts'
 import { TonightStrip } from './TonightStrip.tsx'
+import { closeView, openView, useView } from './useView.ts'
 import { WeatherPanels } from './WeatherPanels.tsx'
 import { weatherView } from './weatherView.ts'
 
@@ -47,9 +47,10 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
 
   const [pickedDay, setPickedDay] = useState<string | null>(null)
   const [pick, setPick] = useState<CursorPick | null>(null)
-  // The forecast, or one month at a time. Opens on the forecast; nothing
-  // about the view is remembered.
-  const [view, setView] = useState<'forecast' | 'month'>('forecast')
+  // The forecast, or one month at a time. The month view has an entry in
+  // the browser's history, so going back closes it. Which month was on
+  // screen is not remembered.
+  const monthOpen = useView() === 'month'
   const [month, setMonth] = useState<string | null>(null)
   // Removing asks once, on the line itself.
   const [removing, setRemoving] = useState(false)
@@ -90,25 +91,34 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
     dayTop.current?.scrollIntoView({ block: 'start' })
   }, [])
 
-  const openMonths = useCallback(() => {
-    setView('month')
-    window.scrollTo(0, 0)
-  }, [])
-  const backToForecast = () => {
-    flushSync(() => {
-      setView('forecast')
-      setMonth(null)
-      // Today on the panels, with the cursor at rest, as on a first open.
+  const openMonths = useCallback(() => openView('month'), [])
+  // Each time the month view comes up, by its button or by the browser
+  // going forward, the forecast under it is put back to today, with the
+  // cursor at rest, and the month to this one. Set on the way in, so that
+  // every way back finds the forecast as on a first open. Done while
+  // drawing, as React asks of state that follows another value, so nothing
+  // of what was there before is seen.
+  const [wasMonth, setWasMonth] = useState(monthOpen)
+  if (wasMonth !== monthOpen) {
+    setWasMonth(monthOpen)
+    if (monthOpen) {
       setPickedDay(null)
       setPick(null)
-    })
-    // The button pressed has gone with the month view; focus goes to the
-    // day's heading, not to the page.
-    dayHeading.current?.focus({ preventScroll: true })
-    window.scrollTo(0, 0)
+      setMonth(null)
+    }
   }
+  // The page goes to its top each time the month view comes up or goes.
+  // When it goes, the button pressed has gone with it, and focus goes to
+  // the day's heading, not to the page.
+  const shownMonth = useRef(monthOpen)
+  useLayoutEffect(() => {
+    if (shownMonth.current === monthOpen) return
+    shownMonth.current = monthOpen
+    if (!monthOpen) dayHeading.current?.focus({ preventScroll: true })
+    window.scrollTo(0, 0)
+  }, [monthOpen])
 
-  if (view === 'month') {
+  if (monthOpen) {
     return (
       <MonthView
         spot={spot}
@@ -117,7 +127,7 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
         month={month}
         noTides={tide.noTides}
         onMonth={setMonth}
-        onBack={backToForecast}
+        onBack={closeView}
       />
     )
   }
