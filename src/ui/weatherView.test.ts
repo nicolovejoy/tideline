@@ -173,9 +173,8 @@ describe('what is read out', () => {
   test('the forecast hour that contains the cursor', () => {
     const view = weatherView(week, day(0), NOW, NOW)
     expect(view.wind.readout).toEqual([
-      { key: 'wind', text: '9 mph' },
+      { key: 'wind', text: '9 mph from W' },
       { key: 'gust', text: 'gusts 12' },
-      { key: null, text: 'from W' },
     ])
     // 3:36 PM is in the 3 PM hour.
     expect(view.temp.readout).toEqual([{ key: 'temp', text: '65°F' }])
@@ -200,7 +199,7 @@ describe('what is read out', () => {
 
   test('says it all in one run of words, naming each panel, for a screen reader', () => {
     expect(weatherView(week, day(0), NOW, NOW).words).toBe(
-      'Wind: 9 mph, gusts 12, from W; Temperature: 65°F; Sky: 3% cloud, 0% rain',
+      'Wind: 9 mph from W, gusts 12; Temperature: 65°F; Sky: 3% cloud, 0% rain',
     )
   })
 
@@ -211,7 +210,7 @@ describe('what is read out', () => {
       }),
     )
     expect(weatherView(patchy, day(0), NOW, NOW).words).toBe(
-      'Wind: 9 mph, gusts 12, from W; Temperature: No forecast here; Sky: 3% cloud, 0% rain',
+      'Wind: 9 mph from W, gusts 12; Temperature: No forecast here; Sky: 3% cloud, 0% rain',
     )
   })
 
@@ -247,10 +246,7 @@ describe('what is read out', () => {
     const view = weatherView(patchy, day(0), NOW, NOW)
     expect(view.temp.readout).toEqual([{ key: null, text: 'No forecast here' }])
     expect(view.temp.dots).toEqual([])
-    expect(view.wind.readout).toEqual([
-      { key: 'wind', text: '9 mph' },
-      { key: null, text: 'from W' },
-    ])
+    expect(view.wind.readout).toEqual([{ key: 'wind', text: '9 mph from W' }])
     expect(view.wind.dots).toEqual([{ name: 'wind', v: 9 }])
   })
 })

@@ -173,7 +173,7 @@ describe('dayRows', () => {
     expect(rows[0].weather).toEqual([
       'At sunset',
       '68°F',
-      '9 mph, gusts 12, from WSW',
+      '9 mph from WSW, gusts 12',
       '30% cloud, 2% rain',
     ])
   })
@@ -181,7 +181,7 @@ describe('dayRows', () => {
   test('an hour with only some values gives those', () => {
     expect(rows[1].weather).toEqual([
       'At sunset',
-      '9 mph, gusts 12, from WSW',
+      '9 mph from WSW, gusts 12',
       '30% cloud, 2% rain',
     ])
   })
