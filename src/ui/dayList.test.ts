@@ -178,6 +178,25 @@ describe('dayRows', () => {
     ])
   })
 
+  test('a row leaves out a gust that does not stand out from the wind, as the panel does', () => {
+    const steady: Forecast = {
+      ...forecast,
+      hours: [hour(sunsetHour(0), { windMph: 20, gustMph: 24 })],
+    }
+    const row = dayRows(
+      { ...data, forecast: ready(steady) },
+      null,
+      ZONE,
+      true,
+    )[0]
+    expect(row.weather).toEqual([
+      'At sunset',
+      '68°F',
+      '20 mph from WSW',
+      '30% cloud, 2% rain',
+    ])
+  })
+
   test('an hour with only some values gives those', () => {
     expect(rows[1].weather).toEqual([
       'At sunset',

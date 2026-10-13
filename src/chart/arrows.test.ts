@@ -5,12 +5,15 @@ import {
   arrowAngle,
   arrowStep,
   DOT_RADIUS,
+  gustStandsOut,
   hourWidth,
   isCalm,
+  shownGust,
   thinArrows,
 } from './arrows.ts'
 import type { Arrow } from './arrows.ts'
 import { linearScale } from './scales.ts'
+import type { ForecastHour } from '../data/nws.ts'
 
 const HOUR = 3_600_000
 const DAY = 24 * HOUR
@@ -22,6 +25,50 @@ describe('isCalm', () => {
     expect(isCalm(0.4)).toBe(true)
     expect(isCalm(0.5)).toBe(false)
     expect(isCalm(3)).toBe(false)
+  })
+})
+
+describe('gustStandsOut', () => {
+  test('more than 1.25 times the wind, and exactly 1.25 times does not', () => {
+    expect(gustStandsOut(8, 10)).toBe(false)
+    expect(gustStandsOut(8, 10.1)).toBe(true)
+    expect(gustStandsOut(10, 14)).toBe(true)
+  })
+
+  test('5 mph or more above the wind, where the ratio alone would not', () => {
+    expect(gustStandsOut(20, 24)).toBe(false)
+    expect(gustStandsOut(20, 25)).toBe(true)
+  })
+
+  test('over a calm wind only the 5 mph bar counts: any ratio would show a gust of 1', () => {
+    expect(gustStandsOut(0, 2)).toBe(false)
+    expect(gustStandsOut(0.4, 4.9)).toBe(false)
+    expect(gustStandsOut(0, 5)).toBe(true)
+  })
+})
+
+describe('shownGust', () => {
+  function hour(change: Partial<ForecastHour>): ForecastHour {
+    return {
+      t: START,
+      tempF: 60,
+      windMph: 10,
+      gustMph: 14,
+      windDeg: 270,
+      cloudPct: 0,
+      rainPct: 0,
+      ...change,
+    }
+  }
+
+  test("the hour's gust where it stands out from its wind, else none", () => {
+    expect(shownGust(hour({ windMph: 10, gustMph: 14 }))).toBe(14)
+    expect(shownGust(hour({ windMph: 20, gustMph: 24 }))).toBeNull()
+    expect(shownGust(hour({ gustMph: null }))).toBeNull()
+  })
+
+  test('a gust with no wind speed to set it against is shown', () => {
+    expect(shownGust(hour({ windMph: null, gustMph: 3 }))).toBe(3)
   })
 })
 

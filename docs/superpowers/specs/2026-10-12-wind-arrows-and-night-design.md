@@ -16,7 +16,7 @@ It showed one because the panel draws two lines, wind and gust, and says the dir
 
 2. **A calm hour is a dot**, at the foot of the panel. So is an hour whose direction the forecast does not give, at its speed.
 
-3. **The gust line stays** as it is: a staircase on the same axis.
+3. **The gust line stays** as it is: a staircase on the same axis. (Changed by issue 60 on 2026-10-13, after the owner's phone check: the staircase is dotted, and a gust is drawn, dotted and worded only where it stands out from the hour's wind, more than 1.25 times it or 5 mph or more above it.)
 
 4. **The words at the cursor read "10 mph from WSW, gusts 14".** The words say where the wind comes from and the arrow points where it goes, which is the meteorological convention. A calm hour reads "Calm". The cursor's dots stay, on the wind's speed and on the gust.
 

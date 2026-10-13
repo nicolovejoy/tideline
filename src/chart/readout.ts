@@ -1,6 +1,6 @@
 // The values under the cursor, and how they are worded. Plain functions.
 
-import { isCalm } from './arrows.ts'
+import { isCalm, shownGust } from './arrows.ts'
 import type { TidePoint } from '../data/noaa.ts'
 import { compassPoint } from '../data/nws.ts'
 import type { ForecastHour } from '../data/nws.ts'
@@ -153,7 +153,8 @@ export interface ReadoutPart {
  * The wind in an hour: '9 mph from W', then 'gusts 12'. The words say where
  * the wind comes from; the arrow on the panel points where it goes. A calm
  * hour is 'Calm', with no direction. Each part is there only if the
- * forecast has it, and the unit is given once, by the first number.
+ * forecast has it, the gusts only where they stand out from the wind
+ * (`shownGust`), and the unit is given once, by the first number.
  */
 export function windParts(hour: ForecastHour | null): ReadoutPart[] {
   if (!hour) return []
@@ -170,9 +171,10 @@ export function windParts(hour: ForecastHour | null): ReadoutPart[] {
       unitGiven = true
     }
   }
-  if (hour.gustMph !== null) {
+  const gust = shownGust(hour)
+  if (gust !== null) {
     const unit = unitGiven ? '' : ' mph'
-    parts.push({ key: 'gust', text: `gusts ${whole(hour.gustMph)}${unit}` })
+    parts.push({ key: 'gust', text: `gusts ${whole(gust)}${unit}` })
   }
   if (hour.windMph === null && from) parts.push({ key: null, text: from })
   return parts
