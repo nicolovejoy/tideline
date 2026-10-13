@@ -85,6 +85,20 @@ export function removeSpot(id: string): void {
   writeSavedSpots(readSavedSpots().filter((spot) => spot.id !== id))
 }
 
+/**
+ * Puts `next` where the spot with `id` stands, so an edit keeps its place
+ * in the row; its own id may differ, as a moved spot's does. An id not in
+ * the list adds the spot at the end: a spot that could not be kept is in
+ * the row but not here, and an edit is another try at keeping it. Says
+ * whether the list went in, as `addSpot` does.
+ */
+export function replaceSpot(id: string, next: Spot): boolean {
+  const spots = readSavedSpots()
+  const at = spots.findIndex((spot) => spot.id === id)
+  if (at === -1) return writeSavedSpots([...spots, next])
+  return writeSavedSpots(spots.map((spot, i) => (i === at ? next : spot)))
+}
+
 /** An id no hard-coded spot has, from the time it was made. */
 export function newSpotId(now: number = Date.now()): string {
   return `spot-${now.toString(36)}`

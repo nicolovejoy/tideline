@@ -6,6 +6,7 @@ import {
   newSpotId,
   readSavedSpots,
   removeSpot,
+  replaceSpot,
 } from './savedSpots.ts'
 import { CAMPUS_POINT } from '../spot.ts'
 import type { Spot } from '../spot.ts'
@@ -140,6 +141,56 @@ describe('removeSpot', () => {
     addSpot({ ...LEADBETTER, id: 'spot-def', name: 'Second' })
     removeSpot('spot-abc')
     expect(readSavedSpots().map((spot) => spot.id)).toEqual(['spot-def'])
+  })
+})
+
+describe('replaceSpot', () => {
+  const SECOND = { ...LEADBETTER, id: 'spot-def', name: 'Second' }
+  const THIRD = { ...LEADBETTER, id: 'spot-ghi', name: 'Third' }
+
+  test('a rename takes the place of the old spot, under the same id', () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    addSpot(LEADBETTER)
+    addSpot(SECOND)
+    addSpot(THIRD)
+    expect(replaceSpot('spot-def', { ...SECOND, name: 'Renamed' })).toBe(true)
+    expect(readSavedSpots().map((spot) => spot.name)).toEqual([
+      'Leadbetter Beach',
+      'Renamed',
+      'Third',
+    ])
+  })
+
+  test('a move keeps the place in the row under the new id', () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    addSpot(LEADBETTER)
+    addSpot(SECOND)
+    addSpot(THIRD)
+    const moved = { ...SECOND, id: 'spot-new', lat: 34.41, lon: -119.71 }
+    replaceSpot('spot-def', moved)
+    expect(readSavedSpots().map((spot) => spot.id)).toEqual([
+      'spot-abc',
+      'spot-new',
+      'spot-ghi',
+    ])
+    expect(readSavedSpots()[1]).toEqual(moved)
+  })
+
+  // A spot that could not be kept is in the row but not in storage. Editing
+  // it is another try at keeping it, not a way to lose it.
+  test('an id not in the list adds the spot at the end', () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    addSpot(LEADBETTER)
+    expect(replaceSpot('spot-gone', SECOND)).toBe(true)
+    expect(readSavedSpots().map((spot) => spot.id)).toEqual([
+      'spot-abc',
+      'spot-def',
+    ])
+  })
+
+  test('with storage disabled says the spot was not kept', () => {
+    vi.stubGlobal('localStorage', brokenStorage())
+    expect(replaceSpot('spot-abc', LEADBETTER)).toBe(false)
   })
 })
 
