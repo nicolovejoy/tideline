@@ -2,10 +2,16 @@
 // returns. Every access is wrapped: with storage disabled the app still
 // works, just without a cache.
 
-import { HOUR, MINUTE } from '../time.ts'
+import { DAY, HOUR, MINUTE } from '../time.ts'
 
 export type Source =
-  'predictions' | 'hilo' | 'observed' | 'gauge-predictions' | 'forecast'
+  | 'predictions'
+  | 'hilo'
+  | 'observed'
+  | 'gauge-predictions'
+  | 'forecast'
+  | 'weather-station'
+  | 'observed-weather'
 
 export interface Span {
   start: number
@@ -135,6 +141,8 @@ const SOURCES: Source[] = [
   'observed',
   'gauge-predictions',
   'forecast',
+  'weather-station',
+  'observed-weather',
 ]
 
 /** Drop everything saved for a spot, when the spot itself goes. */
@@ -176,7 +184,21 @@ export function isStale(
       )
     case 'forecast':
       return age > HOUR || fromTheFuture
+    // Stations are not built every week. The spot's own facts never change.
+    case 'weather-station':
+      return age > 30 * DAY || fromTheFuture
     case 'observed':
       return age > 6 * MINUTE || fromTheFuture
+    // The rows are for one day, and are worked out once, at the fetch: an hour
+    // that has ended since is drawn from its latest report, not the one
+    // nearest its top, so they are stale at each hour's turn too.
+    case 'observed-weather':
+      return (
+        age > 6 * MINUTE ||
+        fromTheFuture ||
+        !entry.span ||
+        entry.span.start !== needed.start ||
+        Math.floor(entry.fetchedAt / HOUR) !== Math.floor(now / HOUR)
+      )
   }
 }

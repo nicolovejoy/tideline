@@ -2,9 +2,11 @@ import { describe, expect, test } from 'vitest'
 import {
   ARROW_GAP,
   ARROW_PATH,
+  ARROW_SOLID_PATH,
   arrowAngle,
   arrowStep,
   DOT_RADIUS,
+  DOT_RADIUS_OBSERVED,
   gustStandsOut,
   hourWidth,
   isCalm,
@@ -171,5 +173,16 @@ describe('the glyph', () => {
   test('the shaft is ARROW_LENGTH long through the origin, and the dot is 2 px', () => {
     expect(ARROW_PATH.startsWith('M0,5V-5')).toBe(true)
     expect(DOT_RADIUS).toBe(2)
+  })
+})
+
+describe('the observed glyphs', () => {
+  test('the solid arrow is the open one with its head closed, so it fills', () => {
+    expect(ARROW_SOLID_PATH).toBe(`${ARROW_PATH}Z`)
+  })
+
+  test('the observed dot is a little larger than the forecast one', () => {
+    expect(DOT_RADIUS_OBSERVED).toBeGreaterThan(DOT_RADIUS)
+    expect(DOT_RADIUS_OBSERVED).toBe(3)
   })
 })

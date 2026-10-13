@@ -1,11 +1,15 @@
 // The small print under the panels: where the data comes from, how recent it
 // is, and what went wrong if something did. Plain functions.
 
+import type { Span } from '../data/cache.ts'
 import { seenFromFt } from '../data/horizon.ts'
 import type { Loaded } from '../data/load.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
 import type { Forecast } from '../data/nws.ts'
+import type { ObservedDay } from '../data/observed.ts'
 import { TIDES_WITHIN_MI } from '../data/tideRule.ts'
+import { STATION_WITHIN_MI } from '../data/weatherRule.ts'
+import type { NearStation, StationChoice } from '../data/weatherRule.ts'
 import { hasOwnCurve, hasOwnGauge, hasTides } from '../spot.ts'
 import type { Spot, Station } from '../spot.ts'
 import { formatDay, formatTime, localDate } from '../time.ts'
@@ -179,6 +183,86 @@ export function weatherCaption(
     const saved = when(forecast.fetchedAt, today, zone)
     parts.push(`Couldn't refresh. Showing the forecast from ${saved}.`)
   }
+  return parts.join(' ')
+}
+
+/**
+ * A station's name as NWS gives it, with an all-caps one put in title case:
+ * 'LOS PRIETOS' is 'Los Prietos'. An id-like name of one word is left alone.
+ */
+export function weatherStationName(name: string): string {
+  if (name !== name.toUpperCase() || !name.includes(' ')) return name
+  return name
+    .toLowerCase()
+    .replace(/(^|[\s(])(\S)/g, (match) => match.toUpperCase())
+}
+
+/** 'NWS KSBA Santa Barbara, Santa Barbara Municipal Airport' */
+function weatherStationWords(station: NearStation): string {
+  return `NWS ${station.id} ${weatherStationName(station.name)}`
+}
+
+/**
+ * Under the weather's caption on today: the station whose reports are
+ * drawn, with its distance, its height and the latest report; or why today
+ * is forecast only. Null on any other day, and while the station is still
+ * being looked up with nothing saved.
+ */
+export function observedCaption(
+  spot: Spot,
+  station: Loaded<StationChoice>,
+  observed: Loaded<ObservedDay>,
+  today: Span,
+  isToday: boolean,
+): string | null {
+  if (!isToday) return null
+  const zone = spot.timeZone
+  const choice = station.data
+  if (choice === null) {
+    return station.status === 'unavailable'
+      ? "Today is forecast only: couldn't look up the weather stations near this spot."
+      : null
+  }
+  const { serves, nearest } = choice
+  if (serves === null) {
+    if (nearest === null) {
+      return 'Today is forecast only: NWS lists no weather station for this forecast cell.'
+    }
+    const name = `${nearest.id} ${weatherStationName(nearest.name)}`
+    const why =
+      nearest.distanceMi > STATION_WITHIN_MI
+        ? `is ${nearest.distanceMi} mi away`
+        : `is at ${feetHigh(nearest.elevationFt)} and this spot at ${feetHigh(spot.elevationFt ?? spot.nws.elevationFt)}`
+    return `Today is forecast only: the nearest weather station, ${name}, ${why}.`
+  }
+
+  const named = `Observed: ${weatherStationWords(serves)}, ${serves.distanceMi} mi ${serves.direction}, at ${feetHigh(serves.elevationFt)}`
+  // Rows from a station chosen earlier, or for another day, are not these.
+  const day =
+    observed.data !== null &&
+    observed.data.stationId === serves.id &&
+    observed.span !== null &&
+    observed.span.start === today.start
+      ? observed.data
+      : null
+  if (day === null) {
+    const state =
+      observed.status === 'unavailable' || observed.status === 'stale'
+        ? 'Reports unavailable.'
+        : 'Loading reports.'
+    return `${named}. ${state}`
+  }
+  if (day.through === null) return `${named}. No reports yet today.`
+
+  const parts = [`${named}, through ${formatTime(day.through, zone)}.`]
+  const anySky = day.hours.some((hour) => hour.sky !== null)
+  parts.push(
+    anySky
+      ? 'Sky is the cloud layer that covers most.'
+      : 'It reports no sky, so sky is forecast.',
+  )
+  parts.push('Rain chance is forecast.')
+  if (observed.status === 'stale') parts.push("Couldn't refresh the reports.")
   return parts.join(' ')
 }
 

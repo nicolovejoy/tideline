@@ -7,7 +7,13 @@ import { useSpotData } from '../data/useSpotData.ts'
 import { hasTides } from '../spot.ts'
 import type { Spot } from '../spot.ts'
 import { formatDay, formatTime } from '../time.ts'
-import { sunCaption, tideCaption, weatherCaption } from './captions.ts'
+import { todaysObserved } from '../data/observed.ts'
+import {
+  observedCaption,
+  sunCaption,
+  tideCaption,
+  weatherCaption,
+} from './captions.ts'
 import { DayList } from './DayList.tsx'
 import { dayRows, tonightWords } from './dayList.ts'
 import { HiLoTable } from './HiLoTable.tsx'
@@ -53,7 +59,25 @@ export function SpotScreen({ spot }: SpotScreenProps) {
   const [month, setMonth] = useState<string | null>(null)
   const selected = selectedDay(data, pickedDay)
   const tide = tideView(data, selected, pick, spot)
-  const weather = weatherView(forecast, selected, tide.cursor, data.now)
+  const observedToday = todaysObserved(
+    data.station,
+    data.observedWeather,
+    data.day,
+  )
+  const weather = weatherView(
+    forecast,
+    selected,
+    tide.cursor,
+    data.now,
+    observedToday,
+  )
+  const observed = observedCaption(
+    spot,
+    data.station,
+    data.observedWeather,
+    data.day,
+    selected.isToday,
+  )
   const cursorTime = formatTime(tide.cursor, zone)
   const markers = dayMarkers(selected, data.now)
   const bands = dayBands(selected)
@@ -219,6 +243,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
             })}
         </p>
         <p className="caption">{weatherCaption(spot, forecast, data.today)}</p>
+        {observed !== null && <p className="caption">{observed}</p>}
         {sun !== null && <p className="caption">{sun}</p>}
         <ShareSpot spot={spot} />
       </section>

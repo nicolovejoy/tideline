@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'vitest'
+import { partsText } from '../chart/readout.ts'
 import type { Selected } from './selection.ts'
 import { forecastHours, weatherView } from './weatherView.ts'
 import type { Loaded } from '../data/load.ts'
 import type { Forecast, ForecastHour } from '../data/nws.ts'
+import type { ObservedHour } from '../data/observed.ts'
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
@@ -466,5 +468,297 @@ describe('forecastHours', () => {
 
   test('none with nothing saved', () => {
     expect(forecastHours(loaded(null, 'loading'), NOW)).toEqual([])
+  })
+})
+
+/** Observed rows from midnight to the hour containing `until`, one an hour. */
+function observed(
+  until: number,
+  change: (hour: ObservedHour) => void = () => {},
+): ObservedHour[] {
+  const rows: ObservedHour[] = []
+  for (let t = START; t <= until; t += HOUR) {
+    const row: ObservedHour = {
+      t,
+      tempF: 60 + (((t - START) / HOUR) % 24),
+      windMph: 5,
+      gustMph: null,
+      windDeg: 180,
+      sky: 'scattered',
+    }
+    change(row)
+    rows.push(row)
+  }
+  return rows
+}
+
+describe('today with a station', () => {
+  // NOW is 3:36 PM: fifteen hours have ended, and 3 PM is the current hour.
+  const rows = observed(NOW)
+
+  test('each value has an observed staircase up to now and the forecast after, with the current hour cut at the line', () => {
+    const view = weatherView(week, day(0), NOW, NOW, rows)
+    expect(view.temp.series.map((series) => series.name)).toEqual([
+      'temp-observed',
+      'temp',
+    ])
+    const [obs, fc] = view.temp.series
+    expect(obs.points).toHaveLength(16)
+    expect(obs.points[0]).toEqual({ t: START, v: 60 })
+    expect(obs.points[15].t).toBe(START + 15 * HOUR)
+    expect(obs.cut).toEqual({ at: NOW, keep: 'before' })
+    // The forecast runs from 5 AM, but its hours up to 2 PM are covered by
+    // rows. The current hour, 3 PM, is in both: observed to the line, forecast after.
+    expect(fc.points[0].t).toBe(START + 15 * HOUR)
+    expect(fc.points).toHaveLength(9)
+    expect(fc.cut).toEqual({ at: NOW, keep: 'after' })
+  })
+
+  test('an hour gone by with no row shows the forecast for it, whole, and the forecast of the current hour is whole where there is no row for it', () => {
+    const patchy = rows.filter(
+      (row) => row.t !== START + 10 * HOUR && row.t !== START + 15 * HOUR,
+    )
+    const [obs, fc] = weatherView(week, day(0), NOW, NOW, patchy).temp.series
+    expect(obs.points.map((point) => point.t)).not.toContain(START + 10 * HOUR)
+    expect(fc.points.map((point) => point.t)).toContain(START + 10 * HOUR)
+    expect(fc.cut).toBeUndefined()
+  })
+
+  test('a value a row lacks is filled from the forecast for that hour, worded and drawn as forecast', () => {
+    const blind = observed(NOW, (row) => {
+      if (row.t === START + 12 * HOUR) row.tempF = null
+    })
+    const [obs, fc] = weatherView(week, day(0), NOW, NOW, blind).temp.series
+    expect(obs.points.map((point) => point.t)).not.toContain(START + 12 * HOUR)
+    expect(fc.points.find((point) => point.t === START + 12 * HOUR)).toEqual({
+      t: START + 12 * HOUR,
+      v: 62,
+    })
+  })
+
+  test("an observed sky is drawn at the middle of its category's range, and the rain stays forecast all day", () => {
+    const view = weatherView(week, day(0), NOW, NOW, rows)
+    expect(view.sky.series.map((series) => series.name)).toEqual([
+      'cloud-observed',
+      'cloud',
+      'rain',
+    ])
+    expect(view.sky.series[0].points[0]).toEqual({ t: START, v: 44 })
+    // Rain from 5 AM, as the forecast has it, uncut.
+    expect(view.sky.series[2].points[0].t).toBe(FIRST)
+    expect(view.sky.series[2].points).toHaveLength(19)
+    expect(view.sky.series[2].cut).toBeUndefined()
+  })
+
+  test('a row with no sky leaves the forecast cloud for that hour', () => {
+    const noSky = observed(NOW, (row) => {
+      row.sky = null
+    })
+    const view = weatherView(week, day(0), NOW, NOW, noSky)
+    expect(view.sky.series[0].points).toEqual([])
+    expect(view.sky.series[1].points).toHaveLength(19)
+    expect(view.sky.series[1].cut).toBeUndefined()
+  })
+
+  test('observed gusts go by the gust rule, and an hour with a row and no gust has no gust from the forecast either', () => {
+    const gusty = observed(NOW, (row) => {
+      if (row.t === START + 8 * HOUR) row.gustMph = 12 // 12 over 5 stands out.
+      if (row.t === START + 9 * HOUR) row.gustMph = 6 // 6 over 5 does not.
+    })
+    const view = weatherView(week, day(0), NOW, NOW, gusty)
+    expect(view.wind.series.map((series) => series.name)).toEqual([
+      'gust-observed',
+      'gust',
+    ])
+    expect(view.wind.series[0].points).toEqual([{ t: START + 8 * HOUR, v: 12 }])
+    // The forecast's gust of 12 is not drawn for any hour gone by that has a
+    // row, and in the current hour only right of the line.
+    expect(view.wind.series[1].points[0].t).toBe(START + 15 * HOUR)
+    expect(view.wind.series[1].cut).toEqual({ at: NOW, keep: 'after' })
+  })
+
+  test('observed hours have solid arrows, at their own speed, and the current hour is observed where it has a row', () => {
+    const view = weatherView(week, day(0), NOW, NOW, rows)
+    const arrows = view.wind.arrows
+    const at = (t: number) => arrows.find((arrow) => arrow.t === t + HOUR / 2)
+    // A south wind (180) points up (0).
+    expect(at(START)).toEqual({
+      t: START + HOUR / 2,
+      v: 5,
+      angle: 0,
+      observed: true,
+    })
+    expect(at(START + 15 * HOUR)?.observed).toBe(true)
+    expect(at(START + 16 * HOUR)).toEqual({
+      t: START + 16 * HOUR + HOUR / 2,
+      v: 9,
+      angle: 90,
+    })
+    // One arrow per hour: midnight to 11 PM.
+    expect(arrows).toHaveLength(24)
+  })
+
+  test('the ranges take the observed values in', () => {
+    const hot = observed(NOW, (row) => {
+      row.tempF = 95
+      row.windMph = 31
+    })
+    const view = weatherView(week, day(0), NOW, NOW, hot)
+    expect(view.temp.bounds).toEqual([50, 100])
+    expect(view.wind.bounds).toEqual([0, 40])
+    expect(weatherView(week, day(1), NOW, NOW, hot).temp.bounds).toEqual([
+      50, 100,
+    ])
+  })
+
+  test("in the first half of the current hour its arrow is the forecast's, right of the line", () => {
+    const now = START + 15 * HOUR + 10 * 60_000
+    const view = weatherView(week, day(0), now, now, observed(now))
+    const arrows = view.wind.arrows
+    expect(
+      arrows.find((arrow) => arrow.t === START + 15 * HOUR + HOUR / 2),
+    ).toEqual({ t: START + 15 * HOUR + HOUR / 2, v: 9, angle: 90 })
+    expect(
+      arrows.find((arrow) => arrow.t === START + 14 * HOUR + HOUR / 2)
+        ?.observed,
+    ).toBe(true)
+  })
+
+  test('with the current time exactly on the hour, the new hour is the forecast whole, and the observed side stops at the line', () => {
+    const now = START + 15 * HOUR
+    const view = weatherView(week, day(0), now, now, observed(now))
+    expect(view.temp.series[0].cut).toEqual({ at: now, keep: 'before' })
+    expect(view.temp.series[1].points[0].t).toBe(START + 15 * HOUR)
+    expect(view.temp.series[1].cut).toEqual({ at: now, keep: 'after' })
+    const arrow = view.wind.arrows.find(
+      (a) => a.t === START + 15 * HOUR + HOUR / 2,
+    )
+    expect(arrow?.observed).toBeUndefined()
+  })
+
+  test('a row without the wind speed reads the forecast wind and its own gust, if any', () => {
+    const cursor = START + 14 * HOUR + 30 * 60_000
+    const gust = (gustMph: number | null) =>
+      observed(NOW, (row) => {
+        if (row.t === START + 14 * HOUR) {
+          row.windMph = null
+          row.windDeg = null
+          row.gustMph = gustMph
+        }
+      })
+    expect(
+      partsText(weatherView(week, day(0), cursor, NOW, gust(15)).wind.readout),
+    ).toBe('9 mph from W, forecast; gusts 15 mph, observed')
+    expect(
+      partsText(
+        weatherView(week, day(0), cursor, NOW, gust(null)).wind.readout,
+      ),
+    ).toBe('9 mph from W, forecast')
+  })
+
+  test('on another day the rows are ignored', () => {
+    const view = weatherView(week, day(1), NOW, NOW, rows)
+    expect(view.temp.series.map((series) => series.name)).toEqual(['temp'])
+    expect(view.temp.series[0].cut).toBeUndefined()
+    expect(
+      view.wind.arrows.every((arrow) => arrow.observed === undefined),
+    ).toBe(true)
+  })
+
+  test('with rows and no forecast at all, today is drawn from the rows alone', () => {
+    const view = weatherView(
+      loaded(null, 'unavailable'),
+      day(0),
+      NOW,
+      NOW,
+      rows,
+    )
+    expect(view.notice).toBeNull()
+    expect(view.temp.series[0].points).toHaveLength(16)
+    expect(view.temp.series[1].points).toEqual([])
+  })
+
+  test('left of the line the words are the observed values and say so, and the dots sit on them', () => {
+    // 2:30 PM: the 2 PM hour has ended and has a row.
+    const cursor = START + 14 * HOUR + 30 * 60_000
+    const view = weatherView(week, day(0), cursor, NOW, rows)
+    expect(partsText(view.wind.readout)).toBe('5 mph from S, observed')
+    expect(partsText(view.temp.readout)).toBe('74°F, observed')
+    expect(partsText(view.sky.readout)).toBe(
+      'Scattered cloud, observed; 0% rain, forecast',
+    )
+    expect(view.wind.dots).toEqual([{ name: 'wind-observed', v: 5 }])
+    expect(view.temp.dots).toEqual([{ name: 'temp-observed', v: 74 }])
+    expect(view.sky.dots).toEqual([
+      { name: 'cloud-observed', v: 44 },
+      { name: 'rain', v: 0 },
+    ])
+    expect(view.words).toBe(
+      'Wind: 5 mph from S, observed; Temperature: 74°F, observed; Sky: Scattered cloud, observed; 0% rain, forecast',
+    )
+  })
+
+  test('right of the line the words are the forecast and say so, even in the current hour', () => {
+    // 3:50 PM: the 3 PM hour has a row, but the cursor is past the line.
+    const view = weatherView(week, day(0), NOW + 14 * 60_000, NOW, rows)
+    expect(partsText(view.wind.readout)).toBe(
+      '9 mph from W, gusts 12, forecast',
+    )
+    expect(partsText(view.temp.readout)).toBe('65°F, forecast')
+    expect(partsText(view.sky.readout)).toBe('3% cloud, 0% rain, forecast')
+    expect(view.temp.dots).toEqual([{ name: 'temp', v: 65 }])
+  })
+
+  test('at the line itself the cursor reads the forecast', () => {
+    const view = weatherView(week, day(0), NOW, NOW, rows)
+    expect(partsText(view.temp.readout)).toBe('65°F, forecast')
+  })
+
+  test('left of the line, a value the row lacks reads the forecast for that hour and says so', () => {
+    const blind = observed(NOW, (row) => {
+      if (row.t === START + 14 * HOUR) {
+        row.tempF = null
+        row.sky = null
+      }
+    })
+    const cursor = START + 14 * HOUR + 30 * 60_000
+    const view = weatherView(week, day(0), cursor, NOW, blind)
+    expect(partsText(view.temp.readout)).toBe('64°F, forecast')
+    expect(partsText(view.sky.readout)).toBe('3% cloud, 0% rain, forecast')
+    expect(partsText(view.wind.readout)).toBe('5 mph from S, observed')
+  })
+
+  test('an hour gone by with no row at all reads the forecast, with its word', () => {
+    const patchy = rows.filter((row) => row.t !== START + 14 * HOUR)
+    const cursor = START + 14 * HOUR + 30 * 60_000
+    const view = weatherView(week, day(0), cursor, NOW, patchy)
+    expect(partsText(view.temp.readout)).toBe('64°F, forecast')
+  })
+
+  test('an observed gust that stands out is worded, and the dot is the observed one', () => {
+    const gusty = observed(NOW, (row) => {
+      if (row.t === START + 14 * HOUR) row.gustMph = 15
+    })
+    const cursor = START + 14 * HOUR + 30 * 60_000
+    const view = weatherView(week, day(0), cursor, NOW, gusty)
+    expect(partsText(view.wind.readout)).toBe(
+      '5 mph from S, gusts 15, observed',
+    )
+    expect(view.wind.dots).toEqual([
+      { name: 'wind-observed', v: 5 },
+      { name: 'gust-observed', v: 15 },
+    ])
+  })
+
+  test('on another day no side is said', () => {
+    const view = weatherView(week, day(1), day(1).anchor, NOW, rows)
+    expect(view.temp.readout.every((part) => part.source === undefined)).toBe(
+      true,
+    )
+  })
+
+  test('on today with no rows no side is said either', () => {
+    const view = weatherView(week, day(0), NOW, NOW, [])
+    expect(partsText(view.temp.readout)).toBe('65°F')
   })
 })

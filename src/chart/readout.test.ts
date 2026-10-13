@@ -1,19 +1,24 @@
 import { describe, expect, test } from 'vitest'
 import {
   STEP,
+  cloudPart,
   cursorText,
   feet,
   gaugeWords,
   hourAt,
   partsText,
+  rainPart,
   restingCursor,
   signedFeet,
+  skyCategoryPart,
   skyParts,
+  skyWords,
   snap,
   tempParts,
   tideReadout,
   tideWords,
   windParts,
+  withSourceWords,
 } from './readout.ts'
 import type { ForecastHour } from '../data/nws.ts'
 
@@ -310,6 +315,63 @@ describe('the weather under the cursor', () => {
     test('no hour, or neither value, is no parts', () => {
       expect(skyParts(null)).toEqual([])
       expect(skyParts(NOTHING)).toEqual([])
+    })
+  })
+
+  describe('the source words', () => {
+    test('each part can say which side it is from, and the word is said once after a run', () => {
+      const parts = withSourceWords(windParts(hour(NOON), 'observed'))
+      expect(parts).toEqual([
+        { key: 'wind', text: '9 mph from W', source: 'observed' },
+        { key: 'gust', text: 'gusts 12', source: 'observed' },
+        { key: null, text: 'observed', source: 'observed', label: true },
+      ])
+      expect(partsText(parts)).toBe('9 mph from W, gusts 12, observed')
+    })
+
+    test('two runs from different sides are set apart by a semicolon', () => {
+      const parts = withSourceWords([
+        skyCategoryPart('scattered', 'observed'),
+        rainPart(0, 'forecast'),
+      ])
+      expect(partsText(parts)).toBe(
+        'Scattered cloud, observed; 0% rain, forecast',
+      )
+    })
+
+    test('with no sources nothing is added, as on any other day', () => {
+      const parts = windParts(hour(NOON))
+      expect(withSourceWords(parts)).toEqual(parts)
+      expect(partsText(parts)).toBe('9 mph from W, gusts 12')
+    })
+
+    test('no parts is no parts', () => {
+      expect(withSourceWords([])).toEqual([])
+    })
+  })
+
+  describe('skyWords', () => {
+    test('the category in words', () => {
+      expect(skyWords('clear')).toBe('Clear')
+      expect(skyWords('few')).toBe('Few clouds')
+      expect(skyWords('scattered')).toBe('Scattered cloud')
+      expect(skyWords('broken')).toBe('Broken cloud')
+      expect(skyWords('overcast')).toBe('Overcast')
+    })
+  })
+
+  test('tempParts and skyParts carry the source too', () => {
+    expect(tempParts(hour(NOON), 'observed')).toEqual([
+      { key: 'temp', text: '74°F', source: 'observed' },
+    ])
+    expect(skyParts(hour(NOON), 'forecast')).toEqual([
+      { key: 'cloud', text: '3% cloud', source: 'forecast' },
+      { key: 'rain', text: '0% rain', source: 'forecast' },
+    ])
+    expect(cloudPart(40, 'forecast')).toEqual({
+      key: 'cloud',
+      text: '40% cloud',
+      source: 'forecast',
     })
   })
 })

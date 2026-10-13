@@ -261,6 +261,45 @@ describe('isStale', () => {
     expect(isStale('observed', at(NOW - 7 * MINUTE), NOW, WINDOW)).toBe(true)
   })
 
+  test('the weather station chosen is good for 30 days', () => {
+    const fresh = at(NOW - 29 * DAY)
+    expect(isStale('weather-station', fresh, NOW, WINDOW)).toBe(false)
+    const old = at(NOW - 31 * DAY)
+    expect(isStale('weather-station', old, NOW, WINDOW)).toBe(true)
+  })
+
+  test('the hours observed go stale after 6 minutes, as the observed tide does', () => {
+    const fresh = { ...at(NOW + 5 * MINUTE), span: WINDOW }
+    const later = NOW + 10 * MINUTE
+    expect(isStale('observed-weather', fresh, later, WINDOW)).toBe(false)
+    const old = { ...at(NOW + 1 * MINUTE), span: WINDOW }
+    expect(isStale('observed-weather', old, later, WINDOW)).toBe(true)
+  })
+
+  test('observed hours saved for another day are stale however young', () => {
+    const yesterday = {
+      fetchedAt: NOW + 1 * MINUTE,
+      span: { start: WINDOW.start - DAY, end: WINDOW.end - DAY },
+      data: null,
+    }
+    expect(isStale('observed-weather', yesterday, NOW, WINDOW)).toBe(true)
+    const today = { ...yesterday, span: WINDOW }
+    expect(isStale('observed-weather', today, NOW, WINDOW)).toBe(false)
+    const noSpan = { ...yesterday, span: null }
+    expect(isStale('observed-weather', noSpan, NOW, WINDOW)).toBe(true)
+  })
+
+  test('observed hours fetched in the previous hour are stale however young', () => {
+    const now = NOW + 1 * MINUTE
+    const entry = {
+      fetchedAt: NOW - 2 * MINUTE,
+      span: WINDOW,
+      data: null,
+    }
+    // NOW is on the hour, so 2 minutes before is in the hour before.
+    expect(isStale('observed-weather', entry, now, WINDOW)).toBe(true)
+  })
+
   test.each(['predictions', 'hilo'] as const)(
     '%s stay fresh while they cover the window, however old',
     (source) => {
@@ -309,13 +348,15 @@ describe('isStale', () => {
 
 describe('forgetSpot', () => {
   afterEach(() => vi.unstubAllGlobals())
-  test('removes the five entries for that spot and no other', () => {
+  test('removes the seven entries for that spot and no other', () => {
     const storage = fakeStorage({
       'tideline:v2:spot-abc:predictions': '1',
       'tideline:v2:spot-abc:hilo': '1',
       'tideline:v2:spot-abc:observed': '1',
       'tideline:v2:spot-abc:gauge-predictions': '1',
       'tideline:v2:spot-abc:forecast': '1',
+      'tideline:v2:spot-abc:weather-station': '1',
+      'tideline:v2:spot-abc:observed-weather': '1',
       'tideline:v2:campus-point:forecast': '1',
     })
     vi.stubGlobal('localStorage', storage)

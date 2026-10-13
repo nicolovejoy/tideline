@@ -2,16 +2,22 @@ import { describe, expect, test } from 'vitest'
 import {
   monthCaption,
   noTidesWords,
+  observedCaption,
   sunCaption,
   tideCaption,
   weatherCaption,
+  weatherStationName,
 } from './captions.ts'
 import type { Loaded } from '../data/load.ts'
+import type { ObservedDay } from '../data/observed.ts'
+import type { NearStation, StationChoice } from '../data/weatherRule.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
 import type { Forecast } from '../data/nws.ts'
 import { CAMPUS_POINT, spotById } from '../spot.ts'
 
 const TODAY = '2026-10-08'
+// The 8 October day at the spot, in Pacific time.
+const DAY = { start: Date.UTC(2026, 9, 8, 7), end: Date.UTC(2026, 9, 9, 7) }
 const STATION = 'Tide: NOAA 9411340 Santa Barbara, 8.6 mi east.'
 // 2:00 PM and 2:06 PM Pacific on 8 October 2026.
 const EARLIER = { t: Date.UTC(2026, 9, 8, 21, 0), ft: 2.4 }
@@ -493,6 +499,245 @@ describe('sunCaption', () => {
         ...laCumbre,
         tideStation: { ...laCumbre.tideStation, distanceMi: 636 },
       }),
+    ).toBeNull()
+  })
+})
+
+describe('weatherStationName', () => {
+  test('an all-caps name is put in title case; a mixed one is left alone', () => {
+    expect(weatherStationName('LOS PRIETOS')).toBe('Los Prietos')
+    expect(weatherStationName('MONTECITO #2')).toBe('Montecito #2')
+    expect(
+      weatherStationName('Santa Barbara, Santa Barbara Municipal Airport'),
+    ).toBe('Santa Barbara, Santa Barbara Municipal Airport')
+    expect(weatherStationName('KSBA')).toBe('KSBA')
+  })
+})
+
+describe('observedCaption', () => {
+  const KSBA: NearStation = {
+    id: 'KSBA',
+    name: 'Santa Barbara, Santa Barbara Municipal Airport',
+    lat: 34.42611,
+    lon: -119.84361,
+    elevationFt: 10,
+    distanceMi: 1.5,
+    direction: 'north',
+  }
+  const KIZA: NearStation = {
+    ...KSBA,
+    id: 'KIZA',
+    name: 'Santa Ynez, Santa Ynez Airport',
+    elevationFt: 673,
+    distanceMi: 12.8,
+    direction: 'northwest',
+  }
+  const LPOC1: NearStation = {
+    ...KSBA,
+    id: 'LPOC1',
+    name: 'LOS PRIETOS',
+    elevationFt: 982,
+    distanceMi: 5.6,
+    direction: 'northwest',
+  }
+  const NAMED =
+    'Observed: NWS KSBA Santa Barbara, Santa Barbara Municipal Airport, 1.5 mi north, at 10 ft'
+
+  function station(
+    data: StationChoice | null,
+    status: Loaded<StationChoice>['status'] = 'ready',
+  ): Loaded<StationChoice> {
+    return { data, fetchedAt: data ? FETCHED : null, span: null, status }
+  }
+  function day(
+    data: ObservedDay | null,
+    status: Loaded<ObservedDay>['status'] = 'ready',
+    span: Loaded<ObservedDay>['span'] = DAY,
+  ): Loaded<ObservedDay> {
+    return { data, fetchedAt: data ? FETCHED : null, span, status }
+  }
+  const serves = station({ serves: KSBA, nearest: KSBA })
+  const hour = {
+    t: Date.UTC(2026, 9, 8, 21),
+    tempF: 64,
+    windMph: 9,
+    gustMph: null,
+    windDeg: 270,
+    sky: 'clear' as const,
+  }
+  const reported: ObservedDay = {
+    stationId: 'KSBA',
+    through: READING.t,
+    hours: [hour],
+  }
+
+  test('names the station, its distance, its height and the latest report', () => {
+    expect(
+      observedCaption(CAMPUS_POINT, serves, day(reported), DAY, true),
+    ).toBe(
+      `${NAMED}, through 2:06 PM. Sky is the cloud layer that covers most. Rain chance is forecast.`,
+    )
+  })
+
+  test('a station that reports no sky says so', () => {
+    const noSky = { ...reported, hours: [{ ...hour, sky: null }] }
+    expect(observedCaption(CAMPUS_POINT, serves, day(noSky), DAY, true)).toBe(
+      `${NAMED}, through 2:06 PM. It reports no sky, so sky is forecast. Rain chance is forecast.`,
+    )
+  })
+
+  test('before the first report of the day', () => {
+    const none = { stationId: 'KSBA', through: null, hours: [] }
+    expect(observedCaption(CAMPUS_POINT, serves, day(none), DAY, true)).toBe(
+      `${NAMED}. No reports yet today.`,
+    )
+  })
+
+  test('what went wrong with the reports, if anything', () => {
+    expect(
+      observedCaption(CAMPUS_POINT, serves, day(reported, 'stale'), DAY, true),
+    ).toBe(
+      `${NAMED}, through 2:06 PM. Sky is the cloud layer that covers most. Rain chance is forecast. Couldn't refresh the reports.`,
+    )
+    expect(
+      observedCaption(
+        CAMPUS_POINT,
+        serves,
+        day(null, 'unavailable'),
+        DAY,
+        true,
+      ),
+    ).toBe(`${NAMED}. Reports unavailable.`)
+    expect(
+      observedCaption(CAMPUS_POINT, serves, day(null, 'loading'), DAY, true),
+    ).toBe(`${NAMED}. Loading reports.`)
+  })
+
+  test('rows saved from another station are not counted', () => {
+    const theirs = { ...reported, stationId: 'KIZA' }
+    expect(observedCaption(CAMPUS_POINT, serves, day(theirs), DAY, true)).toBe(
+      `${NAMED}. Loading reports.`,
+    )
+  })
+
+  test('rows saved from another station, with nothing coming, are unavailable', () => {
+    const theirs = { ...reported, stationId: 'KIZA' }
+    expect(
+      observedCaption(CAMPUS_POINT, serves, day(theirs, 'stale'), DAY, true),
+    ).toBe(`${NAMED}. Reports unavailable.`)
+  })
+
+  test("rows saved for yesterday's day are not counted", () => {
+    const yesterday = {
+      start: DAY.start - 24 * 3600000,
+      end: DAY.end - 24 * 3600000,
+    }
+    expect(
+      observedCaption(
+        CAMPUS_POINT,
+        serves,
+        day(reported, 'ready', yesterday),
+        DAY,
+        true,
+      ),
+    ).toBe(`${NAMED}. Loading reports.`)
+    expect(
+      observedCaption(
+        CAMPUS_POINT,
+        serves,
+        day(reported, 'stale', yesterday),
+        DAY,
+        true,
+      ),
+    ).toBe(`${NAMED}. Reports unavailable.`)
+  })
+
+  test('a nearest station 10.3 mi away is too far, though its height is near', () => {
+    const test1 = {
+      ...KSBA,
+      id: 'TEST1',
+      name: 'Test',
+      elevationFt: 15,
+      distanceMi: 10.3,
+    }
+    const spot = { ...CAMPUS_POINT, elevationFt: 20 }
+    expect(
+      observedCaption(
+        spot,
+        station({ serves: null, nearest: test1 }),
+        day(null, 'loading'),
+        DAY,
+        true,
+      ),
+    ).toBe(
+      'Today is forecast only: the nearest weather station, TEST1 Test, is 10.3 mi away.',
+    )
+  })
+
+  test('a spot with no station near says why: too far, or too high or low', () => {
+    const far = station({ serves: null, nearest: KIZA })
+    expect(
+      observedCaption(
+        spotById('gaviota'),
+        far,
+        day(null, 'loading'),
+        DAY,
+        true,
+      ),
+    ).toBe(
+      'Today is forecast only: the nearest weather station, KIZA Santa Ynez, Santa Ynez Airport, is 12.8 mi away.',
+    )
+    const low = station({ serves: null, nearest: LPOC1 })
+    expect(
+      observedCaption(
+        spotById('la-cumbre-peak'),
+        low,
+        day(null, 'loading'),
+        DAY,
+        true,
+      ),
+    ).toBe(
+      'Today is forecast only: the nearest weather station, LPOC1 Los Prietos, is at 982 ft and this spot at 3,997 ft.',
+    )
+  })
+
+  test('a cell with no stations at all, and a lookup that failed', () => {
+    expect(
+      observedCaption(
+        CAMPUS_POINT,
+        station({ serves: null, nearest: null }),
+        day(null, 'loading'),
+        DAY,
+        true,
+      ),
+    ).toBe(
+      'Today is forecast only: NWS lists no weather station for this forecast cell.',
+    )
+    expect(
+      observedCaption(
+        CAMPUS_POINT,
+        station(null, 'unavailable'),
+        day(null, 'loading'),
+        DAY,
+        true,
+      ),
+    ).toBe(
+      "Today is forecast only: couldn't look up the weather stations near this spot.",
+    )
+  })
+
+  test('nothing while the station is still being looked up, and nothing on any other day', () => {
+    expect(
+      observedCaption(
+        CAMPUS_POINT,
+        station(null, 'loading'),
+        day(null, 'loading'),
+        DAY,
+        true,
+      ),
+    ).toBeNull()
+    expect(
+      observedCaption(CAMPUS_POINT, serves, day(reported), DAY, false),
     ).toBeNull()
   })
 })

@@ -91,23 +91,49 @@ export function areaPath(
   return `${linePath(points, x, y)}L${last},${floor}L${first},${floor}Z`
 }
 
+/** Where a staircase is cut, and which side of the cut is drawn. */
+export interface Cut {
+  at: number
+  /**
+   * 'before': the step containing `at` ends there, and steps from `at` on are
+   * not drawn. 'after': the step containing `at` starts there; steps before
+   * it are drawn whole, since they may be what fills a gap on that side.
+   */
+  keep: 'before' | 'after'
+}
+
 /**
  * A staircase through values that each hold for `width`, as an hourly
  * forecast's do: level across each one, then straight up or down to the next.
- * Where the next value starts later than this one ends, the line breaks.
+ * Where the next value starts later than this one ends, the line breaks, and
+ * so it does on either side of a cut.
  */
 export function stepPath(
   points: Point[],
   x: Scale,
   y: Scale,
   width: number,
+  cut?: Cut,
 ): string {
   let path = ''
-  points.forEach((point, i) => {
-    const joined = i > 0 && point.t - points[i - 1].t <= width
+  // Where the last step drawn ended in time, or null before the first.
+  let drawnTo: number | null = null
+  for (const point of points) {
+    let from = point.t
+    let to = point.t + width
+    if (cut) {
+      if (cut.keep === 'before') {
+        if (from >= cut.at) continue
+        if (to > cut.at) to = cut.at
+      } else if (from < cut.at && cut.at < to) {
+        from = cut.at
+      }
+    }
     const level = y(point.v).toFixed(1)
-    path += joined ? `V${level}` : `M${x(point.t).toFixed(1)},${level}`
-    path += `H${x(point.t + width).toFixed(1)}`
-  })
+    const joined = drawnTo !== null && from === point.t && from <= drawnTo
+    path += joined ? `V${level}` : `M${x(from).toFixed(1)},${level}`
+    path += `H${x(to).toFixed(1)}`
+    drawnTo = to
+  }
   return path
 }

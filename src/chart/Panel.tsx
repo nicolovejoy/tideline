@@ -1,8 +1,13 @@
 import type { ReactNode } from 'react'
-import { ARROW_PATH, DOT_RADIUS } from './arrows.ts'
+import {
+  ARROW_PATH,
+  ARROW_SOLID_PATH,
+  DOT_RADIUS,
+  DOT_RADIUS_OBSERVED,
+} from './arrows.ts'
 import type { Arrow } from './arrows.ts'
 import { areaPath, linePath, stepPath } from './scales.ts'
-import type { Point, Scale } from './scales.ts'
+import type { Cut, Point, Scale } from './scales.ts'
 
 export interface Series {
   /** Names the series for styling: its class is `series-<name>`. */
@@ -17,6 +22,8 @@ export interface Series {
    * is drawn as a staircase instead of a line from point to point.
    */
   step?: number
+  /** Where the staircase is cut, and which side is drawn. Only with `step`. */
+  cut?: Cut
 }
 
 export interface Marker {
@@ -118,7 +125,7 @@ export function Panel({
               d={
                 one.step === undefined
                   ? linePath(one.points, x, y, one.maxGap)
-                  : stepPath(one.points, x, y, one.step)
+                  : stepPath(one.points, x, y, one.step, one.cut)
               }
             />
           </g>
@@ -127,18 +134,20 @@ export function Panel({
           arrow.angle === null ? (
             <circle
               key={arrow.t}
-              className="arrow-dot"
+              className={
+                arrow.observed ? 'arrow-dot arrow-dot-observed' : 'arrow-dot'
+              }
               cx={x(arrow.t)}
               cy={y(arrow.v)}
-              r={DOT_RADIUS}
+              r={arrow.observed ? DOT_RADIUS_OBSERVED : DOT_RADIUS}
             />
           ) : (
             <g
               key={arrow.t}
-              className="arrow"
+              className={arrow.observed ? 'arrow arrow-observed' : 'arrow'}
               transform={`translate(${x(arrow.t).toFixed(1)} ${y(arrow.v).toFixed(1)}) rotate(${arrow.angle})`}
             >
-              <path d={ARROW_PATH} />
+              <path d={arrow.observed ? ARROW_SOLID_PATH : ARROW_PATH} />
             </g>
           ),
         )}
