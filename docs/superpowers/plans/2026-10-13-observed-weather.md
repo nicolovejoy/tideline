@@ -1496,7 +1496,7 @@ If any `src/ui` test file was changed in Step 8, add it to the commit.
 - Modify: `src/styles.css`
 
 **Interfaces:**
-- Produces: `Cut { at: number; keep: 'before' | 'after' }`; `stepPath(points, x, y, width, cut?: Cut)`; `Series.look?: string` (its class is `series-<look ?? name>`); `Series.cut?: Cut`; `Arrow.observed?: boolean`; `ARROW_SOLID_PATH`; `DOT_RADIUS_OBSERVED = 3`.
+- Produces: `Cut { at: number; keep: 'before' | 'after' }`; `stepPath(points, x, y, width, cut?: Cut)`; `Series.cut?: Cut`; `Arrow.observed?: boolean`; `ARROW_SOLID_PATH`; `DOT_RADIUS_OBSERVED = 3`.
 
 - [ ] **Step 1: Write the failing path tests**
 
@@ -1647,16 +1647,14 @@ and in `Arrow`:
   observed?: boolean
 ```
 
-In `src/chart/Panel.tsx`, import `ARROW_SOLID_PATH`, `DOT_RADIUS_OBSERVED` and `Cut`; add to `Series`:
+In `src/chart/Panel.tsx`, import `ARROW_SOLID_PATH`, `DOT_RADIUS_OBSERVED` and `type { Cut }`; add to `Series`:
 
 ```ts
-  /** Names the look where it differs from the name: its class is `series-<look>`. */
-  look?: string
   /** Where the staircase is cut, and which side is drawn. Only with `step`. */
   cut?: Cut
 ```
 
-Change the series `<g>` class to `` `series series-${one.look ?? one.name}` `` and the step branch to `stepPath(one.points, x, y, one.step, one.cut)`. Change the arrows:
+Change the step branch to `stepPath(one.points, x, y, one.step, one.cut)`. Change the arrows:
 
 ```tsx
         {arrows.map((arrow) =>
@@ -1726,7 +1724,7 @@ Expected: all pass, clean.
 
 ```
 git add src/chart/scales.ts src/chart/scales.test.ts src/chart/arrows.ts src/chart/arrows.test.ts src/chart/Panel.tsx src/styles.css
-git commit -m "A staircase cut at an instant, and the observed look" -m "stepPath takes a cut: keep what is before it, or what is after. A series can name a look apart from its name, and an arrow can be observed, drawn solid with a larger dot. The styles for the observed side." -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+git commit -m "A staircase cut at an instant, and the observed look" -m "stepPath takes a cut: keep what is before it, or what is after. An arrow can be observed, drawn solid with a larger dot. The styles for the observed side." -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
