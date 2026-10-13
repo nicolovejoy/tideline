@@ -269,10 +269,35 @@ describe('isStale', () => {
   })
 
   test('the hours observed go stale after 6 minutes, as the observed tide does', () => {
-    const fresh = at(NOW - 5 * MINUTE)
-    expect(isStale('observed-weather', fresh, NOW, WINDOW)).toBe(false)
-    const old = at(NOW - 7 * MINUTE)
-    expect(isStale('observed-weather', old, NOW, WINDOW)).toBe(true)
+    const fresh = { ...at(NOW + 5 * MINUTE), span: WINDOW }
+    const later = NOW + 10 * MINUTE
+    expect(isStale('observed-weather', fresh, later, WINDOW)).toBe(false)
+    const old = { ...at(NOW + 1 * MINUTE), span: WINDOW }
+    expect(isStale('observed-weather', old, later, WINDOW)).toBe(true)
+  })
+
+  test('observed hours saved for another day are stale however young', () => {
+    const yesterday = {
+      fetchedAt: NOW + 1 * MINUTE,
+      span: { start: WINDOW.start - DAY, end: WINDOW.end - DAY },
+      data: null,
+    }
+    expect(isStale('observed-weather', yesterday, NOW, WINDOW)).toBe(true)
+    const today = { ...yesterday, span: WINDOW }
+    expect(isStale('observed-weather', today, NOW, WINDOW)).toBe(false)
+    const noSpan = { ...yesterday, span: null }
+    expect(isStale('observed-weather', noSpan, NOW, WINDOW)).toBe(true)
+  })
+
+  test('observed hours fetched in the previous hour are stale however young', () => {
+    const now = NOW + 1 * MINUTE
+    const entry = {
+      fetchedAt: NOW - 2 * MINUTE,
+      span: WINDOW,
+      data: null,
+    }
+    // NOW is on the hour, so 2 minutes before is in the hour before.
+    expect(isStale('observed-weather', entry, now, WINDOW)).toBe(true)
   })
 
   test.each(['predictions', 'hilo'] as const)(

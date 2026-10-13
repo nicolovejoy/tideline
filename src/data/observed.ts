@@ -167,14 +167,16 @@ export function isObservedDay(data: unknown): data is ObservedDay {
 /**
  * The rows to draw today: those saved for the station that serves the spot.
  * None where no station serves, where none is known yet, or where the saved
- * rows are from a station chosen earlier.
+ * rows are from a station chosen earlier or were fetched for another day.
  */
 export function todaysObserved(
   station: Loaded<StationChoice>,
   observed: Loaded<ObservedDay>,
+  today: Span,
 ): ObservedHour[] {
   const serves = station.data?.serves ?? null
   const day = observed.data
   if (serves === null || day === null || day.stationId !== serves.id) return []
+  if (observed.span === null || observed.span.start !== today.start) return []
   return day.hours
 }

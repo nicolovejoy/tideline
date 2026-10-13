@@ -212,7 +212,7 @@ describe('todaysObserved', () => {
     data: T | null,
     status: Loaded<T>['status'] = 'ready',
   ): Loaded<T> {
-    return { data, fetchedAt: data ? NINE : null, span: null, status }
+    return { data, fetchedAt: data ? NINE : null, span: DAY, status }
   }
   const day: ObservedDay = {
     stationId: 'KSBA',
@@ -231,21 +231,34 @@ describe('todaysObserved', () => {
   const serves: StationChoice = { serves: ksba, nearest: ksba }
 
   test('the rows of the day where the station serving is the one they came from', () => {
-    expect(todaysObserved(loaded(serves), loaded(day))).toEqual(day.hours)
+    expect(todaysObserved(loaded(serves), loaded(day), DAY)).toEqual(day.hours)
   })
 
   test('none where no station serves, where none is known yet, or where the rows are from another station', () => {
     expect(
-      todaysObserved(loaded({ serves: null, nearest: ksba }), loaded(day)),
+      todaysObserved(loaded({ serves: null, nearest: ksba }), loaded(day), DAY),
     ).toEqual([])
     expect(
-      todaysObserved(loaded<StationChoice>(null, 'loading'), loaded(day)),
+      todaysObserved(loaded<StationChoice>(null, 'loading'), loaded(day), DAY),
     ).toEqual([])
     expect(
-      todaysObserved(loaded(serves), loaded({ ...day, stationId: 'KIZA' })),
+      todaysObserved(
+        loaded(serves),
+        loaded({ ...day, stationId: 'KIZA' }),
+        DAY,
+      ),
     ).toEqual([])
     expect(
-      todaysObserved(loaded(serves), loaded<ObservedDay>(null, 'loading')),
+      todaysObserved(loaded(serves), loaded<ObservedDay>(null, 'loading'), DAY),
     ).toEqual([])
+  })
+
+  test("none where the rows were fetched for another day's span", () => {
+    const yesterday = { start: DAY.start - 24 * HOUR, end: DAY.start }
+    const old: Loaded<ObservedDay> = { ...loaded(day), span: yesterday }
+    expect(todaysObserved(loaded(serves), old, DAY)).toEqual([])
+    expect(todaysObserved(loaded(serves), { ...old, span: null }, DAY)).toEqual(
+      [],
+    )
   })
 })

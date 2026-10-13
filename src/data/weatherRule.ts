@@ -11,7 +11,7 @@ export const STATION_WITHIN_FT = 500
 
 /** A station as it stands from one spot. */
 export interface NearStation extends WeatherStation {
-  /** As the captions say it: tenths under 10 mi, whole miles from 10. */
+  /** As the captions say it: tenths under 10.5 mi, whole miles from there. */
   distanceMi: number
   /** The 8-point compass word for where the station lies from the spot. */
   direction: string
@@ -63,7 +63,10 @@ export function chooseStation(
       ? null
       : {
           ...found.station,
-          distanceMi: roundMiles(found.distance),
+          distanceMi:
+            found.distance < 10.5
+              ? Math.round(found.distance * 10) / 10
+              : roundMiles(found.distance),
           direction: directionWord(bearingDeg(at, found.station)),
         }
   return { serves: near(serves), nearest: near(nearest) }

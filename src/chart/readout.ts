@@ -269,7 +269,7 @@ export function withSourceWords(parts: ReadoutPart[]): ReadoutPart[] {
 }
 
 /**
- * A readout as one run of words, such as '9 mph, gusts 12, from W'. Runs
+ * A readout as one run of words, such as '9 mph from W, gusts 12'. Runs
  * from different sides are set apart by a semicolon, after the side's word.
  */
 export function partsText(parts: ReadoutPart[]): string {
@@ -283,8 +283,9 @@ export function partsText(parts: ReadoutPart[]): string {
 
 /**
  * Everything under the cursor as one run of words, for a screen reader: the
- * time, then what each panel says. Panels are set apart by semicolons
- * because the words within one are already set apart by commas.
+ * time, then what each panel says. Panels are set apart by semicolons, and
+ * each is named, so a semicolon inside one (between an observed run and a
+ * forecast one) still reads.
  */
 export function cursorText(time: string, panels: string[]): string {
   // A spot with no tide has no tide panel, and its words are empty.

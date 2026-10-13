@@ -1,6 +1,7 @@
 // The small print under the panels: where the data comes from, how recent it
 // is, and what went wrong if something did. Plain functions.
 
+import type { Span } from '../data/cache.ts'
 import { seenFromFt } from '../data/horizon.ts'
 import type { Loaded } from '../data/load.ts'
 import type { TideExtreme, TidePoint } from '../data/noaa.ts'
@@ -211,6 +212,7 @@ export function observedCaption(
   spot: Spot,
   station: Loaded<StationChoice>,
   observed: Loaded<ObservedDay>,
+  today: Span,
   isToday: boolean,
 ): string | null {
   if (!isToday) return null
@@ -235,14 +237,17 @@ export function observedCaption(
   }
 
   const named = `Observed: ${weatherStationWords(serves)}, ${serves.distanceMi} mi ${serves.direction}, at ${feetHigh(serves.elevationFt)}`
-  // Rows from a station chosen earlier are not this station's.
+  // Rows from a station chosen earlier, or for another day, are not these.
   const day =
-    observed.data !== null && observed.data.stationId === serves.id
+    observed.data !== null &&
+    observed.data.stationId === serves.id &&
+    observed.span !== null &&
+    observed.span.start === today.start
       ? observed.data
       : null
   if (day === null) {
     const state =
-      observed.status === 'unavailable'
+      observed.status === 'unavailable' || observed.status === 'stale'
         ? 'Reports unavailable.'
         : 'Loading reports.'
     return `${named}. ${state}`

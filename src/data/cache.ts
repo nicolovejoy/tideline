@@ -188,7 +188,17 @@ export function isStale(
     case 'weather-station':
       return age > 30 * DAY || fromTheFuture
     case 'observed':
-    case 'observed-weather':
       return age > 6 * MINUTE || fromTheFuture
+    // The rows are for one day, and are worked out once, at the fetch: an hour
+    // that has ended since is drawn from its latest report, not the one
+    // nearest its top, so they are stale at each hour's turn too.
+    case 'observed-weather':
+      return (
+        age > 6 * MINUTE ||
+        fromTheFuture ||
+        !entry.span ||
+        entry.span.start !== needed.start ||
+        Math.floor(entry.fetchedAt / HOUR) !== Math.floor(now / HOUR)
+      )
   }
 }

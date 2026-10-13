@@ -64,6 +64,20 @@ describe('chooseStation', () => {
     expect(serves!.id).toBe('TEST1')
   })
 
+  test('a station 10.3 mi away is saved as 10.3, not rounded to the bar', () => {
+    // 10.3 mi due north of Campus Point, at the spot's own height.
+    const far = {
+      id: 'TEST2',
+      name: 'Test',
+      lat: CAMPUS_POINT.lat + 10.3 / 69.05,
+      lon: CAMPUS_POINT.lon,
+      elevationFt: 3,
+    }
+    const { serves, nearest } = chooseStation(CAMPUS_POINT, 3, [far])
+    expect(serves).toBeNull()
+    expect(nearest!.distanceMi).toBe(10.3)
+  })
+
   test('with no stations at all, both are null', () => {
     expect(chooseStation(CAMPUS_POINT, 3, [])).toEqual({
       serves: null,

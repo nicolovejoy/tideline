@@ -59,7 +59,11 @@ export function SpotScreen({ spot }: SpotScreenProps) {
   const [month, setMonth] = useState<string | null>(null)
   const selected = selectedDay(data, pickedDay)
   const tide = tideView(data, selected, pick, spot)
-  const observedToday = todaysObserved(data.station, data.observedWeather)
+  const observedToday = todaysObserved(
+    data.station,
+    data.observedWeather,
+    data.day,
+  )
   const weather = weatherView(
     forecast,
     selected,
@@ -71,6 +75,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
     spot,
     data.station,
     data.observedWeather,
+    data.day,
     selected.isToday,
   )
   const cursorTime = formatTime(tide.cursor, zone)
