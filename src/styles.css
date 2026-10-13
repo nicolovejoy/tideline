@@ -301,6 +301,10 @@ h1 {
   column-gap: 0.9em;
   white-space: nowrap;
 }
+/* 'observed' or 'forecast' after a run of values, on today only. */
+.readout-row .source {
+  color: var(--muted);
+}
 .panel-plot {
   display: block;
   margin-top: 0.5rem;

@@ -4,6 +4,7 @@ import { isCalm, shownGust } from './arrows.ts'
 import type { TidePoint } from '../data/noaa.ts'
 import { compassPoint } from '../data/nws.ts'
 import type { ForecastHour } from '../data/nws.ts'
+import type { Sky } from '../data/nwsObservations.ts'
 import { HOUR, MINUTE } from '../time.ts'
 
 /** NOAA's tide points sit on 6-minute steps, and so does the cursor. */
@@ -131,8 +132,11 @@ export function gaugeWords(name: string, aboveFt: number): string {
   return `${name} gauge ${signedFeet(aboveFt)} ft vs its prediction`
 }
 
-/** The forecast hour that contains an instant, if the forecast has it. */
-export function hourAt(hours: ForecastHour[], t: number): ForecastHour | null {
+/** The hour that contains an instant, if the list has it. */
+export function hourAt<T extends { t: number }>(
+  hours: T[],
+  t: number,
+): T | null {
   const start = Math.floor(t / HOUR) * HOUR
   return hours.find((hour) => hour.t === start) ?? null
 }
@@ -142,11 +146,27 @@ function whole(value: number): string {
   return String(Math.round(value))
 }
 
+/** Which side of today a value is from. Absent on any other day. */
+export type SourceWord = 'observed' | 'forecast'
+
 /** One piece of a weather readout, and the series it describes, if any. */
 export interface ReadoutPart {
   /** Names the series, for its colour key: 'wind', 'gust' and so on. */
   key: string | null
   text: string
+  /** Which side of today the value is from, where that is said. */
+  source?: SourceWord
+  /** The word that says it, 'observed' or 'forecast', after a run of parts. */
+  label?: true
+}
+
+/** The part for a value, with its source where there is one. */
+function part(
+  key: string | null,
+  text: string,
+  source?: SourceWord,
+): ReadoutPart {
+  return source === undefined ? { key, text } : { key, text, source }
 }
 
 /**
@@ -156,7 +176,10 @@ export interface ReadoutPart {
  * forecast has it, the gusts only where they stand out from the wind
  * (`shownGust`), and the unit is given once, by the first number.
  */
-export function windParts(hour: ForecastHour | null): ReadoutPart[] {
+export function windParts(
+  hour: ForecastHour | null,
+  source?: SourceWord,
+): ReadoutPart[] {
   if (!hour) return []
   const parts: ReadoutPart[] = []
   const from =
@@ -164,44 +187,98 @@ export function windParts(hour: ForecastHour | null): ReadoutPart[] {
   let unitGiven = false
   if (hour.windMph !== null) {
     if (isCalm(hour.windMph)) {
-      parts.push({ key: 'wind', text: 'Calm' })
+      parts.push(part('wind', 'Calm', source))
     } else {
       const speed = `${whole(hour.windMph)} mph`
-      parts.push({ key: 'wind', text: from ? `${speed} ${from}` : speed })
+      parts.push(part('wind', from ? `${speed} ${from}` : speed, source))
       unitGiven = true
     }
   }
   const gust = shownGust(hour)
   if (gust !== null) {
     const unit = unitGiven ? '' : ' mph'
-    parts.push({ key: 'gust', text: `gusts ${whole(gust)}${unit}` })
+    parts.push(part('gust', `gusts ${whole(gust)}${unit}`, source))
   }
-  if (hour.windMph === null && from) parts.push({ key: null, text: from })
+  if (hour.windMph === null && from) parts.push(part(null, from, source))
   return parts
 }
 
 /** The temperature in an hour, as '74°F'. */
-export function tempParts(hour: ForecastHour | null): ReadoutPart[] {
+export function tempParts(
+  hour: ForecastHour | null,
+  source?: SourceWord,
+): ReadoutPart[] {
   if (!hour || hour.tempF === null) return []
-  return [{ key: 'temp', text: `${whole(hour.tempF)}°F` }]
+  return [part('temp', `${whole(hour.tempF)}°F`, source)]
+}
+
+export function cloudPart(pct: number, source?: SourceWord): ReadoutPart {
+  return part('cloud', `${whole(pct)}% cloud`, source)
+}
+
+export function rainPart(pct: number, source?: SourceWord): ReadoutPart {
+  return part('rain', `${whole(pct)}% rain`, source)
+}
+
+/** An observed sky as a station reports it: the category, not a percentage. */
+export function skyWords(sky: Sky): string {
+  switch (sky) {
+    case 'clear':
+      return 'Clear'
+    case 'few':
+      return 'Few clouds'
+    case 'scattered':
+      return 'Scattered cloud'
+    case 'broken':
+      return 'Broken cloud'
+    case 'overcast':
+      return 'Overcast'
+  }
+}
+
+export function skyCategoryPart(sky: Sky, source?: SourceWord): ReadoutPart {
+  return part('cloud', skyWords(sky), source)
 }
 
 /** Cloud cover and the chance of rain in an hour: '3% cloud', '0% rain'. */
-export function skyParts(hour: ForecastHour | null): ReadoutPart[] {
+export function skyParts(
+  hour: ForecastHour | null,
+  source?: SourceWord,
+): ReadoutPart[] {
   if (!hour) return []
   const parts: ReadoutPart[] = []
-  if (hour.cloudPct !== null) {
-    parts.push({ key: 'cloud', text: `${whole(hour.cloudPct)}% cloud` })
-  }
-  if (hour.rainPct !== null) {
-    parts.push({ key: 'rain', text: `${whole(hour.rainPct)}% rain` })
-  }
+  if (hour.cloudPct !== null) parts.push(cloudPart(hour.cloudPct, source))
+  if (hour.rainPct !== null) parts.push(rainPart(hour.rainPct, source))
   return parts
 }
 
-/** A readout as one run of words, such as '9 mph, gusts 12, from W'. */
+/**
+ * The parts with the side said after each run from one side: '9 mph from
+ * W, gusts 12, observed'. Parts with no side are left as they are.
+ */
+export function withSourceWords(parts: ReadoutPart[]): ReadoutPart[] {
+  const out: ReadoutPart[] = []
+  parts.forEach((one, i) => {
+    out.push(one)
+    const next = parts[i + 1]
+    if (one.source !== undefined && next?.source !== one.source) {
+      out.push({ key: null, text: one.source, source: one.source, label: true })
+    }
+  })
+  return out
+}
+
+/**
+ * A readout as one run of words, such as '9 mph, gusts 12, from W'. Runs
+ * from different sides are set apart by a semicolon, after the side's word.
+ */
 export function partsText(parts: ReadoutPart[]): string {
-  return parts.map((part) => part.text).join(', ')
+  let text = ''
+  parts.forEach((one, i) => {
+    if (i > 0) text += parts[i - 1].label ? '; ' : ', '
+    text += one.text
+  })
+  return text
 }
 
 /**

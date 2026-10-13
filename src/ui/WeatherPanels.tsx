@@ -37,10 +37,16 @@ export function WeatherPanels({
       title={one.title}
       readout={
         <span className="readout-row">
-          {one.readout.map((part) => (
+          {one.readout.map((part, i) => (
             <span
-              key={part.text}
-              className={part.key === null ? undefined : `key key-${part.key}`}
+              key={`${i}-${part.text}`}
+              className={
+                part.label
+                  ? 'source'
+                  : part.key === null
+                    ? undefined
+                    : `key key-${part.key}`
+              }
             >
               {part.text}
             </span>
