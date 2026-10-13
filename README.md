@@ -27,6 +27,6 @@ Then open http://localhost:5173. `npm test` runs the tests.
 - **Weather:** the US National Weather Service forecast for the 2.5 km grid cell at the spot.
 - **Height:** the US Geological Survey's Elevation Point Query Service, asked once when you add a spot. A spot has a tide when a tide station is within 25 miles and the spot itself is under 300 feet.
 - **Map and place search:** Leaflet on OpenStreetMap tiles, © OpenStreetMap contributors; place names looked up with OpenStreetMap's Nominatim, which is told what the map shows so that the nearest place of that name comes first.
-- **Sun and moon:** computed in the browser with `astronomy-engine`, and tested against US Naval Observatory times.
+- **Sun and moon:** computed in the browser with `astronomy-engine`, and tested against US Naval Observatory times. Where a spot is 100 feet up or more and near the sea, the times are for that height over a sea-level horizon, and the screen says so.
 
 The browser calls these services directly. There is no server, no account and no API key.

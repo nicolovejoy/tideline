@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { astroForDays, dayAstro } from './astro.ts'
 import { USNO_CAMPUS_POINT } from './__fixtures__/usno-campus-point.ts'
-import { CAMPUS_POINT } from '../spot.ts'
+import { CAMPUS_POINT, spotById } from '../spot.ts'
 import { formatTime } from '../time.ts'
 
 const MINUTE = 60_000
@@ -158,5 +158,81 @@ describe('astroForDays', () => {
       '2026-11-01',
       '2026-11-02',
     ])
+  })
+})
+
+describe("from the spot's own height", () => {
+  const peak = spotById('la-cumbre-peak')
+  const zone = peak.timeZone
+  // The same point with no height of its own: a level horizon.
+  const level = { ...peak, elevationFt: null }
+
+  test('10 October 2026 from 3,997 ft: sunset 6:37 PM, moonrise 6:59 AM', () => {
+    // The Naval Observatory gives 18:31 and 07:05 for this point whatever
+    // height it is asked for: its times are for a level horizon.
+    const flat = dayAstro(level, '2026-10-10')
+    expect(formatTime(flat.sunset!, zone)).toBe('6:31 PM')
+    expect(formatTime(flat.moonrise!, zone)).toBe('7:05 AM')
+
+    // Both sunsets fall within two seconds of a half minute: 6:30:30 on a
+    // level horizon and 6:36:31 from the peak. If an upgrade of the library
+    // turns a pin here into the minute before, that is the rounding and not
+    // a regression. The bands in the next test are what the height does.
+    const high = dayAstro(peak, '2026-10-10')
+    expect(formatTime(high.sunset!, zone)).toBe('6:37 PM')
+    expect(formatTime(high.moonrise!, zone)).toBe('6:59 AM')
+  })
+
+  // From 1,218 m the horizon is about 1.2° below level. The sun and the
+  // moon cross that in 6 to 7 minutes at this latitude, a little more at
+  // the solstices, when they meet the horizon at more of a slant.
+  test.each(['2026-10-10', '2026-12-21', '2027-03-20', '2027-06-21'])(
+    '%s: sunset is 5 to 8 minutes later, moonrise 5 to 8 minutes earlier',
+    (date) => {
+      const flat = dayAstro(level, date)
+      const high = dayAstro(peak, date)
+      const later = (high.sunset! - flat.sunset!) / MINUTE
+      const earlier = (flat.moonrise! - high.moonrise!) / MINUTE
+      expect(later).toBeGreaterThanOrEqual(5)
+      expect(later).toBeLessThanOrEqual(8)
+      expect(earlier).toBeGreaterThanOrEqual(5)
+      expect(earlier).toBeLessThanOrEqual(8)
+    },
+  )
+
+  test('the higher the spot, the later the sunset', () => {
+    const sunsetFrom = (elevationFt: number) =>
+      dayAstro({ ...peak, elevationFt }, '2026-10-10').sunset!
+    expect(sunsetFrom(1000)).toBeGreaterThan(sunsetFrom(100))
+    expect(sunsetFrom(3997)).toBeGreaterThan(sunsetFrom(1000))
+    expect(sunsetFrom(9000)).toBeGreaterThan(sunsetFrom(3997))
+  })
+
+  test('a height under 100 ft, or far from the sea, changes nothing', () => {
+    const date = '2026-10-10'
+    expect(dayAstro({ ...peak, elevationFt: 99 }, date)).toEqual(
+      dayAstro(level, date),
+    )
+    const inland = {
+      ...peak,
+      tideStation: { ...peak.tideStation, distanceMi: 26 },
+    }
+    expect(dayAstro(inland, date)).toEqual(dayAstro(level, date))
+  })
+
+  test('the moonrise flag is worked out from the same times', () => {
+    // 25 October 2026 from the peak: moonrise 5:38 PM, sunset 6:18 PM.
+    const day = dayAstro(peak, '2026-10-25')
+    expect(formatTime(day.sunset!, zone)).toBe('6:18 PM')
+    expect(formatTime(day.moonrise!, zone)).toBe('5:38 PM')
+    expect(day.moonriseNearSunset).toBe(day.moonrise)
+  })
+
+  test('2 November 2026 still has no moonrise', () => {
+    // The moon rises at 11:33 PM on the 1st and 12:40 AM on the 3rd.
+    const day = dayAstro(peak, '2026-11-02')
+    expect(day.moonrise).toBeNull()
+    expect(day.moonriseNearSunset).toBeNull()
+    expect(formatTime(day.sunset!, zone)).toBe('5:10 PM')
   })
 })

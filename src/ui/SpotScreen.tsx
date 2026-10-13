@@ -8,7 +8,7 @@ import { hasTides } from '../spot.ts'
 import type { Spot } from '../spot.ts'
 import { formatDay, formatTime } from '../time.ts'
 import { WORDS, removeQuestion } from './addSpotView.ts'
-import { tideCaption, weatherCaption } from './captions.ts'
+import { sunCaption, tideCaption, weatherCaption } from './captions.ts'
 import { DayList } from './DayList.tsx'
 import { dayRows, tonightWords } from './dayList.ts'
 import { HiLoTable } from './HiLoTable.tsx'
@@ -42,6 +42,8 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
   const zone = spot.timeZone
   // A fact of the spot, not a choice: there is no switch.
   const tidal = hasTides(spot)
+  // Said only where the spot's own height is counted.
+  const sun = sunCaption(spot)
   const data = useSpotData(spot, tidal)
   const { days, spans, hilo, forecast } = data
 
@@ -221,6 +223,7 @@ export function SpotScreen({ spot, onRemove }: SpotScreenProps) {
             })}
         </p>
         <p className="caption">{weatherCaption(spot, forecast, data.today)}</p>
+        {sun !== null && <p className="caption">{sun}</p>}
         <ShareSpot spot={spot} />
         {onRemove &&
           (removing ? (
