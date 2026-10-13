@@ -4,6 +4,8 @@
 
 import {
   Body,
+  Equator,
+  Horizon,
   Illumination,
   MoonPhase,
   Observer,
@@ -11,6 +13,7 @@ import {
   SearchRiseSet,
 } from 'astronomy-engine'
 import type { Spot } from '../spot.ts'
+import type { Span } from './cache.ts'
 import { DAY, HOUR, MINUTE, addDays, localDayStart } from '../time.ts'
 import { seenFromFt } from './horizon.ts'
 
@@ -29,6 +32,12 @@ export interface DayAstro {
   date: string
   /** To the nearest minute, like every time in this record. */
   sunset: number | null
+  /**
+   * The parts of this local day when the sun is below the horizon, in
+   * order: usually midnight to sunrise and sunset to midnight. The whole
+   * day in polar night, none of it under the midnight sun.
+   */
+  night: Span[]
   /** The moonrise inside this local day, if there is one. */
   moonrise: number | null
   /** Lit fraction of the moon, 0 to 1, at sunset. */
@@ -83,6 +92,61 @@ function riseOrSet(
   return found ? found.date.getTime() : null
 }
 
+/** Every rise and set of a body between `from` and `to`, in order. */
+function riseAndSetTimes(
+  body: Body,
+  observer: Observer,
+  from: number,
+  to: number,
+): { t: number; direction: number }[] {
+  const events: { t: number; direction: number }[] = []
+  for (const direction of [RISE, SET]) {
+    let at = from
+    while (at < to) {
+      const t = riseOrSet(body, observer, direction, at, to - at)
+      if (t === null) break
+      events.push({ t, direction })
+      at = t + MINUTE
+    }
+  }
+  return events.sort((a, b) => a.t - b.t)
+}
+
+/** Whether the sun is below the horizon at an instant, over a level horizon. */
+function sunIsDown(observer: Observer, t: number): boolean {
+  const eq = Equator(Body.Sun, new Date(t), observer, true, true)
+  return Horizon(new Date(t), observer, eq.ra, eq.dec, 'normal').altitude < 0
+}
+
+/**
+ * The spans of a day when the sun is down. The sun's rises and sets are
+ * walked in order: it is down from the start until the first rise, or from
+ * the start if the first event is a rise. A day without either is wholly
+ * night or wholly day, by the sun at its middle.
+ */
+function nightSpans(observer: Observer, start: number, end: number): Span[] {
+  const events = riseAndSetTimes(Body.Sun, observer, start, end)
+  if (events.length === 0) {
+    return sunIsDown(observer, start + (end - start) / 2)
+      ? [{ start, end }]
+      : []
+  }
+  const spans: Span[] = []
+  let down = events[0].direction === RISE
+  let since = start
+  for (const event of events) {
+    if (event.direction === RISE && down) {
+      spans.push({ start: since, end: toMinute(event.t)! })
+      down = false
+    } else if (event.direction === SET && !down) {
+      since = toMinute(event.t)!
+      down = true
+    }
+  }
+  if (down) spans.push({ start: since, end })
+  return spans
+}
+
 function phaseName(dayStart: number, dayEnd: number, at: number): PhaseName {
   // A principal phase is named on the local day it happens.
   const next = SearchMoonQuarter(new Date(dayStart))
@@ -116,6 +180,8 @@ export function dayAstro(spot: Place, date: string): DayAstro {
         : riseOrSet(Body.Moon, observer, RISE, sunset - 2 * HOUR, 4 * HOUR)
   }
 
+  const night = nightSpans(observer, start, end)
+
   // Where there is no sunset (far north in summer), describe the moon at
   // local midday instead.
   const at = sunset ?? start + (end - start) / 2
@@ -123,6 +189,7 @@ export function dayAstro(spot: Place, date: string): DayAstro {
   return {
     date,
     sunset: toMinute(sunset),
+    night,
     moonrise: toMinute(moonrise),
     illumination: Illumination(Body.Moon, new Date(at)).phase_fraction,
     phase: phaseName(start, end, at),

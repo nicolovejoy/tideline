@@ -93,6 +93,7 @@ function day(index: number, sunset: number | null): Selected {
     astro: {
       date,
       sunset,
+      night: [],
       moonrise: null,
       illumination: 0.03,
       phase: 'Waning Crescent',
