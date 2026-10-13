@@ -8,6 +8,7 @@ Stage 1 is built; its phone check is down to one item. Stage 2 has begun: three 
 
 - Built: the scaffold, tooling and CI; the data layer; and the screen for Campus Point, which shows tonight's sunset and moon, four panels on one time axis for any of the next 14 days (the tide with today's observed level, wind, temperature, sky), that day's high/low table, the 14-day list, and the manifest and icons; then three spots with a switcher (Campus Point, Gaviota State Park, La Cumbre Peak), the Santa Barbara gauge's deviation at Gaviota, and no tides at La Cumbre; then the month view (this month and the next three, sunset, moon and highs and lows per day); then a curve interpolated from the highs and lows for stations that publish only those, labelled "interpolated" (a saved spot at a subordinate station uses it); then your own spots: a pin on a map (Leaflet, OpenStreetMap tiles) or the device's location, named and saved on the device, with the NWS cell, the spot's own height from USGS, and the nearest tide station and nearest gauge worked out from a baked station list (`scripts/bake-stations.mjs`, `src/data/stations.json`); then a place name typed on the add screen, looked up with OpenStreetMap's Nominatim (`src/data/geocode.ts`), which prefers places in the map's view, pans the map there and drops the pin; then a link to share any spot by (`src/ui/shareView.ts`), which carries the spot's name and its coordinates to four places and nothing else: opening one shows the spot, looked up as a new pin is, with Save to keep a copy on the device and Close to leave it, and a link to a point the device already has a spot at opens that spot; then two columns in a window 1,000 px wide or more, the 14 days beside the panels and the month view's days in two columns, with "Months ahead" an outlined button beside the "14 days" heading; then sunset and moonrise worked out from the spot's own height where it is 100 ft up or more and near the sea (`src/data/horizon.ts`), with a caption that says so.
 - Not built: everything else. It is tracked as GitHub issues.
+- Approved and specified, not built (2026-10-12): the next stage, in three pieces. Issue 54: edit and remove a saved spot, and the moon line as "Moonrise 5:00 AM". Issue 55: wind as an arrow per hour, and night shaded on every panel. Issue 56: today's weather observed up to now and forecast after, where a weather station is near. Each has a spec in `docs/superpowers/specs/` dated 2026-10-12.
 
 Repo: https://github.com/nicolovejoy/tideline (public).
 
@@ -45,6 +46,7 @@ In every tracked file, commit message, issue, and pull request, that person is "
 - Stage 1 is the smallest thing the first user can open on an iPhone. Later stages are ordered after it has been used.
 - Keep the MVP simple. Anything clever that is not needed for a first reaction becomes a GitHub issue on the phased roadmap, not MVP scope.
 - Where a decision needs the first user's answer, list the question for Nico to relay. Do not guess.
+- The owner's checks are run on production, after the merge (his decision, 2026-10-12). A pull request's check is written for https://tideline.ibuild4you.com, not for its preview, which asks for a Vercel sign-in.
 
 ## Product rules
 
@@ -93,11 +95,24 @@ The first user confirmed these on 2026-10-09 (recorded by Nico on `stage-1/weath
 - The cursor rests on the latest gauge reading today.
 - Working offline is not a Stage 1 goal (decided 2026-10-09). The data is saved on the device; the page itself is not.
 
-Decided by the owner on 2026-10-10, after trying own spots on a phone: tides only at the coast. A tick could show a tide curve on La Cumbre Peak, which means nothing there, and it could not be undone. The rule is in `src/data/tideRule.ts` and `hasTides` in `src/spot.ts`; a spot's height is its own, from USGS, because the NWS cell's average puts beaches under hills hundreds of feet up. The first user had confirmed the default it replaces and has not been told.
+Decided by the owner on 2026-10-10, after trying own spots on a phone: tides only at the coast. A tick could show a tide curve on La Cumbre Peak, which means nothing there, and it could not be undone. The rule is in `src/data/tideRule.ts` and `hasTides` in `src/spot.ts`; a spot's height is its own, from USGS, because the NWS cell's average puts beaches under hills hundreds of feet up. The first user had confirmed the default it replaces; he was told, and accepted the rule, on 2026-10-12.
 
-Still open with the first user, as of 2026-10-09: whether the forecast at the hour of sunset is the right moment for a day's row; and the wording of the moon line, which he wants as "Moonrise 5:00 AM".
+Still open with the first user, as of 2026-10-09: whether the forecast at the hour of sunset is the right moment for a day's row. The wording of the moon line is settled: "Moonrise 5:00 AM", risen or not, to be built with issue 54.
 
 Open with the first user since 2026-10-10: what a spot's height is counted above. He asked for sun and moon times to count the elevation. The app counts it only where the sea is near (a tide station within 25 mi), over a sea-level horizon, because inland the horizon may be as high as the spot: Denver's own height would put its sunset 7 minutes late. The rule is in `src/data/horizon.ts`. He has not been asked whether that is what he meant.
+
+The first user's third session, 2026-10-11, refined with the owner on 2026-10-12:
+- He accepts tides only at the coast (25 mi, 300 ft, no switch), and that a shared link carries a spot's exact coordinates. Neither changes.
+- He asked for three things, which the owner approved on 2026-10-12 as the next stage: a saved spot's name and place can be edited and the spot removed, after he made a duplicate and could not fix it (issue 54); the wind drawn as the Weather Underground iOS app draws it, an arrow per hour at its speed with a gust line and the night shaded (issue 55); and today's wind, temperature and sky observed up to the current hour and forecast after, for now only where a weather station is within 10 miles, with the station named (issue 56).
+- He wants a record of forecasts against what happened, "with data over time and ways to dig into it". Not this stage: issue 11, which has the sizing.
+- He says the "spot forecast" he looks at gives 10 days, where the app shows about 7. What NWS serves is under Data sources. The address of what he looks at is still to come.
+
+Decided by the owner on 2026-10-12, for that stage:
+- A weather station serves a spot when it is within 10 miles and within 500 ft of the spot's height. Without the height La Cumbre Peak would show a canyon's weather as its own. Of the three built-in spots only Campus Point has such a station.
+- The observed side of today's weather has one value for each hour, as the forecast has, and the line already drawn at the current time is where observed stops and forecast starts.
+- Observed sky is a category (clear, few, scattered, broken, overcast), drawn at the middle of its range on the percent axis and worded as the category. There is no observed chance of rain.
+- "Remove this spot" moves to the edit screen.
+- Wind arrows point where the wind is going and the words say where it comes from.
 
 Display convention: times and calendar days are shown in the spot's own time zone (returned by NWS `/points`), not the viewer's. Never derive a day from a UTC ISO string; use `Intl.DateTimeFormat` with an explicit `timeZone`.
 
@@ -107,6 +122,10 @@ All four HTTP APIs below send `access-control-allow-origin: *`, need no key, and
 
 **NWS (`api.weather.gov`)** — `/points/{lat},{lon}` returns the grid cell, IANA time zone, and forecast URLs.
 - Horizon is 7 days: `/forecast` has 14 twelve-hour periods, `/forecast/hourly` has 156 hours, raw grid data covers `P7DT17H`.
+- Checked again for Campus Point at midday on 2026-10-12: the raw grid, issued at 12:36 AM, said `P8D` from 6 PM the evening before, and its last hour was 7.3 days ahead for temperature and for wind, gusts and direction, and 7.5 days ahead for cloud and rain chance. `/forecast` reached 6.8 days and `/forecast/hourly` 6.5. Nothing NWS serves reaches 10 days.
+- A cell's grid starts about 6½ hours before its own last update (eight cells on 2026-10-12). The app replaces its saved forecast at each refresh, so the early hours of today drop off the weather panels as the day goes on.
+- How fine each value is, over the week: temperature 13 to 18 values a day, wind and gusts 4 to 8, direction 5 to 8, cloud 3 to 4, and rain chance coarser still.
+- Observations, not used yet (issue 56): `/gridpoints/{wfo}/{x},{y}/stations` lists a cell's 64 nearest stations with their heights, and `/stations/{id}/observations` has a station's reports for about the last 7 days, in SI units, newest first. What was found on 2026-10-12 is in `docs/superpowers/specs/2026-10-12-observed-weather-design.md`.
 - The grid is 2.5 km. Campus Point, Leadbetter Beach, Gaviota State Park, and La Cumbre Peak resolve to four different cells (Campus Point LOX 100,71, Leadbetter Beach LOX 105,70, Gaviota State Park LOX 87,76, La Cumbre Peak LOX 105,74).
 - Cell elevation is a cell average, not the spot: 3 ft for Campus Point, 157 ft for the Leadbetter cell, 3,258 ft for La Cumbre (summit is 3,997 ft).
 - `/forecast/hourly` has no wind gust or sky cover. The raw `/gridpoints/{wfo}/{x},{y}` endpoint has both, but in SI units with ISO 8601 `validTime` intervals of varying length.
@@ -145,8 +164,11 @@ All four HTTP APIs below send `access-control-allow-origin: *`, need no key, and
 - The build stamp (issue #38) is merged and live; the owner saw the time and the commit's link on production on 2026-10-10.
 - Share by link (issue #7) is built and waiting for the owner's phone check. A link opens in Safari and may not reach the home-screen app, which keeps its own storage (issue #45), and views still have no addresses (issue #48).
 - Going back closes the month view and the add screen (issue #46), by history entries only. Waiting for the owner's phone check in a Safari tab.
+- Pull requests 49 (going back closes views) and 50 (sun and moon from a spot's height) were merged on 2026-10-12 before their phone checks, which the owner runs on production. Both checks are still to run. Issues 46 and 9 closed with the merges.
+- The next stage is approved and specified, not built: issues 54, 55 and 56, in that order, each its own pull request. Next is the plan for issue 54, then building it.
+- Forecast history (issue 11) was sized on 2026-10-12; the sizing is in the issue. Not this stage.
 - Not yet tried: a screen reader on the cursor.
-- The first user: the three questions still open under Decisions (the sunset-hour row, the moon line wording, what a spot's height is counted above).
+- The first user: the two questions still open under Decisions (the sunset-hour row, what a spot's height is counted above), and the address of the 10-day forecast he looks at.
 - Everything after Stage 1 is tracked as GitHub issues, in provisional order.
 
 <!-- SHARED-CONVENTIONS:BEGIN v=2ed9fb390e55 — auto-managed, do not edit here; source: prompt-lab/workflow/claude-md-shared.md (edit + re-sync) -->
