@@ -18,7 +18,7 @@ import { DayList } from './DayList.tsx'
 import { dayRows, tonightWords } from './dayList.ts'
 import { HiLoTable } from './HiLoTable.tsx'
 import { MonthView } from './MonthView.tsx'
-import { dayBands, dayMarkers, selectedDay } from './selection.ts'
+import { dayBands, dayMarkers, selectedDay, unlabelled } from './selection.ts'
 import { ShareSpot } from './ShareSpot.tsx'
 import { tideView } from './tideView.ts'
 import type { CursorPick } from './tideView.ts'
@@ -27,9 +27,9 @@ import { closeView, openView, useView } from './useView.ts'
 import { WeatherPanels } from './WeatherPanels.tsx'
 import { weatherView } from './weatherView.ts'
 
-const TIDE_HEIGHT = 168
-/** Room above the highest tide for a rule's label. */
-const HEADROOM = 14
+const TIDE_HEIGHT = 200
+/** Room above the highest tide for a rule's label and the event lines' names. */
+const HEADROOM = 26
 
 interface SpotScreenProps {
   spot: Spot
@@ -216,7 +216,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
                 view={weather}
                 width={width}
                 x={x}
-                markers={markers}
+                markers={unlabelled(markers)}
                 cursor={tide.cursor}
                 start={selected.span.start}
                 bands={bands}

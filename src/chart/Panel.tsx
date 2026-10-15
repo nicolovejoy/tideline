@@ -6,7 +6,13 @@ import {
   DOT_RADIUS_OBSERVED,
 } from './arrows.ts'
 import type { Arrow } from './arrows.ts'
-import { areaPath, linePath, stepPath } from './scales.ts'
+import {
+  areaPath,
+  labelWidth,
+  linePath,
+  placeLabels,
+  stepPath,
+} from './scales.ts'
 import type { Cut, Point, Scale } from './scales.ts'
 
 export interface Series {
@@ -26,10 +32,15 @@ export interface Series {
   cut?: Cut
 }
 
+/** Where a marker's label sits: in the headroom above the highest value. */
+const LABEL_Y = 12
+
 export interface Marker {
   /** Names the marker for styling: its class is `marker-<name>`. */
   name: string
   t: number
+  /** Its name, drawn at the top beside the line, where the panel is the one to carry it. */
+  label?: string
 }
 
 /** A span of time shaded across the plot, behind everything. Its class is `band-<name>`. */
@@ -93,6 +104,10 @@ export function Panel({
   dots,
 }: PanelProps) {
   const cursorX = x(cursor)
+  const places = placeLabels(
+    markers.map((m) => ({ x: x(m.t), width: labelWidth(m.label ?? '') })),
+    width,
+  )
   return (
     <section className="panel">
       <h3 className="panel-title">{title}</h3>
@@ -159,16 +174,25 @@ export function Panel({
             </text>
           </g>
         ))}
-        {markers.map((marker) => (
-          <line
-            key={marker.name}
-            className={`marker marker-${marker.name}`}
-            x1={x(marker.t)}
-            x2={x(marker.t)}
-            y1={0}
-            y2={height}
-          />
-        ))}
+        {markers.map((marker, i) => {
+          const at = x(marker.t)
+          const place = places[i]
+          return (
+            <g key={marker.name} className={`marker marker-${marker.name}`}>
+              <line x1={at} x2={at} y1={0} y2={height} />
+              {marker.label !== undefined && (
+                <text
+                  className="marker-label"
+                  x={place.x}
+                  y={LABEL_Y}
+                  textAnchor={place.anchor}
+                >
+                  {marker.label}
+                </text>
+              )}
+            </g>
+          )
+        })}
         <line className="cursor" x1={cursorX} x2={cursorX} y1={0} y2={height} />
         {dots.map((dot) => (
           <circle

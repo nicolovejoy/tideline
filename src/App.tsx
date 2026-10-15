@@ -7,6 +7,7 @@ import { WORDS } from './ui/addSpotView.ts'
 import { AddSpotUnavailable } from './ui/AddSpotUnavailable.tsx'
 import { BuildStamp } from './ui/BuildStamp.tsx'
 import { forgetSavedSpot, readSpot, writeSpot } from './ui/choices.ts'
+import { spotSubtitle } from './ui/captions.ts'
 import { InstallHint } from './ui/InstallHint.tsx'
 import { SharedSpot } from './ui/SharedSpot.tsx'
 import { openedLink, sharedSpotId } from './ui/shareView.ts'
@@ -136,17 +137,20 @@ export default function App() {
 
   return (
     <main>
-      <header className="spot-head">
-        <h1>{spot.name}</h1>
-        {isSaved(spot) && (
-          <button
-            type="button"
-            className="text-button"
-            onClick={() => openView('edit')}
-          >
-            {WORDS.edit}
-          </button>
-        )}
+      <header>
+        <h1 className="title">Tideline</h1>
+        <div className="spot-line">
+          <p className="subtitle">{spotSubtitle(spot)}</p>
+          {isSaved(spot) && (
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => openView('edit')}
+            >
+              {WORDS.edit}
+            </button>
+          )}
+        </div>
       </header>
       <SpotSwitcher
         spots={spots}

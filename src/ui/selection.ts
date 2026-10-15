@@ -1,7 +1,7 @@
 // Which of the 14 days is on screen, the vertical lines drawn across its
 // panels and the spans shaded on them. Plain functions.
 
-import type { Band } from '../chart/Panel.tsx'
+import type { Band, Marker } from '../chart/Panel.tsx'
 import type { DayAstro } from '../data/astro.ts'
 import type { Span } from '../data/cache.ts'
 import type { SpotData } from '../data/useSpotData.ts'
@@ -57,19 +57,23 @@ export function onDay<T extends { t: number }>(items: T[], span: Span): T[] {
  * The instants to draw a vertical line at: the day's sunset and moonrise,
  * and the current time when the day is today.
  */
-export function dayMarkers(
-  selected: Selected,
-  now: number,
-): { name: string; t: number }[] {
+export function dayMarkers(selected: Selected, now: number): Marker[] {
   const { sunset, moonrise } = selected.astro
-  const markers: { name: string; t: number }[] = []
+  const markers: Marker[] = []
   if (selected.isToday) markers.push({ name: 'now', t: now })
-  if (sunset !== null) markers.push({ name: 'sunset', t: sunset })
-  if (moonrise !== null) markers.push({ name: 'moonrise', t: moonrise })
+  if (sunset !== null)
+    markers.push({ name: 'sunset', t: sunset, label: 'Sunset' })
+  if (moonrise !== null)
+    markers.push({ name: 'moonrise', t: moonrise, label: 'Moonrise' })
   return markers
 }
 
 /** The spans to shade across every panel: the parts of the day the sun is down. */
 export function dayBands(selected: Selected): Band[] {
   return selected.astro.night.map((span) => ({ name: 'night', ...span }))
+}
+
+/** The same lines without their labels, for the panels that do not carry them. */
+export function unlabelled(markers: Marker[]): Marker[] {
+  return markers.map(({ name, t }) => ({ name, t }))
 }

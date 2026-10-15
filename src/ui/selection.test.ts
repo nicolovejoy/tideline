@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest'
-import { dayBands, dayMarkers, onDay, selectedDay } from './selection.ts'
+import {
+  dayBands,
+  dayMarkers,
+  onDay,
+  selectedDay,
+  unlabelled,
+} from './selection.ts'
 import { frameFor } from '../data/useSpotData.ts'
 import { CAMPUS_POINT } from '../spot.ts'
 import { HOUR, MINUTE, localDayStart } from '../time.ts'
@@ -62,9 +68,16 @@ describe('dayMarkers', () => {
     const today = selectedDay(frame, null)
     expect(dayMarkers(today, NOW)).toEqual([
       { name: 'now', t: NOW },
-      { name: 'sunset', t: today.astro.sunset },
-      { name: 'moonrise', t: today.astro.moonrise },
+      { name: 'sunset', t: today.astro.sunset, label: 'Sunset' },
+      { name: 'moonrise', t: today.astro.moonrise, label: 'Moonrise' },
     ])
+  })
+
+  test('the sunset and moonrise lines carry their names; the current time does not', () => {
+    const labels = dayMarkers(selectedDay(frame, null), NOW).map(
+      (marker) => marker.label,
+    )
+    expect(labels).toEqual([undefined, 'Sunset', 'Moonrise'])
   })
 
   test('another day has no line for the current time', () => {
@@ -81,6 +94,19 @@ describe('dayMarkers', () => {
       (marker) => marker.name,
     )
     expect(names).toEqual(['sunset'])
+  })
+})
+
+describe('unlabelled', () => {
+  test('keeps the lines and drops their names', () => {
+    const today = selectedDay(frame, null)
+    const bare = unlabelled(dayMarkers(today, NOW))
+    expect(bare).toEqual([
+      { name: 'now', t: NOW },
+      { name: 'sunset', t: today.astro.sunset },
+      { name: 'moonrise', t: today.astro.moonrise },
+    ])
+    expect(bare.every((marker) => !('label' in marker))).toBe(true)
   })
 })
 

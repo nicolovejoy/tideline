@@ -3,6 +3,7 @@ import {
   monthCaption,
   noTidesWords,
   observedCaption,
+  spotSubtitle,
   sunCaption,
   tideCaption,
   weatherCaption,
@@ -739,5 +740,19 @@ describe('observedCaption', () => {
     expect(
       observedCaption(CAMPUS_POINT, serves, day(reported), DAY, false),
     ).toBeNull()
+  })
+})
+
+describe('spotSubtitle', () => {
+  test('names the tide at a spot that has one', () => {
+    expect(spotSubtitle(CAMPUS_POINT)).toBe(
+      'Sunset, tide and moon at Campus Point',
+    )
+  })
+
+  test('leaves the tide out where the spot has none', () => {
+    expect(spotSubtitle(spotById('la-cumbre-peak'))).toBe(
+      'Sunset and moon at La Cumbre Peak',
+    )
   })
 })

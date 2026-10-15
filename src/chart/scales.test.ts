@@ -2,7 +2,9 @@ import { describe, expect, test } from 'vitest'
 import {
   areaPath,
   linePath,
+  labelWidth,
   linearScale,
+  placeLabels,
   stepPath,
   steppedBounds,
   wholeSteps,
@@ -177,5 +179,101 @@ describe('stepPath', () => {
     expect(stepPath(points, x, y, HOUR, { at: HOUR, keep: 'after' })).toBe(
       'M0.0,80.0H30.0V50.0H60.0',
     )
+  })
+})
+
+describe('labelWidth', () => {
+  test('is about 7 px a character', () => {
+    expect(labelWidth('Sunset')).toBe(42)
+  })
+})
+
+describe('placeLabels', () => {
+  const place = (lines: { x: number; width: number }[]) =>
+    placeLabels(lines, 400, 6)
+
+  test('a label stands to the right of its line', () => {
+    expect(place([{ x: 100, width: 40 }])).toEqual([
+      { x: 106, anchor: 'start' },
+    ])
+  })
+
+  test('exactly four fifths across is still to the right', () => {
+    expect(place([{ x: 320, width: 40 }])).toEqual([
+      { x: 326, anchor: 'start' },
+    ])
+  })
+
+  test('past four fifths of the width it stands to the left', () => {
+    expect(place([{ x: 321, width: 40 }])).toEqual([{ x: 315, anchor: 'end' }])
+  })
+
+  test('two labels far apart both stand to the right', () => {
+    expect(
+      place([
+        { x: 100, width: 40 },
+        { x: 300, width: 55 },
+      ]),
+    ).toEqual([
+      { x: 106, anchor: 'start' },
+      { x: 306, anchor: 'start' },
+    ])
+  })
+
+  test('where two would overlap, the earlier goes left and the later right', () => {
+    expect(
+      place([
+        { x: 270, width: 40 },
+        { x: 310, width: 55 },
+      ]),
+    ).toEqual([
+      { x: 264, anchor: 'end' },
+      { x: 316, anchor: 'start' },
+    ])
+  })
+
+  test('lines given out of order are split by where they stand, not by their order', () => {
+    expect(
+      place([
+        { x: 310, width: 55 },
+        { x: 270, width: 40 },
+      ]),
+    ).toEqual([
+      { x: 316, anchor: 'start' },
+      { x: 264, anchor: 'end' },
+    ])
+    expect(
+      place([
+        { x: 269, width: 40 },
+        { x: 240, width: 55 },
+      ]),
+    ).toEqual([
+      { x: 275, anchor: 'start' },
+      { x: 234, anchor: 'end' },
+    ])
+  })
+
+  test('face to face labels are split apart, even past the width', () => {
+    expect(
+      place([
+        { x: 308, width: 40 },
+        { x: 360, width: 55 },
+      ]),
+    ).toEqual([
+      { x: 302, anchor: 'end' },
+      { x: 366, anchor: 'start' },
+    ])
+  })
+
+  test('lines a few pixels apart still get a label each, one either side', () => {
+    expect(
+      place([
+        { x: 200, width: 40 },
+        { x: 204, width: 55 },
+      ]),
+    ).toEqual([
+      { x: 194, anchor: 'end' },
+      { x: 210, anchor: 'start' },
+    ])
   })
 })

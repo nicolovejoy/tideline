@@ -1,23 +1,24 @@
 /*
-  Colours come from the place: fog and ink by day, the channel after dark,
-  sea-green for the tide, ember for sunset, a cool grey-blue for the moon.
-  The tide curve is the picture; everything around it stays quiet.
+  The app is drawn the one way, after dark, as the share card is: the
+  channel at night, sea-green for the tide, ember for sunset, a cool
+  grey-blue for the moon. Nico's choice, 2026-10-15. The tide curve is the
+  picture; everything around it stays quiet.
 */
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 
-  --ground: #eef2f3;
-  --ink: #12222e;
-  --muted: #566875;
-  --rule: #d3dce0;
-  --sea: #2a7b82;
-  --sea-fill: rgb(42 123 130 / 0.18);
-  --observed: #12222e;
-  --ember: #a8550c;
-  --moon: #6a769f;
-  /* The night, laid over the panels. Ink at low strength by day; by night,
-     darker than the ground, which is already dark. */
-  --night: rgb(18 34 46 / 0.07);
+  --ground: #0f1d28;
+  --ink: #e6edf0;
+  --muted: #93a5b1;
+  --rule: #24394a;
+  --sea: #66bcb8;
+  --sea-fill: rgb(102 188 184 / 0.22);
+  --observed: #f4f8f9;
+  --ember: #f0a04b;
+  --moon: #7f8ce6;
+  /* The night, laid over the panels: darker than the ground, which is
+     already dark. */
+  --night: rgb(0 0 0 / 0.28);
 
   /* Numbers are set in the rounded system face where there is one. */
   --numerals: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
@@ -34,21 +35,6 @@
   font-variant-numeric: tabular-nums;
   background: var(--ground);
   color: var(--ink);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ground: #0f1d28;
-    --ink: #e6edf0;
-    --muted: #93a5b1;
-    --rule: #24394a;
-    --sea: #66bcb8;
-    --sea-fill: rgb(102 188 184 / 0.22);
-    --observed: #f4f8f9;
-    --ember: #f0a04b;
-    --moon: #7f8ce6;
-    --night: rgb(0 0 0 / 0.28);
-  }
 }
 
 body {
@@ -78,20 +64,30 @@ h1 {
   font-weight: 600;
 }
 
-/* The spot's name, and for a saved spot the button to edit it, on one
-   line. The button keeps its tap target but adds no height to the row,
-   so the chips below do not move between a built-in spot and a saved one. */
-.spot-head {
+/* The title, and under it the spot's name with, for a saved spot, the
+   button to edit it. The button keeps its tap target but adds no height to
+   its line, so the chips below do not move between a built-in spot and a
+   saved one. */
+.title {
+  font-family: var(--numerals);
+  font-size: 2.2667rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.spot-line {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   column-gap: 1rem;
+  margin-top: 0.25rem;
 }
-.spot-head h1 {
+.subtitle {
   min-width: 0;
   overflow-wrap: anywhere;
+  color: var(--muted);
 }
-.spot-head .text-button {
+.spot-line .text-button {
   margin-block: -0.5rem;
 }
 
@@ -398,19 +394,31 @@ h1 {
   stroke-linejoin: round;
 }
 
-.marker {
+/* The event lines: sunset and moonrise, and on today the current time. On
+   the tide panel the first two carry their names at the top, with the same
+   halo the rule labels have. */
+.marker line {
   stroke-width: 2;
 }
-.marker-sunset {
+.marker-sunset line {
   stroke: var(--ember);
 }
-.marker-moonrise {
+.marker-moonrise line {
   stroke: var(--moon);
 }
-.marker-now {
+.marker-now line {
   stroke: var(--muted);
   stroke-width: 1;
   stroke-dasharray: 2 3;
+}
+.marker-label {
+  fill: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--ground);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
 .cursor {
