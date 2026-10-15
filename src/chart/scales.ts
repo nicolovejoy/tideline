@@ -138,11 +138,58 @@ export function stepPath(
   return path
 }
 
+/** About how wide a marker's label is drawn, from its length: 7 px a character at 0.8rem semibold. */
+export function labelWidth(label: string): number {
+  return label.length * 7
+}
+
+export interface LabelPlace {
+  /** Where the text starts or ends, and which end `x` is. */
+  x: number
+  anchor: 'start' | 'end'
+}
+
 /**
- * Which side of a vertical line its label stands on: to the right, unless
- * the line is in the last fifth of the width, where the label would run
- * off the plot.
+ * Where each of a panel's labels stands, so that none print over another.
+ * A label stands to the right of its line, or to the left where the line is
+ * in the last fifth of the width. Where two labels would overlap, the
+ * earlier goes to the left of its line and the later to the right. A left
+ * and a right label on lines in time order cannot overlap, so one split
+ * always resolves it. `lines` are in time
+ * order; `gap` is the space between a line and its label.
  */
-export function labelSide(x: number, width: number): 'left' | 'right' {
-  return x > width * 0.8 ? 'left' : 'right'
+export function placeLabels(
+  lines: { x: number; width: number }[],
+  plotWidth: number,
+  gap = 6,
+): LabelPlace[] {
+  const sides = lines.map((line) =>
+    line.x > plotWidth * 0.8 ? 'left' : 'right',
+  )
+  const box = (i: number): [number, number] => {
+    const { x, width } = lines[i]
+    return sides[i] === 'right'
+      ? [x + gap, x + gap + width]
+      : [x - gap - width, x - gap]
+  }
+  const overlap = (a: number, b: number) => {
+    const [a0, a1] = box(a)
+    const [b0, b1] = box(b)
+    return a0 <= b1 && b0 <= a1
+  }
+  // A line with no label (width 0) takes a slot but is not in anyone's way.
+  let previous = -1
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].width === 0) continue
+    if (previous >= 0 && overlap(previous, i)) {
+      sides[previous] = 'left'
+      sides[i] = 'right'
+    }
+    previous = i
+  }
+  return lines.map((line, i) => {
+    return sides[i] === 'right'
+      ? { x: line.x + gap, anchor: 'start' }
+      : { x: line.x - gap, anchor: 'end' }
+  })
 }

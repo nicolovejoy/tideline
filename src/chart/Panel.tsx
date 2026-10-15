@@ -6,7 +6,13 @@ import {
   DOT_RADIUS_OBSERVED,
 } from './arrows.ts'
 import type { Arrow } from './arrows.ts'
-import { areaPath, labelSide, linePath, stepPath } from './scales.ts'
+import {
+  areaPath,
+  labelWidth,
+  linePath,
+  placeLabels,
+  stepPath,
+} from './scales.ts'
 import type { Cut, Point, Scale } from './scales.ts'
 
 export interface Series {
@@ -98,6 +104,10 @@ export function Panel({
   dots,
 }: PanelProps) {
   const cursorX = x(cursor)
+  const places = placeLabels(
+    markers.map((m) => ({ x: x(m.t), width: labelWidth(m.label ?? '') })),
+    width,
+  )
   return (
     <section className="panel">
       <h3 className="panel-title">{title}</h3>
@@ -164,17 +174,18 @@ export function Panel({
             </text>
           </g>
         ))}
-        {markers.map((marker) => {
-          const side = labelSide(x(marker.t), width)
+        {markers.map((marker, i) => {
+          const at = x(marker.t)
+          const place = places[i]
           return (
             <g key={marker.name} className={`marker marker-${marker.name}`}>
-              <line x1={x(marker.t)} x2={x(marker.t)} y1={0} y2={height} />
+              <line x1={at} x2={at} y1={0} y2={height} />
               {marker.label !== undefined && (
                 <text
                   className="marker-label"
-                  x={side === 'right' ? x(marker.t) + 6 : x(marker.t) - 6}
+                  x={place.x}
                   y={LABEL_Y}
-                  textAnchor={side === 'right' ? 'start' : 'end'}
+                  textAnchor={place.anchor}
                 >
                   {marker.label}
                 </text>
