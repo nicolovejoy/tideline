@@ -36,6 +36,19 @@ function feetHigh(ft: number): string {
 }
 
 /**
+ * The line under the title, naming the spot and what the screen shows for
+ * it: 'Sunset, tide and moon at Campus Point', or without the tide where
+ * the spot has none.
+ */
+export function spotSubtitle(
+  spot: Pick<Spot, 'name' | 'elevationFt' | 'nws' | 'tideStation'>,
+): string {
+  return hasTides(spot)
+    ? `Sunset, tide and moon at ${spot.name}`
+    : `Sunset and moon at ${spot.name}`
+}
+
+/**
  * Why a spot has no tide, or null where it has one. Said in place of the
  * tide on the spot's screen, and on the add screen before it is saved.
  * Where the station is far and the spot is high, the distance: a far
