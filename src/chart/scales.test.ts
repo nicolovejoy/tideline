@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   areaPath,
   linePath,
+  labelSide,
   linearScale,
   stepPath,
   steppedBounds,
@@ -177,5 +178,16 @@ describe('stepPath', () => {
     expect(stepPath(points, x, y, HOUR, { at: HOUR, keep: 'after' })).toBe(
       'M0.0,80.0H30.0V50.0H60.0',
     )
+  })
+})
+
+describe('labelSide', () => {
+  test('a label stands to the right of a line in the first four fifths', () => {
+    expect(labelSide(100, 400)).toBe('right')
+    expect(labelSide(320, 400)).toBe('right')
+  })
+
+  test('past four fifths of the width it stands to the left', () => {
+    expect(labelSide(321, 400)).toBe('left')
   })
 })

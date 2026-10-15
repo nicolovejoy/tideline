@@ -137,7 +137,7 @@ export default function App() {
 
   return (
     <main>
-      <header className="spot-head">
+      <header>
         <h1 className="title">Tideline</h1>
         <div className="spot-line">
           <p className="subtitle">{spotSubtitle(spot)}</p>

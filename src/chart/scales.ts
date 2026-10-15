@@ -137,3 +137,12 @@ export function stepPath(
   }
   return path
 }
+
+/**
+ * Which side of a vertical line its label stands on: to the right, unless
+ * the line is in the last fifth of the width, where the label would run
+ * off the plot.
+ */
+export function labelSide(x: number, width: number): 'left' | 'right' {
+  return x > width * 0.8 ? 'left' : 'right'
+}
