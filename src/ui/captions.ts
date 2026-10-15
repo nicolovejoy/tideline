@@ -51,6 +51,18 @@ export function spotSubtitle(
 }
 
 /**
+ * The line under the title on the screen a shared link opens: the spot's
+ * words once the point is looked up, and until then its name alone, since
+ * whether it has a tide is not yet known.
+ */
+export function sharedSubtitle(
+  name: string,
+  spot: Pick<Spot, 'name' | 'elevationFt' | 'nws' | 'tideStation'> | null,
+): string {
+  return spot === null ? name : spotSubtitle(spot)
+}
+
+/**
  * Why a spot has no tide, or null where it has one. Said in place of the
  * tide on the spot's screen, and on the add screen before it is saved.
  * Where the station is far and the spot is high, the distance: a far
