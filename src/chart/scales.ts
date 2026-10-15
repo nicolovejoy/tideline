@@ -155,8 +155,8 @@ export interface LabelPlace {
  * in the last fifth of the width. Where two labels would overlap, the
  * earlier goes to the left of its line and the later to the right. A left
  * and a right label on lines in time order cannot overlap, so one split
- * always resolves it. `lines` are in time
- * order; `gap` is the space between a line and its label.
+ * always resolves it. `lines` may come in any order; the places come back
+ * in the same order. `gap` is the space between a line and its label.
  */
 export function placeLabels(
   lines: { x: number; width: number }[],
@@ -179,7 +179,8 @@ export function placeLabels(
   }
   // A line with no label (width 0) takes a slot but is not in anyone's way.
   let previous = -1
-  for (let i = 0; i < lines.length; i++) {
+  const byX = lines.map((_, i) => i).sort((a, b) => lines[a].x - lines[b].x)
+  for (const i of byX) {
     if (lines[i].width === 0) continue
     if (previous >= 0 && overlap(previous, i)) {
       sides[previous] = 'left'

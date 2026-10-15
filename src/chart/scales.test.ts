@@ -232,6 +232,27 @@ describe('placeLabels', () => {
     ])
   })
 
+  test('lines given out of order are split by where they stand, not by their order', () => {
+    expect(
+      place([
+        { x: 310, width: 55 },
+        { x: 270, width: 40 },
+      ]),
+    ).toEqual([
+      { x: 316, anchor: 'start' },
+      { x: 264, anchor: 'end' },
+    ])
+    expect(
+      place([
+        { x: 269, width: 40 },
+        { x: 240, width: 55 },
+      ]),
+    ).toEqual([
+      { x: 275, anchor: 'start' },
+      { x: 234, anchor: 'end' },
+    ])
+  })
+
   test('face to face labels are split apart, even past the width', () => {
     expect(
       place([
