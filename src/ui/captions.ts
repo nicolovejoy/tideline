@@ -37,15 +37,17 @@ function feetHigh(ft: number): string {
 
 /**
  * The line under the title, naming the spot and what the screen shows for
- * it: 'Sunset, tide and moon at Campus Point', or without the tide where
- * the spot has none.
+ * it: 'Sunset, tide, weather and moon at Campus Point', or without the
+ * tide where the spot has none. The weather was added on 2026-10-15 at
+ * Nico's choice: the share card leaves it out, but the screen is three
+ * parts weather.
  */
 export function spotSubtitle(
   spot: Pick<Spot, 'name' | 'elevationFt' | 'nws' | 'tideStation'>,
 ): string {
   return hasTides(spot)
-    ? `Sunset, tide and moon at ${spot.name}`
-    : `Sunset and moon at ${spot.name}`
+    ? `Sunset, tide, weather and moon at ${spot.name}`
+    : `Sunset, weather and moon at ${spot.name}`
 }
 
 /**
