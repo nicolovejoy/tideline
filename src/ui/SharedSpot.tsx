@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { sharedSubtitle } from './captions.ts'
 import { fetchElevationFt, fetchPoints } from '../data/nws.ts'
 import { resolveSpot } from '../data/resolve.ts'
 import type { ResolveResult } from '../data/resolve.ts'
@@ -88,7 +89,14 @@ export function SharedSpot({ point, onSave, onClose }: SharedSpotProps) {
 
   return (
     <>
-      <h1>{point.name}</h1>
+      {/* The same title the spot's own screen has: a pasted link lands
+          here, so it is the first screen a new person sees. */}
+      <header>
+        <h1 className="title">Tideline</h1>
+        <div className="spot-line">
+          <p className="subtitle">{sharedSubtitle(point.name, spot)}</p>
+        </div>
+      </header>
       <p className="notice">{SHARE.notice}</p>
       <div className="add-actions">
         <button

@@ -3,6 +3,7 @@ import {
   monthCaption,
   noTidesWords,
   observedCaption,
+  sharedSubtitle,
   spotSubtitle,
   sunCaption,
   tideCaption,
@@ -754,5 +755,20 @@ describe('spotSubtitle', () => {
     expect(spotSubtitle(spotById('la-cumbre-peak'))).toBe(
       'Sunset, weather and moon at La Cumbre Peak',
     )
+  })
+})
+
+describe('sharedSubtitle', () => {
+  test('is the name alone until the point is looked up', () => {
+    expect(sharedSubtitle("Hendry's Beach", null)).toBe("Hendry's Beach")
+  })
+
+  test("is the spot's own words once it is", () => {
+    expect(
+      sharedSubtitle("Hendry's Beach", {
+        ...CAMPUS_POINT,
+        name: "Hendry's Beach",
+      }),
+    ).toBe("Sunset, tide, weather and moon at Hendry's Beach")
   })
 })
