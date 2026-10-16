@@ -14,6 +14,23 @@ const frame = frameFor(CAMPUS_POINT, '2026-10-08')
 const NOW = Date.UTC(2026, 9, 8, 22, 36) // 3:36 PM
 
 describe('selectedDay', () => {
+  test('without a choice the window is the day', () => {
+    const selected = selectedDay(frame, '2026-10-11')
+    expect(selected.window).toEqual({ ...frame.spans[3], first: 3, last: 3 })
+  })
+
+  test('a week from the chosen day is its window; the day itself is unchanged', () => {
+    const selected = selectedDay(frame, '2026-10-11', 'week')
+    expect(selected.window).toEqual({
+      start: frame.spans[3].start,
+      end: frame.spans[9].end,
+      first: 3,
+      last: 9,
+    })
+    expect(selected.span).toEqual(frame.spans[3])
+    expect(selected.anchor).toBe(frame.days[3].sunset)
+  })
+
   test('with no row tapped, the day on screen is today', () => {
     const selected = selectedDay(frame, null)
     expect(selected.index).toBe(0)

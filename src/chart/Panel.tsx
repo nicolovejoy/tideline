@@ -178,7 +178,10 @@ export function Panel({
           const at = x(marker.t)
           const place = places[i]
           return (
-            <g key={marker.name} className={`marker marker-${marker.name}`}>
+            <g
+              key={`${marker.name}-${marker.t}`}
+              className={`marker marker-${marker.name}`}
+            >
               <line x1={at} x2={at} y1={0} y2={height} />
               {marker.label !== undefined && (
                 <text

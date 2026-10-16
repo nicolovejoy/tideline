@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { forgetSavedSpot, readSpot, writeSpot } from './choices.ts'
+import {
+  forgetSavedSpot,
+  readSpan,
+  readSpot,
+  writeSpan,
+  writeSpot,
+} from './choices.ts'
 import { CAMPUS_POINT, SPOTS, spotById } from '../spot.ts'
 
 const GAVIOTA = spotById('gaviota')
@@ -83,5 +89,48 @@ describe('with saved spots', () => {
     forgetSavedSpot(saved)
     expect(storage.getItem('tideline:spots:v1')).toBe('[]')
     expect(storage.getItem('tideline:v2:spot-abc:forecast')).toBeNull()
+  })
+})
+
+describe('the span', () => {
+  test('choosing the spot already chosen keeps the span', () => {
+    vi.stubGlobal('localStorage', fakeStorage({ 'tideline:spot': GAVIOTA.id }))
+    vi.stubGlobal('sessionStorage', fakeStorage({ 'tideline:span': 'week' }))
+    writeSpot(GAVIOTA)
+    expect(readSpan()).toBe('week')
+  })
+
+  test('is a day until one is chosen', () => {
+    vi.stubGlobal('sessionStorage', fakeStorage())
+    expect(readSpan()).toBe('day')
+  })
+
+  test('is kept for the session, not on the device', () => {
+    const session = fakeStorage()
+    const device = fakeStorage()
+    vi.stubGlobal('sessionStorage', session)
+    vi.stubGlobal('localStorage', device)
+    writeSpan('week')
+    expect(readSpan()).toBe('week')
+    expect(session.getItem('tideline:span')).toBe('week')
+    expect(device.getItem('tideline:span')).toBeNull()
+  })
+
+  test('a value that is not a choice is a day', () => {
+    vi.stubGlobal('sessionStorage', fakeStorage({ 'tideline:span': 'month' }))
+    expect(readSpan()).toBe('day')
+  })
+
+  test('is a day with storage disabled, and writing does not throw', () => {
+    vi.stubGlobal('sessionStorage', brokenStorage())
+    expect(readSpan()).toBe('day')
+    expect(() => writeSpan('days3')).not.toThrow()
+  })
+
+  test('choosing a spot starts it on a day', () => {
+    vi.stubGlobal('sessionStorage', fakeStorage({ 'tideline:span': 'week' }))
+    vi.stubGlobal('localStorage', fakeStorage())
+    writeSpot(GAVIOTA)
+    expect(readSpan()).toBe('day')
   })
 })

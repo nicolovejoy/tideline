@@ -355,16 +355,17 @@ export function weatherView(
     // today left, whatever the hour, and always where the station reported.
     const last = all.length > 0 ? all[all.length - 1].t : -Infinity
     const reaches = Math.floor(selected.anchor / HOUR) * HOUR <= last
-    hours = todayHours(onDay(all, span).map(withShownGusts), rows)
+    // The hours across the whole window; the rows stay today's.
+    hours = todayHours(onDay(all, selected.window).map(withShownGusts), rows)
     if (hours.length === 0 || !(reaches || selected.isToday)) {
       notice = 'No forecast this far out.'
       hours = []
     }
   }
 
-  // At the right-hand edge the cursor is on the next day's midnight. It reads
-  // the last hour drawn, not the first hour of a day that is not on screen.
-  const cursorT = Math.min(cursor, span.end - 1)
+  // At the right-hand edge the cursor is on the midnight after the window. It
+  // reads the last hour drawn, not the first hour of a day that is not on screen.
+  const cursorT = Math.min(cursor, selected.window.end - 1)
   const at = notice === null ? hourAt(hours, cursorT) : null
   // Left of the line at the current time the cursor reads the observed side.
   const left = today !== null && cursorT < now

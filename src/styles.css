@@ -259,6 +259,15 @@ h1 {
   font-size: 1.1333rem;
   font-weight: 600;
 }
+.span-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.span-choice[aria-checked='true'] {
+  background: var(--sea);
+  color: var(--ground);
+}
 
 .stack {
   position: relative;
@@ -465,10 +474,10 @@ h1 {
   position: absolute;
   transform: translateX(-50%);
 }
-.hours span:first-child {
+.hours span[data-edge='start'] {
   transform: none;
 }
-.hours span:last-child {
+.hours span[data-edge='end'] {
   transform: translateX(-100%);
 }
 
@@ -524,7 +533,8 @@ h1 {
 }
 /* The way into the month view, beside the list's heading. Outlined like a
    spot's name, so it reads as a button and not as a note. */
-.month-open {
+.month-open,
+.span-choice {
   min-height: 44px;
   padding: 0.3rem 0.8rem;
   border: 1px solid var(--sea);
