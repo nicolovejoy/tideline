@@ -107,6 +107,17 @@ describe('stackLabels', () => {
     )
   })
 
+  test('a week from the last day is one day, with the hour labels', () => {
+    const window = windowFor(spans, 13, 'week')
+    expect(stackLabels(window, ZONE, 'week')).toEqual([
+      { t: spans[13].start, text: '12a' },
+      { t: spans[13].start + 6 * HOUR, text: '6a' },
+      { t: spans[13].start + 12 * HOUR, text: '12p' },
+      { t: spans[13].start + 18 * HOUR, text: '6p' },
+      { t: spans[13].end, text: '12a' },
+    ])
+  })
+
   test('on the day the clocks go back, noon is 13 hours after midnight', () => {
     // 1 November 2026 is 25 hours long at the spot.
     const late = frameFor(CAMPUS_POINT, '2026-10-31')

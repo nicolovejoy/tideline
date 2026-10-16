@@ -47,16 +47,18 @@ export interface StackLabel {
 }
 
 /**
- * The labels under the stack. One day has the hours 12a, 6a, 12p and 6p, both
- * midnights included. Wider windows label each day's start with its weekday,
- * and for three days its noon, and leave the end unlabelled.
+ * The labels under the stack. A window of one day has the hours 12a, 6a, 12p
+ * and 6p, both midnights included, whatever span was chosen: three days or a
+ * week from the last of the 14 days is one day. Wider windows label each
+ * day's start with its weekday, and for three days its noon, and leave the
+ * end unlabelled.
  */
 export function stackLabels(
   window: Window,
   timeZone: string,
   choice: SpanChoice,
 ): StackLabel[] {
-  if (choice === 'day') {
+  if (window.last === window.first) {
     return hourMarks(window.start, window.end, timeZone, 6).map((mark) => ({
       t: mark.t,
       text: HOUR_LABELS[mark.hour],
