@@ -268,6 +268,16 @@ function staircases(
   ]
 }
 
+/** The most rules a panel draws; more print their labels over each other. */
+export const MAX_RULES = 6
+
+/** `every`, doubled until the range holds at most MAX_RULES rules. */
+function ruleStep(bounds: [number, number], every: number): number {
+  let step = every
+  while (wholeSteps(bounds[0], bounds[1], step).length > MAX_RULES) step *= 2
+  return step
+}
+
 function panel(
   spec: PanelSpec,
   readout: ReadoutPart[],
@@ -281,10 +291,12 @@ function panel(
     title: spec.title,
     readout: readout.length > 0 ? readout : NOTHING_HERE,
     bounds,
-    rules: wholeSteps(bounds[0], bounds[1], spec.every).map((v) => ({
-      v,
-      label: `${v}${spec.unit}`,
-    })),
+    rules: wholeSteps(bounds[0], bounds[1], ruleStep(bounds, spec.every)).map(
+      (v) => ({
+        v,
+        label: `${v}${spec.unit}`,
+      }),
+    ),
     series: spec.fields.flatMap(([name, field]) =>
       staircases(name, field, hours, now),
     ),

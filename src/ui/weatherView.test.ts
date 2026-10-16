@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { partsText } from '../chart/readout.ts'
 import type { Series } from '../chart/Panel.tsx'
 import type { Selected } from './selection.ts'
-import { forecastHours, weatherView } from './weatherView.ts'
+import { forecastHours, MAX_RULES, weatherView } from './weatherView.ts'
 import type { Loaded } from '../data/load.ts'
 import type { Forecast, ForecastHour } from '../data/nws.ts'
 import type { ObservedHour } from '../data/observed.ts'
@@ -93,6 +93,25 @@ const FIRST = START + 5 * HOUR
 const week = loaded(hourly(FIRST, 185))
 
 describe('what is drawn', () => {
+  test('a wide range draws fewer rules: the step doubles until there are at most six', () => {
+    const dry = loaded(
+      hourly(FIRST, 185, (hour) => {
+        hour.dewF = 11
+        if (hour.t === START + 14 * HOUR) hour.feelsF = 99
+      }),
+    )
+    const view = weatherView(dry, day(3), NOW, NOW)
+    expect(view.temp.bounds).toEqual([10, 100])
+    expect(view.temp.rules.map((rule) => rule.label)).toEqual([
+      '20°F',
+      '40°F',
+      '60°F',
+      '80°F',
+      '100°F',
+    ])
+    expect(MAX_RULES).toBe(6)
+  })
+
   test('one staircase per value but the wind, over the hours of the day on screen', () => {
     const view = weatherView(week, day(0), NOW, NOW)
     expect(view.notice).toBeNull()
