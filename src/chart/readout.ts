@@ -1,6 +1,7 @@
 // The values under the cursor, and how they are worded. Plain functions.
 
 import { isCalm, shownGust } from './arrows.ts'
+import { shownFeel } from './feel.ts'
 import type { TidePoint } from '../data/noaa.ts'
 import { compassPoint } from '../data/nws.ts'
 import type { ForecastHour } from '../data/nws.ts'
@@ -210,6 +211,30 @@ export function tempParts(
 ): ReadoutPart[] {
   if (!hour || hour.tempF === null) return []
   return [part('temp', `${whole(hour.tempF)}°F`, source)]
+}
+
+/**
+ * The temperature panel's words: '72°F', 'dew point 55°F', '57% humidity',
+ * then 'feels like 78°F' where it stands out from the temperature. Each part
+ * is there only if the hour has it.
+ */
+export function temperaturePanelParts(
+  hour: ForecastHour | null,
+  source?: SourceWord,
+): ReadoutPart[] {
+  if (!hour) return []
+  const parts = tempParts(hour, source)
+  if (hour.dewF !== null) {
+    parts.push(part('dew', `dew point ${whole(hour.dewF)}°F`, source))
+  }
+  if (hour.humidityPct !== null) {
+    parts.push(part(null, `${whole(hour.humidityPct)}% humidity`, source))
+  }
+  const feels = shownFeel(hour)
+  if (feels !== null) {
+    parts.push(part('feels', `feels like ${whole(feels)}°F`, source))
+  }
+  return parts
 }
 
 export function cloudPart(pct: number, source?: SourceWord): ReadoutPart {

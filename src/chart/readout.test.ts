@@ -15,6 +15,7 @@ import {
   skyWords,
   snap,
   tempParts,
+  temperaturePanelParts,
   tideReadout,
   tideWords,
   windParts,
@@ -182,9 +183,9 @@ describe('the weather under the cursor', () => {
       windDeg: 268,
       cloudPct: 3,
       rainPct: 0,
-      feelsF: null,
-      dewF: null,
-      humidityPct: null,
+      feelsF: 73.6,
+      dewF: 55.4,
+      humidityPct: 56.6,
       ...change,
     }
   }
@@ -198,6 +199,46 @@ describe('the weather under the cursor', () => {
     feelsF: null,
     dewF: null,
     humidityPct: null,
+  })
+
+  describe('temperaturePanelParts', () => {
+    test('the temperature, the dew point, the humidity and the feels-like where it stands out', () => {
+      expect(temperaturePanelParts(hour(NOON, { feelsF: 78.2 }))).toEqual([
+        { key: 'temp', text: '74°F' },
+        { key: 'dew', text: 'dew point 55°F' },
+        { key: null, text: '57% humidity' },
+        { key: 'feels', text: 'feels like 78°F' },
+      ])
+    })
+
+    test('a feels-like within two degrees is left out of the words', () => {
+      expect(partsText(temperaturePanelParts(hour(NOON)))).toBe(
+        '74°F, dew point 55°F, 57% humidity',
+      )
+    })
+
+    test('each part only where the hour has it', () => {
+      expect(
+        partsText(
+          temperaturePanelParts(hour(NOON, { dewF: null, humidityPct: null })),
+        ),
+      ).toBe('74°F')
+      expect(
+        partsText(
+          temperaturePanelParts(hour(NOON, { tempF: null, feelsF: 80 })),
+        ),
+      ).toBe('dew point 55°F, 57% humidity')
+      expect(temperaturePanelParts(null)).toEqual([])
+      expect(temperaturePanelParts(NOTHING)).toEqual([])
+    })
+
+    test('carries the source on every part', () => {
+      expect(
+        temperaturePanelParts(hour(NOON, { feelsF: 78 }), 'forecast').map(
+          (p) => p.source,
+        ),
+      ).toEqual(['forecast', 'forecast', 'forecast', 'forecast'])
+    })
   })
 
   describe('hourAt', () => {
