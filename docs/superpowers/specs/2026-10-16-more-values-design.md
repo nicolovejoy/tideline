@@ -1,0 +1,72 @@
+# Feels like, dew point and humidity on the temperature panel
+
+Date: 2026-10-16. Status: written for the owner's review on the pull request, under his standing instruction to carry on without blocking on questions. The decisions this spec makes beyond the issue are listed at the end.
+
+Issue: https://github.com/nicolovejoy/tideline/issues/8, its second bullet: "more values from the NWS grid: relative humidity, dew point, apparent temperature. Coastal cells also carry wave height, wave period and swell." The waves are not in this change (see "Not in this change"). Pinch and two-finger drag, the rest of the first bullet, are a later change of their own.
+
+## Goal
+
+The first user asked for a way to dig into each value. The temperature alone does not say what a day on the beach feels like: a 68°F afternoon with a 64°F dew point is muggy and a 68°F afternoon with a 40°F dew point is dry, and a windy 55°F morning feels colder than the thermometer says. NWS's grid carries the apparent temperature, the dew point and the relative humidity for every hour it carries a temperature, and the airport reports the dew point and the humidity with each observation, so the app can show them alongside the temperature with the rules it already has.
+
+What the grid carries was checked on 2026-10-16 for the three built-in spots' cells (LOX 100,71; 87,76; 105,74): `apparentTemperature`, `dewpoint` and `relativeHumidity` run the whole week at one to three hours a value. `heatIndex` is sparse and `windChill` nearly all null, so the apparent temperature, which NWS folds both into, is the one to take. Every wave and swell layer (`waveHeight`, `wavePeriod`, `primarySwellHeight` and the rest) is one zero across the week in all three cells: they are land cells, and NWS's marine values live in its coastal-waters forecasts, not here.
+
+## What the user sees
+
+1. **The temperature panel carries three lines.** The temperature as now, in the text colour. The dew point as a thin line in the muted colour, under the temperature as it always is. The feels-like temperature as a dotted line in the muted colour, as the gusts are drawn on the wind panel, and only where it stands out from the temperature: where NWS's apparent temperature is within 2°F of the temperature the dotted line is not drawn, so it never lies on top of the temperature's own line. The panel's title stays "Temperature".
+
+2. **The words at the cursor say all four.** "72°F, feels like 78°F, dew point 55°F, 57% humidity", each part present only where the hour has it, with the temperature's colour key on the first and the muted key on the feels-like and the dew point. The humidity has no line and so no key. The feels-like words follow the line: an hour whose feels-like is hidden has no "feels like" in the words either, so the line, the dot and the words agree as they do for the gusts.
+
+3. **A dot at the cursor on each line the hour has**, as now: the temperature's, the dew point's and the feels-like's where it is shown.
+
+4. **The panel's vertical range takes the new values in**, over the whole forecast and the day's observed rows, stepped by 10 as now, so a dry day at La Cumbre Peak with a 20°F dew point draws down to 20°F on every day. The feels-like counts in the range whole, hidden hours included, as the gusts do, so the panel does not jump as an hour's feels-like comes and goes.
+
+5. **Today with a station.** Where a station serves the spot, the dew point and the humidity are observed up to the current time and forecast after it, as the temperature is: the observed dew point is the heavy line in the observed colour, cut at the line at the current time, and the forecast's dew point starts there; left of the line the words say "dew point 52°F, 61% humidity, observed", right of it "forecast". The feels-like is forecast all day, as the chance of rain is, because a station's heat index and wind chill are reported only in extremes and are null in nearly every report; the words say "feels like 78°F, forecast" on both sides of the line, as the rain says "forecast".
+
+6. **Nothing else changes.** The wind and sky panels, the 14-day list, the month view, the share card and the captions stay as they are.
+
+## The rules
+
+**The forecast.** `ForecastHour` gains `feelsF`, `dewF` and `humidityPct`, read from the grid's `apparentTemperature` (°C to °F), `dewpoint` (°C to °F) and `relativeHumidity` (percent) by the same layer table as the rest, spread over each value's hours as the rest are. An hour the grid lacks a value for has null.
+
+**The observed rows.** `Report` and `ObservedHour` gain `dewF` and `humidityPct`, from a report's `dewpoint` (°C) and `relativeHumidity` (percent), with the quality flags read as the temperature's are. The row for an hour takes them from the same report its temperature comes from.
+
+**The shown feels-like.** `shownFeel(hour)` is the hour's `feelsF` where `|feelsF − tempF| ≥ 2`, and null where it is closer, or where either is null. The staircase, the dot and the words all use it, so a hidden feels-like is hidden everywhere; the vertical range uses `feelsF` as given.
+
+**The words.** In this order, each only where the hour has it: the temperature "72°F"; "feels like 78°F" from the shown feels-like; "dew point 55°F"; "57% humidity". Whole degrees and whole percent. The unit is written on every temperature, since "feels like 78" alone could read as anything. On today with a station the parts carry their side as the temperature's does, worded by `withSourceWords`: the temperature, the dew point and the humidity from the row where the row has them, else the forecast; the feels-like from the forecast always. With a row that has the temperature and the forecast's feels-like, the words read "72°F, observed, feels like 78°F, forecast" as the wind's do where the row and the forecast each give a part.
+
+**The staircases.** On the temperature panel, in the order drawn: the dew point, the feels-like, the temperature, so the temperature's line is on top. The dew point and the temperature go by the observed rule (`OBSERVED_FIELDS`); the feels-like does not.
+
+**The dots.** One for each of the three the hour has, named `temp`, `dew` and `feels`, with `-observed` where the row stands for it as now.
+
+**The range.** `steppedBounds` over `tempF`, `feelsF` and `dewF` of every forecast hour and every observed row, by 10.
+
+**The cache.** A saved forecast or observed day from before this change lacks the new fields. `isForecast` and `isObservedHour` ask for every field to be null or a number, so an old entry fails the check and is fetched afresh, as a leftover from an older version is; the cache's version is bumped as the comment in `src/data/cache.ts` asks when a saved shape changes.
+
+## How it works
+
+- `src/data/nws.ts`: three more rows in `LAYERS` and `emptyHour`; `parseGridpoint` and `isForecast` need no change beyond them. The recorded gridpoint fixtures already carry the layers.
+- `src/data/nwsObservations.ts`: two more measures in `parseObservations`. The recorded KSBA fixture carries both.
+- `src/data/observed.ts`: `row` carries the two from its base report; `isObservedHour` checks them.
+- `src/chart/arrows.ts` or a new `src/chart/feel.ts`, plain, tested: `shownFeel`, beside `shownGust`, with the 2°F threshold as a named constant.
+- `src/chart/readout.ts`: `tempParts` grows to the four parts, in order, with the keys `temp`, `feels`, `dew` and null; `asForecastHour` in `weatherView.ts` carries the new fields across.
+- `src/ui/weatherView.ts`: `TEMP`'s `fields` and `dots` grow to the three; `OBSERVED_FIELDS` gains `dewF` and `humidityPct`; `withShownGusts` becomes `withShownValues`, applying `shownFeel` too; `tempBounds` takes the three fields; `readoutFor`'s temperature branch builds the parts from the row where it stands and the forecast where not, per part.
+- `src/styles.css`: `.series-dew .line` thin and muted; `.series-feels .line` dotted and muted as `.series-gust`; `.series-dew-observed .line` heavy in the observed colour; `.key-feels`, `.key-dew`, `.dot-feels`, `.dot-dew`, `.dot-dew-observed`.
+- `src/data/cache.ts`: the version.
+- `CLAUDE.md`: the status line, the Product rules bullet on today's weather, the Stack bullet on weather, and Data sources (what the grid carries, and that the waves are zero on land cells).
+- Tests: `nws.test.ts` on the real fixture for the three layers; `nwsObservations.test.ts` and `observed.test.ts` for the two measures; `readout.test.ts` for the words; `weatherView.test.ts` for the staircases, the dots, the range, the hidden feels-like and the observed side; a test for `shownFeel`.
+
+## Not in this change
+
+- Waves and swell. The three spots' cells carry zeros. NWS's marine forecast is a different product (the coastal-waters zone forecast, or a marine gridpoint over the water), with its own shape and its own question of which point stands for a beach; it gets an issue of its own.
+- Pinch and two-finger drag on the stack (issue 8's first bullet, what is left of it).
+- The heat index and wind chill as values of their own; the apparent temperature stands for both.
+- Humidity as a line. It is in the words only (decision 2).
+- The 14-day list's rows, which stay the temperature alone.
+
+## Decisions made here, for review on the pull request
+
+1. The three values go on the temperature panel rather than panels of their own, so the stack stays four panels tall on a phone. The feels-like is dotted and shown only where it stands out, by the gust's pattern, so the common case, where NWS's apparent temperature equals the temperature, draws nothing extra.
+2. The humidity is in the words only, with no line, because it says the same thing as the dew point and the temperature together, and a third line on the temperature panel or a line on the sky panel's percent axis would crowd either. If the first user wants to see it, a line on the sky panel is the place.
+3. The feels-like threshold is 2°F. NWS's apparent temperature equals the temperature in mild hours and departs from it by several degrees in heat or wind; 2°F is the smallest difference that is a different whole number on the words.
+4. The feels-like is forecast all day on today with a station, as the chance of rain is, rather than observed from the station's heat index and wind chill, which are null in nearly every report.
+5. Waves are out, with an issue filed for the marine forecast, because the grid carries none for these spots and the issue's premise ("coastal cells also carry wave height") does not hold for a land cell.
