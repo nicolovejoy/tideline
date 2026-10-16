@@ -5,6 +5,7 @@
 
 import { arrowAngle, isCalm, shownGust } from '../chart/arrows.ts'
 import type { Arrow } from '../chart/arrows.ts'
+import { shownFeel } from '../chart/feel.ts'
 import type { Dot, Rule, Series } from '../chart/Panel.tsx'
 import {
   cloudPart,
@@ -12,7 +13,7 @@ import {
   partsText,
   rainPart,
   skyCategoryPart,
-  tempParts,
+  temperaturePanelParts,
   windParts,
   withSourceWords,
 } from '../chart/readout.ts'
@@ -126,8 +127,16 @@ const WIND: PanelSpec = {
 }
 const TEMP: PanelSpec = {
   title: 'Temperature',
-  fields: [['temp', 'tempF']],
-  dots: [['temp', 'tempF']],
+  fields: [
+    ['dew', 'dewF'],
+    ['feels', 'feelsF'],
+    ['temp', 'tempF'],
+  ],
+  dots: [
+    ['dew', 'dewF'],
+    ['feels', 'feelsF'],
+    ['temp', 'tempF'],
+  ],
   every: 10,
   unit: '°F',
 }
@@ -148,6 +157,8 @@ const SKY: PanelSpec = {
 /** The fields a station reports. The chance of rain is forecast all day. */
 const OBSERVED_FIELDS = new Set<Field>([
   'tempF',
+  'dewF',
+  'humidityPct',
   'windMph',
   'gustMph',
   'windDeg',
@@ -155,13 +166,16 @@ const OBSERVED_FIELDS = new Set<Field>([
 ])
 
 /**
- * The hours with only the gusts worth showing: an hour whose gust does not
- * stand out from its wind has none. The staircase, the dot and the words
- * then agree. The vertical range is worked out from the hours as given, so
- * the panel does not jump as the rule hides a gust.
+ * The hours with only the gusts and the feels-likes worth showing: an hour
+ * whose gust does not stand out from its wind has none, nor one whose
+ * feels-like is within 2°F of its temperature. The staircase, the dot and the
+ * words then agree. The vertical range is worked out from the hours as given,
+ * so the panel does not jump as the rule hides a value.
  */
-function withShownGusts<T extends ForecastHour | null>(hour: T): T {
-  return hour === null ? hour : { ...hour, gustMph: shownGust(hour) }
+function withShownValues<T extends ForecastHour | null>(hour: T): T {
+  return hour === null
+    ? hour
+    : { ...hour, gustMph: shownGust(hour), feelsF: shownFeel(hour) }
 }
 
 function arrowFor(hour: ForecastHour, observed: boolean): Arrow | null {
@@ -304,7 +318,7 @@ function todayHours(
       observed: null,
       sky: null,
     }
-    hour.observed = withShownGusts(asForecastHour(row))
+    hour.observed = withShownValues(asForecastHour(row))
     hour.sky = row.sky
     byHour.set(row.t, hour)
   }
@@ -359,7 +373,7 @@ export function weatherView(
     const last = all.length > 0 ? all[all.length - 1].t : -Infinity
     const reaches = Math.floor(selected.anchor / HOUR) * HOUR <= last
     // The hours across the whole window; the rows stay today's.
-    hours = todayHours(onDay(all, selected.window).map(withShownGusts), rows)
+    hours = todayHours(onDay(all, selected.window).map(withShownValues), rows)
     if (hours.length === 0 || !(reaches || selected.isToday)) {
       notice = 'No forecast this far out.'
       hours = []
@@ -380,7 +394,7 @@ export function weatherView(
     10,
   )
   const tempBounds = steppedBounds(
-    values([...all, ...observedHours], ['tempF']),
+    values([...all, ...observedHours], ['tempF', 'feelsF', 'dewF']),
     10,
   )
 
@@ -455,9 +469,20 @@ function readoutFor(
             'observed',
           ),
         ]
-  const temp = rowStands(at, 'tempF')
-    ? tempParts(at.observed, 'observed')
-    : tempParts(at.forecast, forecast)
+  // The row's parts where it stands for the value, the forecast's where not,
+  // in a fixed order. The feels-like is the forecast's always.
+  const fromForecast = temperaturePanelParts(at.forecast, forecast)
+  const fromRow = temperaturePanelParts(at.observed, 'observed')
+  const pick = (key: string | null, field: Field): ReadoutPart[] =>
+    (rowStands(at, field) ? fromRow : fromForecast).filter(
+      (one) => one.key === key,
+    )
+  const temp = [
+    ...pick('temp', 'tempF'),
+    ...pick('dew', 'dewF'),
+    ...pick(null, 'humidityPct'),
+    ...fromForecast.filter((one) => one.key === 'feels'),
+  ]
   const sky: ReadoutPart[] = []
   if (rowStands(at, 'cloudPct') && at.sky !== null) {
     sky.push(skyCategoryPart(at.sky, 'observed'))
