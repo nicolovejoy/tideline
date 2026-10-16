@@ -16,6 +16,16 @@ export const SPANS: { id: SpanChoice; days: number; words: string }[] = [
   { id: 'week', days: 7, words: 'Week' },
 ]
 
+/**
+ * The choice beside one, to the right (1) or the left (-1), wrapping round
+ * the ends as the arrow keys do in a group of radio buttons.
+ */
+export function spanBeside(choice: SpanChoice, direction: 1 | -1): SpanChoice {
+  const at = SPANS.findIndex((s) => s.id === choice)
+  const next = (at + direction + SPANS.length) % SPANS.length
+  return SPANS[next].id
+}
+
 /** The instants the panels run between, and which of the 14 days they cover. */
 export interface DayWindow extends Span {
   /** Indices in the 14 days, both included. */
