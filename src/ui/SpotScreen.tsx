@@ -6,7 +6,6 @@ import { linearScale } from '../chart/scales.ts'
 import { useSpotData } from '../data/useSpotData.ts'
 import { hasTides } from '../spot.ts'
 import type { Spot } from '../spot.ts'
-import { formatDay, formatTime } from '../time.ts'
 import { todaysObserved } from '../data/observed.ts'
 import {
   observedCaption,
@@ -18,8 +17,18 @@ import { DayList } from './DayList.tsx'
 import { dayRows, tonightWords } from './dayList.ts'
 import { HiLoTable } from './HiLoTable.tsx'
 import { MonthView } from './MonthView.tsx'
-import { dayBands, dayMarkers, selectedDay, unlabelled } from './selection.ts'
+import { readSpan, writeSpan } from './choices.ts'
+import { selectedDay, unlabelled } from './selection.ts'
 import { ShareSpot } from './ShareSpot.tsx'
+import { SpanControl } from './SpanControl.tsx'
+import {
+  cursorWords,
+  headingWords,
+  stackLabels,
+  windowBands,
+  windowMarkers,
+} from './spanView.ts'
+import type { SpanChoice } from './spanView.ts'
 import { tideView } from './tideView.ts'
 import type { CursorPick } from './tideView.ts'
 import { TonightStrip } from './TonightStrip.tsx'
@@ -57,7 +66,14 @@ export function SpotScreen({ spot }: SpotScreenProps) {
   // screen is not remembered.
   const monthOpen = useView() === 'month'
   const [month, setMonth] = useState<string | null>(null)
-  const selected = selectedDay(data, pickedDay)
+  // A day, three or a week from the chosen day. Kept for a reload; choosing
+  // a spot forgets it.
+  const [span, setSpan] = useState<SpanChoice>(readSpan)
+  const chooseSpan = useCallback((choice: SpanChoice) => {
+    setSpan(choice)
+    writeSpan(choice)
+  }, [])
+  const selected = selectedDay(data, pickedDay, span)
   const tide = tideView(data, selected, pick, spot)
   const observedToday = todaysObserved(
     data.station,
@@ -78,9 +94,12 @@ export function SpotScreen({ spot }: SpotScreenProps) {
     data.day,
     selected.isToday,
   )
-  const cursorTime = formatTime(tide.cursor, zone)
-  const markers = dayMarkers(selected, data.now)
-  const bands = dayBands(selected)
+  const cursorTime = cursorWords(tide.cursor, zone, selected.window)
+  const markers = windowMarkers(days, selected.window, data.now)
+  const bands = windowBands(days, selected.window)
+  // Not memoized: the window is a new object at each drawing, and the labels
+  // are a handful.
+  const labels = stackLabels(selected.window, zone, span)
 
   const tonight = useMemo(() => tonightWords(days[0], zone), [days, zone])
   // The rows do not depend on the cursor, so they are not worked out again,
@@ -158,15 +177,16 @@ export function SpotScreen({ spot }: SpotScreenProps) {
       <section className="day" ref={dayTop}>
         <header className="day-head">
           <h2 ref={dayHeading} tabIndex={-1}>
-            {formatDay(selected.date)}
+            {headingWords(days, selected.window)}
           </h2>
           <p className="day-cursor">at {cursorTime}</p>
         </header>
+        <SpanControl span={span} onSpan={chooseSpan} />
 
         <PanelStack
-          start={selected.span.start}
-          end={selected.span.end}
-          timeZone={zone}
+          start={selected.window.start}
+          end={selected.window.end}
+          labels={labels}
           cursor={tide.cursor}
           cursorText={cursorText(cursorTime, [tide.words, weather.words])}
           onCursor={(t) =>
@@ -218,7 +238,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
                 x={x}
                 markers={unlabelled(markers)}
                 cursor={tide.cursor}
-                start={selected.span.start}
+                start={selected.window.start}
                 bands={bands}
               />
             </>

@@ -5,20 +5,15 @@ import type { Outcome, Pointer, Press } from './gesture.ts'
 import { STEP, snap } from './readout.ts'
 import { linearScale } from './scales.ts'
 import type { Scale } from './scales.ts'
-import { HOUR, MINUTE, hourMarks } from '../time.ts'
-
-const HOUR_LABELS: Record<number, string> = {
-  0: '12a',
-  6: '6a',
-  12: '12p',
-  18: '6p',
-}
+import { HOUR, MINUTE } from '../time.ts'
+import type { StackLabel } from '../ui/spanView.ts'
 
 interface PanelStackProps<P> {
   /** The instants the shared time axis starts and ends at. */
   start: number
   end: number
-  timeZone: string
+  /** The words under the stack, at their instants. */
+  labels: StackLabel[]
   cursor: number
   /** The cursor's time and the values under it, in words. */
   cursorText: string
@@ -34,15 +29,15 @@ interface PanelStackProps<P> {
 }
 
 /**
- * The panels for one day, stacked on one time axis with one cursor. A tap or
- * a sideways drag anywhere in the stack moves the cursor, and so do the arrow
- * keys. A swipe up or down scrolls the page and leaves the cursor alone. The
- * rules for a press are in gesture.ts; this applies what they decide.
+ * The panels for a day or more, stacked on one time axis with one cursor. A
+ * tap or a sideways drag anywhere in the stack moves the cursor, and so do the
+ * arrow keys. A swipe up or down scrolls the page and leaves the cursor alone.
+ * The rules for a press are in gesture.ts; this applies what they decide.
  */
 export function PanelStack<P>({
   start,
   end,
-  timeZone,
+  labels,
   cursor,
   cursorText,
   onCursor,
@@ -135,9 +130,19 @@ export function PanelStack<P>({
       {width > 0 && children({ width, x })}
       {width > 0 && (
         <div className="hours" aria-hidden="true">
-          {hourMarks(start, end, timeZone, 6).map((mark) => (
-            <span key={mark.t} style={{ left: x(mark.t) }}>
-              {HOUR_LABELS[mark.hour]}
+          {labels.map((label) => (
+            <span
+              key={label.t}
+              data-edge={
+                label.t === start
+                  ? 'start'
+                  : label.t === end
+                    ? 'end'
+                    : undefined
+              }
+              style={{ left: x(label.t) }}
+            >
+              {label.text}
             </span>
           ))}
         </div>
