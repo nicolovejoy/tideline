@@ -59,6 +59,9 @@ describe('shownGust', () => {
       windDeg: 270,
       cloudPct: 0,
       rainPct: 0,
+      feelsF: null,
+      dewF: null,
+      humidityPct: null,
       ...change,
     }
   }

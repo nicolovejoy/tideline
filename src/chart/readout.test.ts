@@ -182,6 +182,9 @@ describe('the weather under the cursor', () => {
       windDeg: 268,
       cloudPct: 3,
       rainPct: 0,
+      feelsF: null,
+      dewF: null,
+      humidityPct: null,
       ...change,
     }
   }
@@ -192,6 +195,9 @@ describe('the weather under the cursor', () => {
     windDeg: null,
     cloudPct: null,
     rainPct: null,
+    feelsF: null,
+    dewF: null,
+    humidityPct: null,
   })
 
   describe('hourAt', () => {

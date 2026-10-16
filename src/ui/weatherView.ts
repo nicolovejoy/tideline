@@ -86,6 +86,9 @@ function asForecastHour(row: ObservedHour): ForecastHour {
     windDeg: row.windDeg,
     cloudPct: row.sky === null ? null : skyPct(row.sky),
     rainPct: null,
+    feelsF: null,
+    dewF: null,
+    humidityPct: null,
   }
 }
 

@@ -248,6 +248,9 @@ describe('forecastSpec', () => {
       windDeg: 260,
       cloudPct: 3,
       rainPct: 0,
+      feelsF: null,
+      dewF: null,
+      humidityPct: null,
     }
     expect(spec.isEmpty({ updatedAt: 1, hours: [hour] })).toBe(false)
   })
