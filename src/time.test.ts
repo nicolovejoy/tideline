@@ -1,7 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import {
   addDays,
-  formatWeekday,
   addMonths,
   datesOfMonth,
   deviceTimeZone,
@@ -9,6 +8,7 @@ import {
   formatMonth,
   formatMonthDay,
   formatTime,
+  formatWeekday,
   hourMarks,
   localDate,
   localDayStart,

@@ -106,7 +106,7 @@ export function PanelStack<P>({
       tabIndex={0}
       aria-label="Time of day"
       aria-orientation="horizontal"
-      // In minutes since the day began. Epoch milliseconds are too large for
+      // In minutes since the window began. Epoch milliseconds are too large for
       // some browsers' accessibility trees to carry exactly.
       aria-valuemin={0}
       aria-valuemax={Math.round((end - start) / MINUTE)}

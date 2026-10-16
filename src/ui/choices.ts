@@ -59,9 +59,10 @@ export function readSpot(spots: Spot[] = SPOTS): Spot {
   return spotById(read(SPOT_KEY), spots)
 }
 
+/** Remember the spot chosen. Choosing a different one forgets the span; choosing the same one keeps it. */
 export function writeSpot(spot: Spot): void {
+  if (read(SPOT_KEY) !== spot.id) sessionRemove(SPAN_KEY)
   write(SPOT_KEY, spot.id)
-  sessionRemove(SPAN_KEY)
 }
 
 /** The span chosen this session. None, or a value that is not a choice, is a day. */

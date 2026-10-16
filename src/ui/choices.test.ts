@@ -93,6 +93,13 @@ describe('with saved spots', () => {
 })
 
 describe('the span', () => {
+  test('choosing the spot already chosen keeps the span', () => {
+    vi.stubGlobal('localStorage', fakeStorage({ 'tideline:spot': GAVIOTA.id }))
+    vi.stubGlobal('sessionStorage', fakeStorage({ 'tideline:span': 'week' }))
+    writeSpot(GAVIOTA)
+    expect(readSpan()).toBe('week')
+  })
+
   test('is a day until one is chosen', () => {
     vi.stubGlobal('sessionStorage', fakeStorage())
     expect(readSpan()).toBe('day')

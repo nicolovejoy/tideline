@@ -1,13 +1,13 @@
 // Which of the 14 days is on screen, the window of days the panels draw from
-// it, the vertical lines drawn across its
-// panels and the spans shaded on them. Plain functions.
+// it, the vertical lines drawn across its panels and the spans shaded on
+// them. Plain functions.
 
 import type { Band, Marker } from '../chart/Panel.tsx'
 import type { DayAstro } from '../data/astro.ts'
 import type { Span } from '../data/cache.ts'
 import type { SpotData } from '../data/useSpotData.ts'
 import { windowFor } from './spanView.ts'
-import type { SpanChoice, Window } from './spanView.ts'
+import type { SpanChoice, DayWindow } from './spanView.ts'
 
 export interface Selected {
   /** Its place in the 14 days. 0 is today. */
@@ -15,7 +15,7 @@ export interface Selected {
   date: string
   span: Span
   /** The days the panels draw: the day itself, or three or seven from it. */
-  window: Window
+  window: DayWindow
   astro: DayAstro
   isToday: boolean
   /**

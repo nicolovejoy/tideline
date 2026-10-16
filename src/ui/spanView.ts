@@ -17,7 +17,7 @@ export const SPANS: { id: SpanChoice; days: number; words: string }[] = [
 ]
 
 /** The instants the panels run between, and which of the 14 days they cover. */
-export interface Window extends Span {
+export interface DayWindow extends Span {
   /** Indices in the 14 days, both included. */
   first: number
   last: number
@@ -35,7 +35,7 @@ export function windowFor(
   spans: Span[],
   index: number,
   choice: SpanChoice,
-): Window {
+): DayWindow {
   const days = SPANS.find((s) => s.id === choice)?.days ?? 1
   const last = Math.min(index + days, spans.length) - 1
   return { start: spans[index].start, end: spans[last].end, first: index, last }
@@ -54,7 +54,7 @@ export interface StackLabel {
  * end unlabelled.
  */
 export function stackLabels(
-  window: Window,
+  window: DayWindow,
   timeZone: string,
   choice: SpanChoice,
 ): StackLabel[] {
@@ -74,7 +74,10 @@ export function stackLabels(
 }
 
 /** The days the window covers, such as 'Thu Oct 8 to Wed Oct 14'. */
-export function headingWords(days: { date: string }[], window: Window): string {
+export function headingWords(
+  days: { date: string }[],
+  window: DayWindow,
+): string {
   const first = formatDay(days[window.first].date)
   if (window.last === window.first) return first
   return `${first} to ${formatDay(days[window.last].date)}`
@@ -84,7 +87,7 @@ export function headingWords(days: { date: string }[], window: Window): string {
 export function cursorWords(
   t: number,
   timeZone: string,
-  window: Window,
+  window: DayWindow,
 ): string {
   const time = formatTime(t, timeZone)
   return window.last === window.first
@@ -98,7 +101,7 @@ export function cursorWords(
  */
 export function windowMarkers(
   days: DayAstro[],
-  window: Window,
+  window: DayWindow,
   now: number,
 ): Marker[] {
   const several = window.last > window.first
@@ -109,7 +112,7 @@ export function windowMarkers(
 }
 
 /** The nights of every day in the window. */
-export function windowBands(days: DayAstro[], window: Window): Band[] {
+export function windowBands(days: DayAstro[], window: DayWindow): Band[] {
   return days
     .slice(window.first, window.last + 1)
     .flatMap((astro) => dayBands({ astro }))

@@ -264,12 +264,6 @@ h1 {
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
-.span-choice {
-  min-height: 44px;
-  padding: 0.3rem 0.8rem;
-  border: 1px solid var(--sea);
-  border-radius: 999px;
-}
 .span-choice[aria-checked='true'] {
   background: var(--sea);
   color: var(--ground);
@@ -539,7 +533,8 @@ h1 {
 }
 /* The way into the month view, beside the list's heading. Outlined like a
    spot's name, so it reads as a button and not as a note. */
-.month-open {
+.month-open,
+.span-choice {
   min-height: 44px;
   padding: 0.3rem 0.8rem;
   border: 1px solid var(--sea);
