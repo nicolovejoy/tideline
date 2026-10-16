@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 import {
   addDays,
+  formatWeekday,
   addMonths,
   datesOfMonth,
   deviceTimeZone,
@@ -227,5 +228,13 @@ describe('formatMonth', () => {
   test('names the month and the year', () => {
     expect(formatMonth('2026-10')).toBe('October 2026')
     expect(formatMonth('2027-01')).toBe('January 2027')
+  })
+})
+
+describe('formatWeekday', () => {
+  test('the weekday in the zone, three letters', () => {
+    // 11 PM Thursday 8 October in Los Angeles is Friday in UTC and in Tokyo.
+    expect(formatWeekday(Date.UTC(2026, 9, 9, 6), LA)).toBe('Thu')
+    expect(formatWeekday(Date.UTC(2026, 9, 9, 7), LA)).toBe('Fri')
   })
 })

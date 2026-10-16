@@ -161,6 +161,18 @@ export function formatTime(t: number, timeZone: string): string {
   return `${part('hour')}:${part('minute')} ${part('dayPeriod')}`
 }
 
+const weekdayFormats = new Map<string, Intl.DateTimeFormat>()
+
+/** The weekday of an instant in a zone, three letters, such as 'Thu'. */
+export function formatWeekday(t: number, timeZone: string): string {
+  let format = weekdayFormats.get(timeZone)
+  if (!format) {
+    format = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short' })
+    weekdayFormats.set(timeZone, format)
+  }
+  return partReader(format, t)('weekday')
+}
+
 const dayFormat = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
   weekday: 'short',
