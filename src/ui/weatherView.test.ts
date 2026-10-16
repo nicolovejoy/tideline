@@ -498,6 +498,8 @@ function observed(
     const row: ObservedHour = {
       t,
       tempF: 60 + (((t - START) / HOUR) % 24),
+      dewF: null,
+      humidityPct: null,
       windMph: 5,
       gustMph: null,
       windDeg: 180,

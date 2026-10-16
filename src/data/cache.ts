@@ -35,8 +35,9 @@ const AHEAD = 5 * MINUTE
 
 // Bump the version when the shape or coverage of a saved entry changes, so
 // saved entries from an older build are not reused. v2: the predicted curve
-// includes its end instant.
-const PREFIX = 'tideline:v2:'
+// includes its end instant. v3: the forecast and the observed rows carry the
+// feels-like, the dew point and the humidity.
+const PREFIX = 'tideline:v3:'
 
 function storageKey(spotId: string, source: Source): string {
   return `${PREFIX}${spotId}:${source}`

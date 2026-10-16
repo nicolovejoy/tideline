@@ -23,6 +23,8 @@ function report(t: number, change: Partial<Report> = {}): Report {
   return {
     t,
     tempF: 60,
+    dewF: 50,
+    humidityPct: 70,
     windMph: 8,
     gustMph: null,
     windDeg: 270,
@@ -32,6 +34,17 @@ function report(t: number, change: Partial<Report> = {}): Report {
 }
 
 describe('observedHours', () => {
+  test("the row's dew point and humidity come from the same report as its temperature", () => {
+    const reports = [
+      report(NINE - 20 * MINUTE, { tempF: 50, dewF: 40, humidityPct: 60 }),
+      report(NINE + 5 * MINUTE, { tempF: 55, dewF: 45, humidityPct: 65 }),
+    ]
+    const [row] = observedHours(reports, DAY, START + 11 * HOUR)
+    expect(row.tempF).toBe(55)
+    expect(row.dewF).toBe(45)
+    expect(row.humidityPct).toBe(65)
+  })
+
   test('an hour gone by takes the report nearest its top, from the half hour either side', () => {
     const reports = [
       report(NINE - 20 * MINUTE, { tempF: 50 }),
@@ -102,6 +115,8 @@ describe('observedHours', () => {
       report(NINE + 15 * MINUTE, {
         gustMph: 20,
         tempF: null,
+        dewF: null,
+        humidityPct: null,
         windMph: null,
         windDeg: null,
         sky: null,
@@ -112,6 +127,8 @@ describe('observedHours', () => {
       {
         t: NINE,
         tempF: null,
+        dewF: null,
+        humidityPct: null,
         windMph: null,
         gustMph: 20,
         windDeg: null,
@@ -179,6 +196,17 @@ describe('skyPct', () => {
 })
 
 describe('isObservedDay', () => {
+  test('rows saved before the dew point and humidity fail, so the day is fetched afresh', () => {
+    const old = {
+      stationId: 'KSBA',
+      through: null,
+      hours: [
+        { t: 1, tempF: 60, windMph: 5, gustMph: null, windDeg: 180, sky: null },
+      ],
+    }
+    expect(isObservedDay(old)).toBe(false)
+  })
+
   test('is the shape saved on the device', () => {
     const day = observedDay(
       'KSBA',
@@ -221,6 +249,8 @@ describe('todaysObserved', () => {
       {
         t: NINE,
         tempF: 60,
+        dewF: null,
+        humidityPct: null,
         windMph: 8,
         gustMph: null,
         windDeg: 270,
