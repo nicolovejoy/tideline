@@ -2,8 +2,11 @@
 // day), the labels under the stack of panels and the words for the window.
 // Plain functions.
 
+import type { Band, Marker } from '../chart/Panel.tsx'
+import type { DayAstro } from '../data/astro.ts'
 import type { Span } from '../data/cache.ts'
 import { formatDay, formatTime, formatWeekday, hourMarks } from '../time.ts'
+import { dayBands, dayMarkers, unlabelled } from './selection.ts'
 
 export type SpanChoice = 'day' | 'days3' | 'week'
 
@@ -85,4 +88,27 @@ export function cursorWords(
   return window.last === window.first
     ? time
     : `${formatWeekday(t, timeZone)} ${time}`
+}
+
+/**
+ * The lines across the panels: each day's sunset and moonrise, and the current
+ * time on today. Over several days they lose their names.
+ */
+export function windowMarkers(
+  days: DayAstro[],
+  window: Window,
+  now: number,
+): Marker[] {
+  const several = window.last > window.first
+  return days.slice(window.first, window.last + 1).flatMap((astro, i) => {
+    const markers = dayMarkers({ astro, isToday: window.first + i === 0 }, now)
+    return several ? unlabelled(markers) : markers
+  })
+}
+
+/** The nights of every day in the window. */
+export function windowBands(days: DayAstro[], window: Window): Band[] {
+  return days
+    .slice(window.first, window.last + 1)
+    .flatMap((astro) => dayBands({ astro }))
 }

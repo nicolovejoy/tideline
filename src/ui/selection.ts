@@ -1,16 +1,21 @@
-// Which of the 14 days is on screen, the vertical lines drawn across its
+// Which of the 14 days is on screen, the window of days the panels draw from
+// it, the vertical lines drawn across its
 // panels and the spans shaded on them. Plain functions.
 
 import type { Band, Marker } from '../chart/Panel.tsx'
 import type { DayAstro } from '../data/astro.ts'
 import type { Span } from '../data/cache.ts'
 import type { SpotData } from '../data/useSpotData.ts'
+import { windowFor } from './spanView.ts'
+import type { SpanChoice, Window } from './spanView.ts'
 
 export interface Selected {
   /** Its place in the 14 days. 0 is today. */
   index: number
   date: string
   span: Span
+  /** The days the panels draw: the day itself, or three or seven from it. */
+  window: Window
   astro: DayAstro
   isToday: boolean
   /**
@@ -30,6 +35,7 @@ export interface Selected {
 export function selectedDay(
   data: Pick<SpotData, 'days' | 'spans'>,
   picked: string | null,
+  choice: SpanChoice = 'day',
 ): Selected {
   const found = data.days.findIndex((day) => day.date === picked)
   const index = found === -1 ? 0 : found
@@ -39,6 +45,7 @@ export function selectedDay(
     index,
     date: astro.date,
     span,
+    window: windowFor(data.spans, index, choice),
     astro,
     isToday: index === 0,
     anchor: astro.sunset ?? (span.start + span.end) / 2,
@@ -57,7 +64,10 @@ export function onDay<T extends { t: number }>(items: T[], span: Span): T[] {
  * The instants to draw a vertical line at: the day's sunset and moonrise,
  * and the current time when the day is today.
  */
-export function dayMarkers(selected: Selected, now: number): Marker[] {
+export function dayMarkers(
+  selected: Pick<Selected, 'astro' | 'isToday'>,
+  now: number,
+): Marker[] {
   const { sunset, moonrise } = selected.astro
   const markers: Marker[] = []
   if (selected.isToday) markers.push({ name: 'now', t: now })
@@ -69,7 +79,7 @@ export function dayMarkers(selected: Selected, now: number): Marker[] {
 }
 
 /** The spans to shade across every panel: the parts of the day the sun is down. */
-export function dayBands(selected: Selected): Band[] {
+export function dayBands(selected: Pick<Selected, 'astro'>): Band[] {
   return selected.astro.night.map((span) => ({ name: 'night', ...span }))
 }
 

@@ -90,6 +90,12 @@ function day(index: number, sunset: number | null): Selected {
     index,
     date,
     span: { start: START + index * DAY, end: END + index * DAY },
+    window: {
+      start: START + index * DAY,
+      end: END + index * DAY,
+      first: index,
+      last: index,
+    },
     astro: {
       date,
       sunset,

@@ -22,6 +22,7 @@ function day(index: number, sunset: number | null = SUNSET): Selected {
     index,
     date,
     span: { start, end: start + DAY },
+    window: { start, end: start + DAY, first: index, last: index },
     astro: {
       date,
       sunset: sunset === null ? null : start + sunset,

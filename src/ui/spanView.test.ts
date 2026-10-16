@@ -4,8 +4,11 @@ import {
   cursorWords,
   headingWords,
   stackLabels,
+  windowBands,
   windowFor,
+  windowMarkers,
 } from './spanView.ts'
+import { dayBands, dayMarkers, unlabelled } from './selection.ts'
 import { frameFor } from '../data/useSpotData.ts'
 import { CAMPUS_POINT } from '../spot.ts'
 import { HOUR, MINUTE } from '../time.ts'
@@ -147,6 +150,52 @@ describe('cursorWords', () => {
   test('a wider window puts the weekday before it', () => {
     expect(cursorWords(t, ZONE, windowFor(spans, 0, 'days3'))).toBe(
       'Fri 3:36 PM',
+    )
+  })
+})
+
+const NOW = Date.UTC(2026, 9, 8, 22, 36) // 3:36 PM today
+
+describe('windowMarkers', () => {
+  test("one day is the day's markers, names and all", () => {
+    const window = windowFor(spans, 0, 'day')
+    expect(windowMarkers(days, window, NOW)).toEqual(
+      dayMarkers({ astro: days[0], isToday: true }, NOW),
+    )
+  })
+
+  test("a week has each day's sunset and moonrise without names, and the current time once", () => {
+    const window = windowFor(spans, 0, 'week')
+    const markers = windowMarkers(days, window, NOW)
+    expect(markers.filter((m) => m.name === 'now')).toEqual([
+      { name: 'now', t: NOW },
+    ])
+    expect(markers.filter((m) => m.name === 'sunset').map((m) => m.t)).toEqual(
+      days.slice(0, 7).map((d) => d.sunset),
+    )
+    expect(markers.every((m) => !('label' in m))).toBe(true)
+    expect(markers).toEqual(
+      days
+        .slice(0, 7)
+        .flatMap((astro, i) =>
+          unlabelled(dayMarkers({ astro, isToday: i === 0 }, NOW)),
+        ),
+    )
+  })
+
+  test('a window that does not start today has no current time', () => {
+    const window = windowFor(spans, 2, 'days3')
+    expect(windowMarkers(days, window, NOW).some((m) => m.name === 'now')).toBe(
+      false,
+    )
+  })
+})
+
+describe('windowBands', () => {
+  test('the nights of every day in the window, in order', () => {
+    const window = windowFor(spans, 1, 'days3')
+    expect(windowBands(days, window)).toEqual(
+      days.slice(1, 4).flatMap((astro) => dayBands({ astro })),
     )
   })
 })
