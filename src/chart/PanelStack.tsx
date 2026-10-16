@@ -5,7 +5,7 @@ import type { Outcome, Pointer, Press } from './gesture.ts'
 import { STEP, snap } from './readout.ts'
 import { linearScale } from './scales.ts'
 import type { Scale } from './scales.ts'
-import { HOUR, MINUTE } from '../time.ts'
+import { DAY, HOUR, MINUTE } from '../time.ts'
 import type { StackLabel } from '../ui/spanView.ts'
 
 interface PanelStackProps<P> {
@@ -90,6 +90,8 @@ export function PanelStack<P>({
       ArrowUp: cursor + jump,
       ArrowLeft: cursor - jump,
       ArrowDown: cursor - jump,
+      PageUp: cursor + DAY,
+      PageDown: cursor - DAY,
       Home: start,
       End: end,
     }

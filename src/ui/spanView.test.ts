@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   SPANS,
   cursorWords,
+  spanBeside,
   headingWords,
   stackLabels,
   windowBands,
@@ -25,6 +26,19 @@ describe('SPANS', () => {
       ['days3', 3, '3 days'],
       ['week', 7, 'Week'],
     ])
+  })
+})
+
+describe('spanBeside', () => {
+  test('the next choice to the right, and back to the first past the last', () => {
+    expect(spanBeside('day', 1)).toBe('days3')
+    expect(spanBeside('days3', 1)).toBe('week')
+    expect(spanBeside('week', 1)).toBe('day')
+  })
+  test('the next choice to the left, and round to the last before the first', () => {
+    expect(spanBeside('week', -1)).toBe('days3')
+    expect(spanBeside('days3', -1)).toBe('day')
+    expect(spanBeside('day', -1)).toBe('week')
   })
 })
 
