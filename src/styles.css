@@ -122,6 +122,8 @@ h1 {
   --key: var(--ink);
 }
 .key-gust,
+.key-dew,
+.key-feels,
 .key-rain {
   --key: var(--muted);
 }
@@ -298,12 +300,15 @@ h1 {
   /* One line for each thing handed in, so the tide panel, which always hands
      in two, does not move its plot when the second value comes and goes. */
   display: grid;
-  grid-auto-rows: 1.4em;
+  grid-auto-rows: minmax(1.4em, auto);
   font-family: var(--numerals);
 }
 .readout-row {
   display: flex;
+  flex-wrap: wrap;
   column-gap: 0.9em;
+}
+.readout-row > span {
   white-space: nowrap;
 }
 /* 'observed' or 'forecast' after a run of values, on today only. */
@@ -339,12 +344,15 @@ h1 {
   stroke: var(--ink);
 }
 .series-gust .line,
+.series-dew .line,
+.series-feels .line,
 .series-rain .line {
   stroke: var(--muted);
   stroke-width: 1.5;
 }
 /* The gusts are the lighter line: dotted, so the arrows carry the panel. */
-.series-gust .line {
+.series-gust .line,
+.series-feels .line {
   stroke-dasharray: 0.5 3.5;
 }
 
@@ -369,6 +377,7 @@ h1 {
 /* Today's observed side: what the station reported, heavier than the
    forecast beside it, and its arrows filled. */
 .series-temp-observed .line,
+.series-dew-observed .line,
 .series-cloud-observed .line {
   stroke: var(--observed);
   stroke-width: 3.5;
@@ -450,12 +459,15 @@ h1 {
   fill: var(--ink);
 }
 .dot-gust,
+.dot-dew,
+.dot-feels,
 .dot-rain {
   fill: var(--muted);
 }
 
 .dot-wind-observed,
 .dot-temp-observed,
+.dot-dew-observed,
 .dot-cloud-observed {
   fill: var(--observed);
 }
