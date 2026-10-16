@@ -115,9 +115,9 @@ export function tideView(
   const tidal = hasTides(spot)
   const { span } = selected
   const ownGauge = hasOwnGauge(spot)
-  // Both ends are included, so the curve reaches the right edge of the plot
-  // by using the first point of the next day.
-  const predicted = tidal ? within(data.predictions.data, span) : []
+  // The curve across the whole window. Both ends are included, so it reaches
+  // the right edge of the plot by using the first point after the window.
+  const predicted = tidal ? within(data.predictions.data, selected.window) : []
   // The gauge's readings for today, wherever the gauge is.
   const readings = within(data.observed.data, data.day)
   // Drawn only where they are this station's own, and only where the tide is.
@@ -140,7 +140,10 @@ export function tideView(
   // was left. Choosing a day from the list clears the pick, in SpotScreen.
   const held =
     pick !== null && pick.day === selected.date && pick.shown === data.shown
-  const cursor = held ? Math.min(Math.max(pick.t, span.start), span.end) : rest
+  // A pick holds anywhere in the window, not only on the chosen day.
+  const cursor = held
+    ? Math.min(Math.max(pick.t, selected.window.start), selected.window.end)
+    : rest
 
   // One vertical range for all 14 days, so one day can be compared with
   // another, widened if needed to fit today's readings. Those count on every

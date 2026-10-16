@@ -37,6 +37,19 @@ function day(index: number, sunset: number | null = SUNSET): Selected {
   }
 }
 
+/** The same day with a window of `days` days from it. */
+function wide(selected: Selected, days: number): Selected {
+  return {
+    ...selected,
+    window: {
+      start: selected.span.start,
+      end: selected.span.start + days * DAY,
+      first: selected.index,
+      last: selected.index + days - 1,
+    },
+  }
+}
+
 /** Hourly records from `first` for `count` hours. The temperature is the hour of the day plus 50. */
 function hourly(
   first: number,
@@ -761,5 +774,38 @@ describe('today with a station', () => {
   test('on today with no rows no side is said either', () => {
     const view = weatherView(week, day(0), NOW, NOW, [])
     expect(partsText(view.temp.readout)).toBe('65°F')
+  })
+})
+
+describe('the window', () => {
+  test('three days draw every forecast hour from 5 AM today to the end of the third day', () => {
+    const view = weatherView(week, wide(day(0), 3), NOW, NOW)
+    expect(view.notice).toBeNull()
+    const temp = view.temp.series.find((s) => s.name === 'temp')!
+    expect(temp.points.length).toBe(3 * 24 - 5)
+    expect(temp.points[temp.points.length - 1].t).toBe(START + 3 * DAY - HOUR)
+    expect(view.wind.arrows.length).toBe(3 * 24 - 5)
+  })
+
+  test('where the forecast reaches the chosen day but not the week after, the hours that exist are drawn and nothing after', () => {
+    const view = weatherView(week, wide(day(6), 7), NOW, NOW)
+    expect(view.notice).toBeNull()
+    const temp = view.temp.series.find((s) => s.name === 'temp')!
+    expect(temp.points[0].t).toBe(START + 6 * DAY)
+    expect(temp.points[temp.points.length - 1].t).toBe(
+      START + 7 * DAY + 21 * HOUR,
+    )
+  })
+
+  test('at the right-hand edge of a wide window the cursor reads the last hour drawn', () => {
+    // The last hour of the third day is marked, so the readout tells it apart
+    // from the last hour of the first day, which the day's clamp would give.
+    const marked = loaded(
+      hourly(START + 5 * HOUR, 3 * 24 - 5, (hour) => {
+        if (hour.t === START + 3 * DAY - HOUR) hour.tempF = 99
+      }),
+    )
+    const view = weatherView(marked, wide(day(0), 3), START + 3 * DAY, NOW)
+    expect(partsText(view.temp.readout)).toContain('99')
   })
 })

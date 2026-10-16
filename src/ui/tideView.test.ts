@@ -110,6 +110,19 @@ function day(index: number, sunset: number | null): Selected {
   }
 }
 
+/** The same day with a window of `days` days from it. */
+function wide(selected: Selected, days: number): Selected {
+  return {
+    ...selected,
+    window: {
+      start: selected.span.start,
+      end: selected.span.start + days * DAY,
+      first: selected.index,
+      last: selected.index + days - 1,
+    },
+  }
+}
+
 const TODAY = day(0, START + 18 * HOUR + 34 * MINUTE)
 // Sunset at 6:32 PM, which is between two 6-minute steps.
 const TOMORROW = day(1, END + 18 * HOUR + 32 * MINUTE)
@@ -471,5 +484,26 @@ describe('at a spot whose station publishes highs and lows only', () => {
   test('a harmonic station still says predicted', () => {
     const view = tideView(data(), TODAY, null, GAVIOTA)
     expect(view.text.predicted).toBe('3.0 ft predicted')
+  })
+})
+
+describe('the window', () => {
+  test("three days draw the curve to the end of the third day, and the table stays the day's", () => {
+    const view = own(data(), wide(TODAY, 3), null)
+    expect(view.predicted[0].t).toBe(START)
+    expect(view.predicted[view.predicted.length - 1].t).toBe(
+      START + 2 * DAY + HOUR,
+    )
+    expect(view.events.map((e) => e.t)).toEqual([START, START + 6 * HOUR])
+  })
+
+  test('a pick on the third day holds in a three-day window', () => {
+    const pick = { t: START + 2 * DAY + 6 * HOUR, day: '2026-10-08', shown: 0 }
+    expect(own(data(), wide(TODAY, 3), pick).cursor).toBe(pick.t)
+  })
+
+  test("the same pick is clamped to the day's end when the window is the day", () => {
+    const pick = { t: START + 2 * DAY + 6 * HOUR, day: '2026-10-08', shown: 0 }
+    expect(own(data(), TODAY, pick).cursor).toBe(END)
   })
 })
