@@ -1,4 +1,11 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { Panel } from '../chart/Panel.tsx'
 import { PanelStack } from '../chart/PanelStack.tsx'
 import { cursorText } from '../chart/readout.ts'
@@ -20,6 +27,8 @@ import { MonthView } from './MonthView.tsx'
 import { readSpan, writeSpan } from './choices.ts'
 import { selectedDay, unlabelled } from './selection.ts'
 import { ShareSpot } from './ShareSpot.tsx'
+import { HELP } from './helpText.ts'
+import { HelpSheet } from './HelpSheet.tsx'
 import { SpanControl } from './SpanControl.tsx'
 import {
   cursorWords,
@@ -64,7 +73,10 @@ export function SpotScreen({ spot }: SpotScreenProps) {
   // The forecast, or one month at a time. The month view has an entry in
   // the browser's history, so going back closes it. Which month was on
   // screen is not remembered.
-  const monthOpen = useView() === 'month'
+  const view = useView()
+  const monthOpen = view === 'month'
+  // The help sheet, over the panels. It has an entry in the history too.
+  const helpOpen = view === 'help'
   const [month, setMonth] = useState<string | null>(null)
   // A day, three or a week from the chosen day. Kept for a reload; choosing
   // a spot forgets it.
@@ -130,6 +142,15 @@ export function SpotScreen({ spot }: SpotScreenProps) {
   }, [])
 
   const openMonths = useCallback(() => openView('month'), [])
+  const openHelp = useCallback(() => openView('help'), [])
+  // When the sheet closes, focus goes back to the button that opened it.
+  const helpButton = useRef<HTMLButtonElement>(null)
+  const shownHelp = useRef(helpOpen)
+  useEffect(() => {
+    if (shownHelp.current === helpOpen) return
+    shownHelp.current = helpOpen
+    if (!helpOpen) helpButton.current?.focus({ preventScroll: true })
+  }, [helpOpen])
   // Each time the month view comes up, by its button or by the browser
   // going forward, the forecast under it is put back to today, with the
   // cursor at rest, and the month to this one. Set on the way in, so that
@@ -181,7 +202,19 @@ export function SpotScreen({ spot }: SpotScreenProps) {
           </h2>
           <p className="day-cursor">at {cursorTime}</p>
         </header>
-        <SpanControl span={span} onSpan={chooseSpan} />
+        <div className="day-controls">
+          <SpanControl span={span} onSpan={chooseSpan} />
+          <button
+            type="button"
+            className="text-button help-button"
+            aria-label={HELP.button}
+            ref={helpButton}
+            onClick={openHelp}
+          >
+            ?
+          </button>
+        </div>
+        {helpOpen ? <HelpSheet onClose={closeView} /> : null}
 
         <PanelStack
           start={selected.window.start}
