@@ -35,8 +35,14 @@ const AHEAD = 5 * MINUTE
 
 // Bump the version when the shape or coverage of a saved entry changes, so
 // saved entries from an older build are not reused. v2: the predicted curve
-// includes its end instant.
-const PREFIX = 'tideline:v2:'
+// includes its end instant. v3: the forecast and the observed rows carry the
+// feels-like, the dew point and the humidity.
+const PREFIX = 'tideline:v3:'
+
+/** A cache key from an earlier version of the prefix. */
+function isOldVersion(key: string): boolean {
+  return /^tideline:v\d+:/.test(key) && !key.startsWith(PREFIX)
+}
 
 function storageKey(spotId: string, source: Source): string {
   return `${PREFIX}${spotId}:${source}`
@@ -125,9 +131,30 @@ export function evictCache(keepSpotId?: string): void {
     const doomed: string[] = []
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
-      if (key === null || !key.startsWith(PREFIX)) continue
-      if (keep !== null && key.startsWith(keep)) continue
+      if (key === null) continue
+      if (!isOldVersion(key)) {
+        if (!key.startsWith(PREFIX)) continue
+        if (keep !== null && key.startsWith(keep)) continue
+      }
       doomed.push(key)
+    }
+    for (const key of doomed) localStorage.removeItem(key)
+  } catch {
+    // Storage is disabled. There was nothing to drop.
+  }
+}
+
+/**
+ * Removes every entry saved under an older version of the prefix. It runs
+ * once at start-up so a version bump does not leave the last version's
+ * entries on the device, where nothing else would ever drop them.
+ */
+export function sweepOldVersions(): void {
+  try {
+    const doomed: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key !== null && isOldVersion(key)) doomed.push(key)
     }
     for (const key of doomed) localStorage.removeItem(key)
   } catch {

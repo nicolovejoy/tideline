@@ -11,6 +11,8 @@ export interface ObservedHour {
   /** Start of the hour, UTC instant in epoch ms. */
   t: number
   tempF: number | null
+  dewF: number | null
+  humidityPct: number | null
   windMph: number | null
   /** The highest gust reported in the hour, or null where none was. */
   gustMph: number | null
@@ -38,6 +40,8 @@ function row(
   return {
     t,
     tempF: base?.tempF ?? null,
+    dewF: base?.dewF ?? null,
+    humidityPct: base?.humidityPct ?? null,
     windMph: base?.windMph ?? null,
     gustMph,
     windDeg: base?.windDeg ?? null,
@@ -144,6 +148,8 @@ function isObservedHour(value: unknown): value is ObservedHour {
   return (
     typeof hour.t === 'number' &&
     number('tempF') &&
+    number('dewF') &&
+    number('humidityPct') &&
     number('windMph') &&
     number('gustMph') &&
     number('windDeg') &&

@@ -31,6 +31,18 @@ function sample() {
           { validTime: '2026-10-08T10:00:00+00:00/PT1H', value: 25 },
         ],
       },
+      apparentTemperature: {
+        uom: 'wmoUnit:degC',
+        values: [{ validTime: '2026-10-08T08:00:00+00:00/PT2H', value: 25 }],
+      },
+      dewpoint: {
+        uom: 'wmoUnit:degC',
+        values: [{ validTime: '2026-10-08T08:00:00+00:00/PT3H', value: 10 }],
+      },
+      relativeHumidity: {
+        uom: 'wmoUnit:percent',
+        values: [{ validTime: '2026-10-08T08:00:00+00:00/PT3H', value: 57 }],
+      },
       windSpeed: {
         uom: 'wmoUnit:km_h-1',
         values: [
@@ -83,6 +95,27 @@ describe('parseDurationHours', () => {
 })
 
 describe('parseGridpoint', () => {
+  test('the feels-like, the dew point and the humidity, in °F and percent', () => {
+    const { hours } = parseGridpoint(sample())
+    expect(hours[0].feelsF).toBeCloseTo(77, 5)
+    expect(hours[0].dewF).toBeCloseTo(50, 5)
+    expect(hours[0].humidityPct).toBe(57)
+    // The apparent temperature was given for two hours only.
+    expect(hours[2].feelsF).toBeNull()
+    expect(hours[2].dewF).toBeCloseTo(50, 5)
+  })
+
+  test('a real response carries all three for most hours', () => {
+    const { hours } = parseGridpoint(JSON.parse(realRaw))
+    const has = (field: 'feelsF' | 'dewF' | 'humidityPct') =>
+      hours.filter((hour) => hour[field] !== null).length
+    expect(has('feelsF')).toBeGreaterThan(100)
+    expect(has('dewF')).toBeGreaterThan(100)
+    expect(has('humidityPct')).toBeGreaterThan(100)
+    const first = hours.find((hour) => hour.dewF !== null)!
+    expect(first.dewF).toBeLessThan(first.tempF!)
+  })
+
   test('expands multi-hour intervals into one record per hour', () => {
     const { hours } = parseGridpoint(sample())
     expect(hours.map((h) => h.t)).toEqual([
@@ -284,6 +317,17 @@ describe('compassPoint', () => {
 })
 
 describe('isForecast', () => {
+  test('a forecast saved before the feels-like, dew point and humidity fails, so it is fetched afresh', () => {
+    const old = parseGridpoint(sample()).hours.map((hour) => {
+      const { feelsF, dewF, humidityPct, ...rest } = hour
+      void feelsF
+      void dewF
+      void humidityPct
+      return rest
+    })
+    expect(isForecast({ updatedAt: EIGHT, hours: old })).toBe(false)
+  })
+
   const hour = {
     t: EIGHT,
     tempF: 68,
@@ -292,6 +336,9 @@ describe('isForecast', () => {
     windDeg: 260,
     cloudPct: 3,
     rainPct: 0,
+    feelsF: null,
+    dewF: null,
+    humidityPct: null,
   }
 
   test('a parsed forecast passes, real or empty', () => {

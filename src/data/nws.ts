@@ -13,6 +13,9 @@ export interface ForecastHour {
   windDeg: number | null
   cloudPct: number | null
   rainPct: number | null
+  feelsF: number | null
+  dewF: number | null
+  humidityPct: number | null
 }
 
 export interface Forecast {
@@ -77,6 +80,17 @@ const LAYERS: Record<Field, LayerSpec> = {
     unit: 'wmoUnit:percent',
     convert: asIs,
   },
+  feelsF: {
+    layer: 'apparentTemperature',
+    unit: 'wmoUnit:degC',
+    convert: celsiusToF,
+  },
+  dewF: { layer: 'dewpoint', unit: 'wmoUnit:degC', convert: celsiusToF },
+  humidityPct: {
+    layer: 'relativeHumidity',
+    unit: 'wmoUnit:percent',
+    convert: asIs,
+  },
 }
 
 export function nwsUrl(office: string, gridX: number, gridY: number): string {
@@ -103,6 +117,9 @@ function emptyHour(t: number): ForecastHour {
     windDeg: null,
     cloudPct: null,
     rainPct: null,
+    feelsF: null,
+    dewF: null,
+    humidityPct: null,
   }
 }
 

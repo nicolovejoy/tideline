@@ -117,8 +117,8 @@ describe('addSpot', () => {
   test('in a full storage, drops the cache to make room and keeps the spot', () => {
     const one = JSON.stringify([LEADBETTER]).length
     const { storage, items } = fullStorage(one + 100, {
-      'tideline:v2:campus-point:predictions': 'x'.repeat(80),
-      'tideline:v2:elsewhere:forecast': 'y'.repeat(80),
+      'tideline:v3:campus-point:predictions': 'x'.repeat(80),
+      'tideline:v3:elsewhere:forecast': 'y'.repeat(80),
       'tideline:spot': 'campus-point',
     })
     vi.stubGlobal('localStorage', storage)

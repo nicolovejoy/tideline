@@ -4,6 +4,7 @@ import {
   forgetSpot,
   isStale,
   readCache,
+  sweepOldVersions,
   writeCache,
 } from './cache.ts'
 import type { CacheEntry } from './cache.ts'
@@ -13,7 +14,7 @@ const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
 const NOW = Date.UTC(2026, 9, 8, 17)
 const WINDOW = { start: Date.UTC(2026, 9, 8, 7), end: Date.UTC(2026, 9, 22, 7) }
-const KEY = 'tideline:v2:campus-point:forecast'
+const KEY = 'tideline:v3:campus-point:forecast'
 
 // The checks a caller hands to readCache to say what its data looks like.
 const isNumbers = (data: unknown): data is number[] =>
@@ -176,11 +177,11 @@ describe('readCache and writeCache', () => {
 describe('a full storage', () => {
   const entry = { fetchedAt: NOW, span: null, data: 'x' }
   const elsewhere = {
-    'tideline:v2:elsewhere:forecast': '{"fetchedAt":1,"span":null,"data":"e"}',
-    'tideline:v2:elsewhere:hilo': '{"fetchedAt":1,"span":null,"data":"e"}',
+    'tideline:v3:elsewhere:forecast': '{"fetchedAt":1,"span":null,"data":"e"}',
+    'tideline:v3:elsewhere:hilo': '{"fetchedAt":1,"span":null,"data":"e"}',
   }
   const own = {
-    'tideline:v2:campus-point:hilo': '{"fetchedAt":1,"span":null,"data":"o"}',
+    'tideline:v3:campus-point:hilo': '{"fetchedAt":1,"span":null,"data":"o"}',
   }
   const choice = { 'tideline:spot': 'campus-point' }
 
@@ -216,7 +217,7 @@ describe('a full storage', () => {
     evictCache('campus-point')
     expect([...items.keys()].sort()).toEqual([
       'tideline:spot',
-      'tideline:v2:campus-point:hilo',
+      'tideline:v3:campus-point:hilo',
     ])
     evictCache()
     expect([...items.keys()]).toEqual(['tideline:spot'])
@@ -350,19 +351,19 @@ describe('forgetSpot', () => {
   afterEach(() => vi.unstubAllGlobals())
   test('removes the seven entries for that spot and no other', () => {
     const storage = fakeStorage({
-      'tideline:v2:spot-abc:predictions': '1',
-      'tideline:v2:spot-abc:hilo': '1',
-      'tideline:v2:spot-abc:observed': '1',
-      'tideline:v2:spot-abc:gauge-predictions': '1',
-      'tideline:v2:spot-abc:forecast': '1',
-      'tideline:v2:spot-abc:weather-station': '1',
-      'tideline:v2:spot-abc:observed-weather': '1',
-      'tideline:v2:campus-point:forecast': '1',
+      'tideline:v3:spot-abc:predictions': '1',
+      'tideline:v3:spot-abc:hilo': '1',
+      'tideline:v3:spot-abc:observed': '1',
+      'tideline:v3:spot-abc:gauge-predictions': '1',
+      'tideline:v3:spot-abc:forecast': '1',
+      'tideline:v3:spot-abc:weather-station': '1',
+      'tideline:v3:spot-abc:observed-weather': '1',
+      'tideline:v3:campus-point:forecast': '1',
     })
     vi.stubGlobal('localStorage', storage)
     forgetSpot('spot-abc')
     expect(storage.length).toBe(1)
-    expect(storage.getItem('tideline:v2:campus-point:forecast')).toBe('1')
+    expect(storage.getItem('tideline:v3:campus-point:forecast')).toBe('1')
   })
   test('does not throw with storage disabled', () => {
     vi.stubGlobal('localStorage', {
@@ -371,5 +372,42 @@ describe('forgetSpot', () => {
       },
     })
     expect(() => forgetSpot('spot-abc')).not.toThrow()
+  })
+})
+
+describe('older versions', () => {
+  test('evictCache drops an older version even for the spot kept', () => {
+    const { items } = (() => {
+      const f = fullStorage(99, {
+        'tideline:v2:campus-point:forecast': '1',
+        'tideline:v3:campus-point:forecast': '1',
+        'tideline:v3:elsewhere:forecast': '1',
+        'tideline:spots:v1': '1',
+      })
+      vi.stubGlobal('localStorage', f.storage)
+      return f
+    })()
+    evictCache('campus-point')
+    expect([...items.keys()].sort()).toEqual([
+      'tideline:spots:v1',
+      'tideline:v3:campus-point:forecast',
+    ])
+  })
+
+  test('sweepOldVersions removes older versions and nothing else', () => {
+    const f = fullStorage(99, {
+      'tideline:v2:campus-point:forecast': '1',
+      'tideline:v1:x:hilo': '1',
+      'tideline:v3:campus-point:forecast': '1',
+      'tideline:spots:v1': '1',
+      'tideline:span': '1',
+    })
+    vi.stubGlobal('localStorage', f.storage)
+    sweepOldVersions()
+    expect([...f.items.keys()].sort()).toEqual([
+      'tideline:span',
+      'tideline:spots:v1',
+      'tideline:v3:campus-point:forecast',
+    ])
   })
 })

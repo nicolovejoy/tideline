@@ -82,13 +82,13 @@ describe('with saved spots', () => {
   test('forgetSavedSpot drops the spot and its cache', () => {
     const storage = fakeStorage({
       'tideline:spots:v1': JSON.stringify([saved]),
-      'tideline:v2:spot-abc:forecast': '{}',
+      'tideline:v3:spot-abc:forecast': '{}',
       'tideline:spot': 'spot-abc',
     })
     vi.stubGlobal('localStorage', storage)
     forgetSavedSpot(saved)
     expect(storage.getItem('tideline:spots:v1')).toBe('[]')
-    expect(storage.getItem('tideline:v2:spot-abc:forecast')).toBeNull()
+    expect(storage.getItem('tideline:v3:spot-abc:forecast')).toBeNull()
   })
 })
 

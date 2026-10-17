@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest'
 import { partsText } from '../chart/readout.ts'
+import type { Series } from '../chart/Panel.tsx'
 import type { Selected } from './selection.ts'
-import { forecastHours, weatherView } from './weatherView.ts'
+import { forecastHours, MAX_RULES, weatherView } from './weatherView.ts'
 import type { Loaded } from '../data/load.ts'
 import type { Forecast, ForecastHour } from '../data/nws.ts'
 import type { ObservedHour } from '../data/observed.ts'
@@ -50,6 +51,9 @@ function wide(selected: Selected, days: number): Selected {
   }
 }
 
+const named = (series: Series[], name: string) =>
+  series.find((s) => s.name === name)!
+
 /** Hourly records from `first` for `count` hours. The temperature is the hour of the day plus 50. */
 function hourly(
   first: number,
@@ -66,6 +70,9 @@ function hourly(
       windDeg: 270,
       cloudPct: 3,
       rainPct: 0,
+      feelsF: 50 + (((t - START) / HOUR) % 24),
+      dewF: 45,
+      humidityPct: 60,
     }
     change(hour)
     return hour
@@ -86,17 +93,40 @@ const FIRST = START + 5 * HOUR
 const week = loaded(hourly(FIRST, 185))
 
 describe('what is drawn', () => {
+  test('a wide range draws fewer rules: the step doubles until there are at most six', () => {
+    const dry = loaded(
+      hourly(FIRST, 185, (hour) => {
+        hour.dewF = 11
+        if (hour.t === START + 14 * HOUR) hour.feelsF = 99
+      }),
+    )
+    const view = weatherView(dry, day(3), NOW, NOW)
+    expect(view.temp.bounds).toEqual([10, 100])
+    expect(view.temp.rules.map((rule) => rule.label)).toEqual([
+      '20°F',
+      '40°F',
+      '60°F',
+      '80°F',
+      '100°F',
+    ])
+    expect(MAX_RULES).toBe(6)
+  })
+
   test('one staircase per value but the wind, over the hours of the day on screen', () => {
     const view = weatherView(week, day(0), NOW, NOW)
     expect(view.notice).toBeNull()
     expect(view.wind.series.map((series) => series.name)).toEqual(['gust'])
-    expect(view.temp.series.map((series) => series.name)).toEqual(['temp'])
+    expect(view.temp.series.map((series) => series.name)).toEqual([
+      'dew',
+      'feels',
+      'temp',
+    ])
     expect(view.sky.series.map((series) => series.name)).toEqual([
       'cloud',
       'rain',
     ])
     // Today's forecast starts at 5 AM, so the lines start partway across.
-    const temps = view.temp.series[0].points
+    const temps = named(view.temp.series, 'temp').points
     expect(temps).toHaveLength(19)
     expect(temps[0]).toEqual({ t: FIRST, v: 55 })
     expect(temps.at(-1)).toEqual({ t: END - HOUR, v: 73 })
@@ -104,7 +134,10 @@ describe('what is drawn', () => {
   })
 
   test('another day has its own hours, midnight to midnight', () => {
-    const temps = weatherView(week, day(2), NOW, NOW).temp.series[0].points
+    const temps = named(
+      weatherView(week, day(2), NOW, NOW).temp.series,
+      'temp',
+    ).points
     expect(temps).toHaveLength(24)
     expect(temps[0].t).toBe(START + 2 * DAY)
     expect(temps.at(-1)!.t).toBe(START + 3 * DAY - HOUR)
@@ -118,10 +151,10 @@ describe('what is drawn', () => {
       }),
     )
     const view = weatherView(patchy, day(0), NOW, NOW)
-    expect(view.temp.series[0].points.map((point) => point.t)).not.toContain(
-      gap,
-    )
-    expect(view.temp.series[0].points).toHaveLength(18)
+    expect(
+      named(view.temp.series, 'temp').points.map((point) => point.t),
+    ).not.toContain(gap)
+    expect(named(view.temp.series, 'temp').points).toHaveLength(18)
     expect(view.wind.arrows.map((arrow) => arrow.t)).toContain(gap + HOUR / 2)
   })
 
@@ -235,7 +268,7 @@ describe('what is drawn', () => {
     // Today itself has gusts of 12 and temperatures from 55 to 73.
     const view = weatherView(stormy, day(0), NOW, NOW)
     expect(view.wind.bounds).toEqual([0, 30])
-    expect(view.temp.bounds).toEqual([50, 100])
+    expect(view.temp.bounds).toEqual([40, 100])
     expect(view.sky.bounds).toEqual([0, 100])
   })
 
@@ -266,7 +299,7 @@ describe('what is drawn', () => {
       { v: 10, label: '10 mph' },
       { v: 20, label: '20 mph' },
     ])
-    expect(view.temp.rules[0]).toEqual({ v: 50, label: '50°F' })
+    expect(view.temp.rules[0]).toEqual({ v: 40, label: '40°F' })
     const all = [...view.wind.series, ...view.temp.series, ...view.sky.series]
     expect(all.every((series) => series.step === HOUR)).toBe(true)
   })
@@ -279,6 +312,89 @@ describe('what is drawn', () => {
 })
 
 describe('what is read out', () => {
+  test('the dew point is a staircase under the temperature, and the feels-like is drawn only where it stands out', () => {
+    const warm = loaded(
+      hourly(FIRST, 185, (hour) => {
+        if (hour.t === START + 14 * HOUR) hour.feelsF = hour.tempF! + 6
+      }),
+    )
+    const view = weatherView(warm, day(0), NOW, NOW)
+    const [dew, feels, temp] = view.temp.series
+    expect(dew.points).toHaveLength(19)
+    expect(dew.points[0]).toEqual({ t: FIRST, v: 45 })
+    expect(feels.points).toEqual([{ t: START + 14 * HOUR, v: 70 }])
+    expect(temp.points).toHaveLength(19)
+  })
+
+  test('an hour with no dew point leaves a break in its line and no part in the words', () => {
+    const gap = START + 10 * HOUR
+    const patchy = loaded(
+      hourly(FIRST, 185, (hour) => {
+        if (hour.t === gap) hour.dewF = null
+      }),
+    )
+    const view = weatherView(patchy, day(0), gap + 30 * MINUTE, NOW)
+    expect(view.temp.series[0].points.map((p) => p.t)).not.toContain(gap)
+    expect(partsText(view.temp.readout)).toBe('60°F, 60% humidity')
+    expect(view.temp.dots).toEqual([{ name: 'temp', v: 60 }])
+  })
+
+  test('the range takes in the dew point and the feels-like whole, hidden or not', () => {
+    const dry = loaded(
+      hourly(FIRST, 185, (hour) => {
+        hour.dewF = 21
+        if (hour.t === START + 14 * HOUR) hour.feelsF = 99
+      }),
+    )
+    const view = weatherView(dry, day(3), NOW, NOW)
+    expect(view.temp.bounds).toEqual([20, 100])
+  })
+
+  test('without a station the rows carry no side words, and a hidden feels-like leaves the second row empty', () => {
+    const warm = loaded(
+      hourly(FIRST, 185, (hour) => {
+        if (hour.t === START + 14 * HOUR) hour.feelsF = hour.tempF! + 6
+      }),
+    )
+    const shown = weatherView(
+      warm,
+      day(0),
+      START + 14 * HOUR + 30 * MINUTE,
+      NOW,
+    )
+    expect(shown.temp.rows.map(partsText)).toEqual([
+      '64°F, dew point 45°F, 60% humidity',
+      'feels like 70°F',
+    ])
+    const hidden = weatherView(
+      warm,
+      day(0),
+      START + 10 * HOUR + 30 * MINUTE,
+      NOW,
+    )
+    expect(hidden.temp.rows).toHaveLength(2)
+    expect(hidden.temp.rows[1]).toEqual([])
+    expect(hidden.wind.rows).toHaveLength(1)
+    expect(hidden.sky.rows).toHaveLength(1)
+  })
+
+  test('at the cursor the words and the dots say all four, the feels-like where shown', () => {
+    const warm = loaded(
+      hourly(FIRST, 185, (hour) => {
+        if (hour.t === START + 14 * HOUR) hour.feelsF = hour.tempF! + 6
+      }),
+    )
+    const view = weatherView(warm, day(0), START + 14 * HOUR + 30 * MINUTE, NOW)
+    expect(partsText(view.temp.readout)).toBe(
+      '64°F, dew point 45°F, 60% humidity, feels like 70°F',
+    )
+    expect(view.temp.dots).toEqual([
+      { name: 'dew', v: 45 },
+      { name: 'feels', v: 70 },
+      { name: 'temp', v: 64 },
+    ])
+  })
+
   test('the forecast hour that contains the cursor', () => {
     const view = weatherView(week, day(0), NOW, NOW)
     expect(view.wind.readout).toEqual([
@@ -286,7 +402,11 @@ describe('what is read out', () => {
       { key: 'gust', text: 'gusts 12' },
     ])
     // 3:36 PM is in the 3 PM hour.
-    expect(view.temp.readout).toEqual([{ key: 'temp', text: '65°F' }])
+    expect(view.temp.readout).toEqual([
+      { key: 'temp', text: '65°F' },
+      { key: 'dew', text: 'dew point 45°F' },
+      { key: null, text: '60% humidity' },
+    ])
     expect(view.sky.readout).toEqual([
       { key: 'cloud', text: '3% cloud' },
       { key: 'rain', text: '0% rain' },
@@ -299,7 +419,10 @@ describe('what is read out', () => {
       { name: 'wind', v: 9 },
       { name: 'gust', v: 12 },
     ])
-    expect(view.temp.dots).toEqual([{ name: 'temp', v: 65 }])
+    expect(view.temp.dots).toEqual([
+      { name: 'dew', v: 45 },
+      { name: 'temp', v: 65 },
+    ])
     expect(view.sky.dots).toEqual([
       { name: 'cloud', v: 3 },
       { name: 'rain', v: 0 },
@@ -308,7 +431,7 @@ describe('what is read out', () => {
 
   test('says it all in one run of words, naming each panel, for a screen reader', () => {
     expect(weatherView(week, day(0), NOW, NOW).words).toBe(
-      'Wind: 9 mph from W, gusts 12; Temperature: 65°F; Sky: 3% cloud, 0% rain',
+      'Wind: 9 mph from W, gusts 12; Temperature: 65°F, dew point 45°F, 60% humidity; Sky: 3% cloud, 0% rain',
     )
   })
 
@@ -316,6 +439,8 @@ describe('what is read out', () => {
     const patchy = loaded(
       hourly(FIRST, 185, (hour) => {
         hour.tempF = null
+        hour.dewF = null
+        hour.humidityPct = null
       }),
     )
     expect(weatherView(patchy, day(0), NOW, NOW).words).toBe(
@@ -332,8 +457,15 @@ describe('what is read out', () => {
     // The cursor can sit on the midnight that ends the day.
     const view = weatherView(week, day(0), END, NOW)
     // 11 PM is 73 degrees. The midnight after it is 50.
-    expect(view.temp.readout).toEqual([{ key: 'temp', text: '73°F' }])
-    expect(view.temp.dots).toEqual([{ name: 'temp', v: 73 }])
+    expect(view.temp.readout).toEqual([
+      { key: 'temp', text: '73°F' },
+      { key: 'dew', text: 'dew point 45°F' },
+      { key: null, text: '60% humidity' },
+    ])
+    expect(view.temp.dots).toEqual([
+      { name: 'dew', v: 45 },
+      { name: 'temp', v: 73 },
+    ])
   })
 
   test('before the forecast starts it says so, and has no dots', () => {
@@ -349,6 +481,8 @@ describe('what is read out', () => {
     const patchy = loaded(
       hourly(FIRST, 185, (hour) => {
         hour.tempF = null
+        hour.dewF = null
+        hour.humidityPct = null
         hour.gustMph = null
       }),
     )
@@ -399,7 +533,7 @@ describe('when the panels are not drawn', () => {
     )
     const view = weatherView(holed, day(2), NOW, NOW)
     expect(view.notice).toBeNull()
-    expect(view.temp.series[0].points).toHaveLength(23)
+    expect(named(view.temp.series, 'temp').points).toHaveLength(23)
   })
 
   test('the last day counts as inside when the last record is the very hour of sunset', () => {
@@ -423,7 +557,7 @@ describe('when the panels are not drawn', () => {
     const late = loaded(hourly(START + 20 * HOUR, 185))
     const view = weatherView(late, day(0), evening, evening)
     expect(view.notice).toBeNull()
-    expect(view.temp.series[0].points).toHaveLength(4)
+    expect(named(view.temp.series, 'temp').points).toHaveLength(4)
   })
 
   test('today keeps its panels while a saved forecast has any of today left, even short of sunset', () => {
@@ -431,8 +565,12 @@ describe('when the panels are not drawn', () => {
     const nearlyOut = loaded(hourly(START, 16), 'stale')
     const view = weatherView(nearlyOut, day(0), NOW, NOW)
     expect(view.notice).toBeNull()
-    expect(view.temp.series[0].points).toHaveLength(16)
-    expect(view.temp.readout).toEqual([{ key: 'temp', text: '65°F' }])
+    expect(named(view.temp.series, 'temp').points).toHaveLength(16)
+    expect(view.temp.readout).toEqual([
+      { key: 'temp', text: '65°F' },
+      { key: 'dew', text: 'dew point 45°F' },
+      { key: null, text: '60% humidity' },
+    ])
   })
 
   test('once its last hour is over, it has wholly passed', () => {
@@ -495,6 +633,8 @@ function observed(
     const row: ObservedHour = {
       t,
       tempF: 60 + (((t - START) / HOUR) % 24),
+      dewF: 48,
+      humidityPct: 65,
       windMph: 5,
       gustMph: null,
       windDeg: 180,
@@ -513,10 +653,14 @@ describe('today with a station', () => {
   test('each value has an observed staircase up to now and the forecast after, with the current hour cut at the line', () => {
     const view = weatherView(week, day(0), NOW, NOW, rows)
     expect(view.temp.series.map((series) => series.name)).toEqual([
+      'dew-observed',
+      'dew',
+      'feels',
       'temp-observed',
       'temp',
     ])
-    const [obs, fc] = view.temp.series
+    const obs = named(view.temp.series, 'temp-observed')
+    const fc = named(view.temp.series, 'temp')
     expect(obs.points).toHaveLength(16)
     expect(obs.points[0]).toEqual({ t: START, v: 60 })
     expect(obs.points[15].t).toBe(START + 15 * HOUR)
@@ -532,7 +676,9 @@ describe('today with a station', () => {
     const patchy = rows.filter(
       (row) => row.t !== START + 10 * HOUR && row.t !== START + 15 * HOUR,
     )
-    const [obs, fc] = weatherView(week, day(0), NOW, NOW, patchy).temp.series
+    const series = weatherView(week, day(0), NOW, NOW, patchy).temp.series
+    const obs = named(series, 'temp-observed')
+    const fc = named(series, 'temp')
     expect(obs.points.map((point) => point.t)).not.toContain(START + 10 * HOUR)
     expect(fc.points.map((point) => point.t)).toContain(START + 10 * HOUR)
     expect(fc.cut).toBeUndefined()
@@ -542,7 +688,9 @@ describe('today with a station', () => {
     const blind = observed(NOW, (row) => {
       if (row.t === START + 12 * HOUR) row.tempF = null
     })
-    const [obs, fc] = weatherView(week, day(0), NOW, NOW, blind).temp.series
+    const series = weatherView(week, day(0), NOW, NOW, blind).temp.series
+    const obs = named(series, 'temp-observed')
+    const fc = named(series, 'temp')
     expect(obs.points.map((point) => point.t)).not.toContain(START + 12 * HOUR)
     expect(fc.points.find((point) => point.t === START + 12 * HOUR)).toEqual({
       t: START + 12 * HOUR,
@@ -618,10 +766,10 @@ describe('today with a station', () => {
       row.windMph = 31
     })
     const view = weatherView(week, day(0), NOW, NOW, hot)
-    expect(view.temp.bounds).toEqual([50, 100])
+    expect(view.temp.bounds).toEqual([40, 100])
     expect(view.wind.bounds).toEqual([0, 40])
     expect(weatherView(week, day(1), NOW, NOW, hot).temp.bounds).toEqual([
-      50, 100,
+      40, 100,
     ])
   })
 
@@ -641,9 +789,15 @@ describe('today with a station', () => {
   test('with the current time exactly on the hour, the new hour is the forecast whole, and the observed side stops at the line', () => {
     const now = START + 15 * HOUR
     const view = weatherView(week, day(0), now, now, observed(now))
-    expect(view.temp.series[0].cut).toEqual({ at: now, keep: 'before' })
-    expect(view.temp.series[1].points[0].t).toBe(START + 15 * HOUR)
-    expect(view.temp.series[1].cut).toEqual({ at: now, keep: 'after' })
+    expect(named(view.temp.series, 'temp-observed').cut).toEqual({
+      at: now,
+      keep: 'before',
+    })
+    expect(named(view.temp.series, 'temp').points[0].t).toBe(START + 15 * HOUR)
+    expect(named(view.temp.series, 'temp').cut).toEqual({
+      at: now,
+      keep: 'after',
+    })
     const arrow = view.wind.arrows.find(
       (a) => a.t === START + 15 * HOUR + HOUR / 2,
     )
@@ -672,11 +826,91 @@ describe('today with a station', () => {
 
   test('on another day the rows are ignored', () => {
     const view = weatherView(week, day(1), NOW, NOW, rows)
-    expect(view.temp.series.map((series) => series.name)).toEqual(['temp'])
-    expect(view.temp.series[0].cut).toBeUndefined()
+    expect(view.temp.series.map((series) => series.name)).toEqual([
+      'dew',
+      'feels',
+      'temp',
+    ])
+    expect(named(view.temp.series, 'temp').cut).toBeUndefined()
     expect(
       view.wind.arrows.every((arrow) => arrow.observed === undefined),
     ).toBe(true)
+  })
+
+  test('the observed dew point is cut at the line as the temperature is, and the feels-like is forecast whole', () => {
+    const warm = loaded(
+      hourly(FIRST, 185, (hour) => {
+        hour.feelsF = hour.tempF! + 6
+      }),
+    )
+    const view = weatherView(warm, day(0), NOW, NOW, rows)
+    const [dewObs, dew, feels, tempObs] = view.temp.series
+    expect(dewObs.points).toHaveLength(16)
+    expect(dewObs.points[0]).toEqual({ t: START, v: 48 })
+    expect(dewObs.cut).toEqual({ at: NOW, keep: 'before' })
+    expect(dew.points[0].t).toBe(START + 15 * HOUR)
+    expect(dew.cut).toEqual({ at: NOW, keep: 'after' })
+    expect(feels.cut).toBeUndefined()
+    expect(feels.points[0].t).toBe(FIRST)
+    expect(tempObs.cut).toEqual({ at: NOW, keep: 'before' })
+  })
+
+  test('the temperature panel has two rows, the feels-like on the second, each with its own side words', () => {
+    const warm = loaded(
+      hourly(FIRST, 185, (hour) => {
+        hour.feelsF = hour.tempF! + 6
+      }),
+    )
+    const cursor = START + 14 * HOUR + 30 * MINUTE
+    const view = weatherView(warm, day(0), cursor, NOW, rows)
+    expect(view.temp.rows.map(partsText)).toEqual([
+      '74°F, dew point 48°F, 65% humidity, observed',
+      'feels like 70°F, forecast',
+    ])
+    expect(view.wind.rows).toHaveLength(1)
+    expect(view.sky.rows).toHaveLength(1)
+  })
+
+  test('left of the line the words run the observed parts together and the feels-like after them, as forecast', () => {
+    const warm = loaded(
+      hourly(FIRST, 185, (hour) => {
+        hour.feelsF = hour.tempF! + 6
+      }),
+    )
+    const cursor = START + 14 * HOUR + 30 * MINUTE
+    const view = weatherView(warm, day(0), cursor, NOW, rows)
+    expect(partsText(view.temp.readout)).toBe(
+      '74°F, dew point 48°F, 65% humidity, observed; feels like 70°F, forecast',
+    )
+    expect(view.temp.dots).toEqual([
+      { name: 'dew-observed', v: 48 },
+      { name: 'feels', v: 70 },
+      { name: 'temp-observed', v: 74 },
+    ])
+  })
+
+  test('a row whose dew point was dropped reads the forecast dew point and humidity, in one forecast run with the feels-like', () => {
+    const warm = loaded(
+      hourly(FIRST, 185, (hour) => {
+        hour.feelsF = hour.tempF! + 6
+      }),
+    )
+    const blind = observed(NOW, (row) => {
+      if (row.t === START + 14 * HOUR) {
+        row.dewF = null
+        row.humidityPct = null
+      }
+    })
+    const cursor = START + 14 * HOUR + 30 * MINUTE
+    const view = weatherView(warm, day(0), cursor, NOW, blind)
+    expect(partsText(view.temp.readout)).toBe(
+      '74°F, observed; dew point 45°F, 60% humidity, forecast; feels like 70°F, forecast',
+    )
+    expect(view.temp.dots).toEqual([
+      { name: 'dew', v: 45 },
+      { name: 'feels', v: 70 },
+      { name: 'temp-observed', v: 74 },
+    ])
   })
 
   test('with rows and no forecast at all, today is drawn from the rows alone', () => {
@@ -688,8 +922,8 @@ describe('today with a station', () => {
       rows,
     )
     expect(view.notice).toBeNull()
-    expect(view.temp.series[0].points).toHaveLength(16)
-    expect(view.temp.series[1].points).toEqual([])
+    expect(named(view.temp.series, 'temp-observed').points).toHaveLength(16)
+    expect(named(view.temp.series, 'temp').points).toEqual([])
   })
 
   test('left of the line the words are the observed values and say so, and the dots sit on them', () => {
@@ -697,18 +931,23 @@ describe('today with a station', () => {
     const cursor = START + 14 * HOUR + 30 * 60_000
     const view = weatherView(week, day(0), cursor, NOW, rows)
     expect(partsText(view.wind.readout)).toBe('5 mph from S, observed')
-    expect(partsText(view.temp.readout)).toBe('74°F, observed')
+    expect(partsText(view.temp.readout)).toBe(
+      '74°F, dew point 48°F, 65% humidity, observed',
+    )
     expect(partsText(view.sky.readout)).toBe(
       'Scattered cloud, observed; 0% rain, forecast',
     )
     expect(view.wind.dots).toEqual([{ name: 'wind-observed', v: 5 }])
-    expect(view.temp.dots).toEqual([{ name: 'temp-observed', v: 74 }])
+    expect(view.temp.dots).toEqual([
+      { name: 'dew-observed', v: 48 },
+      { name: 'temp-observed', v: 74 },
+    ])
     expect(view.sky.dots).toEqual([
       { name: 'cloud-observed', v: 44 },
       { name: 'rain', v: 0 },
     ])
     expect(view.words).toBe(
-      'Wind: 5 mph from S, observed; Temperature: 74°F, observed; Sky: Scattered cloud, observed; 0% rain, forecast',
+      'Wind: 5 mph from S, observed; Temperature: 74°F, dew point 48°F, 65% humidity, observed; Sky: Scattered cloud, observed; 0% rain, forecast',
     )
   })
 
@@ -718,14 +957,21 @@ describe('today with a station', () => {
     expect(partsText(view.wind.readout)).toBe(
       '9 mph from W, gusts 12, forecast',
     )
-    expect(partsText(view.temp.readout)).toBe('65°F, forecast')
+    expect(partsText(view.temp.readout)).toBe(
+      '65°F, dew point 45°F, 60% humidity, forecast',
+    )
     expect(partsText(view.sky.readout)).toBe('3% cloud, 0% rain, forecast')
-    expect(view.temp.dots).toEqual([{ name: 'temp', v: 65 }])
+    expect(view.temp.dots).toEqual([
+      { name: 'dew', v: 45 },
+      { name: 'temp', v: 65 },
+    ])
   })
 
   test('at the line itself the cursor reads the forecast', () => {
     const view = weatherView(week, day(0), NOW, NOW, rows)
-    expect(partsText(view.temp.readout)).toBe('65°F, forecast')
+    expect(partsText(view.temp.readout)).toBe(
+      '65°F, dew point 45°F, 60% humidity, forecast',
+    )
   })
 
   test('left of the line, a value the row lacks reads the forecast for that hour and says so', () => {
@@ -737,7 +983,9 @@ describe('today with a station', () => {
     })
     const cursor = START + 14 * HOUR + 30 * 60_000
     const view = weatherView(week, day(0), cursor, NOW, blind)
-    expect(partsText(view.temp.readout)).toBe('64°F, forecast')
+    expect(partsText(view.temp.readout)).toBe(
+      '64°F, forecast; dew point 48°F, 65% humidity, observed',
+    )
     expect(partsText(view.sky.readout)).toBe('3% cloud, 0% rain, forecast')
     expect(partsText(view.wind.readout)).toBe('5 mph from S, observed')
   })
@@ -746,7 +994,9 @@ describe('today with a station', () => {
     const patchy = rows.filter((row) => row.t !== START + 14 * HOUR)
     const cursor = START + 14 * HOUR + 30 * 60_000
     const view = weatherView(week, day(0), cursor, NOW, patchy)
-    expect(partsText(view.temp.readout)).toBe('64°F, forecast')
+    expect(partsText(view.temp.readout)).toBe(
+      '64°F, dew point 45°F, 60% humidity, forecast',
+    )
   })
 
   test('an observed gust that stands out is worded, and the dot is the observed one', () => {
@@ -773,7 +1023,9 @@ describe('today with a station', () => {
 
   test('on today with no rows no side is said either', () => {
     const view = weatherView(week, day(0), NOW, NOW, [])
-    expect(partsText(view.temp.readout)).toBe('65°F')
+    expect(partsText(view.temp.readout)).toBe(
+      '65°F, dew point 45°F, 60% humidity',
+    )
   })
 })
 

@@ -562,6 +562,8 @@ describe('observedCaption', () => {
   const hour = {
     t: Date.UTC(2026, 9, 8, 21),
     tempF: 64,
+    dewF: null,
+    humidityPct: null,
     windMph: 9,
     gustMph: null,
     windDeg: 270,

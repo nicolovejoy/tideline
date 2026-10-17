@@ -5,6 +5,7 @@
 
 import { arrowAngle, isCalm, shownGust } from '../chart/arrows.ts'
 import type { Arrow } from '../chart/arrows.ts'
+import { shownFeel } from '../chart/feel.ts'
 import type { Dot, Rule, Series } from '../chart/Panel.tsx'
 import {
   cloudPart,
@@ -12,7 +13,7 @@ import {
   partsText,
   rainPart,
   skyCategoryPart,
-  tempParts,
+  temperaturePanelParts,
   windParts,
   withSourceWords,
 } from '../chart/readout.ts'
@@ -33,6 +34,12 @@ export interface WeatherPanelView {
   title: string
   /** The values under the cursor, in words, each with its series' key. */
   readout: ReadoutPart[]
+  /**
+   * The readout as rows, each with its own side words. The temperature panel
+   * always has two, the feels-like on the second, so the plot does not move
+   * as the feels-like comes and goes; the others have one.
+   */
+  rows: ReadoutPart[][]
   /** The plot's vertical range. */
   bounds: [number, number]
   rules: Rule[]
@@ -86,6 +93,9 @@ function asForecastHour(row: ObservedHour): ForecastHour {
     windDeg: row.windDeg,
     cloudPct: row.sky === null ? null : skyPct(row.sky),
     rainPct: null,
+    feelsF: null,
+    dewF: row.dewF,
+    humidityPct: row.humidityPct,
   }
 }
 
@@ -123,8 +133,16 @@ const WIND: PanelSpec = {
 }
 const TEMP: PanelSpec = {
   title: 'Temperature',
-  fields: [['temp', 'tempF']],
-  dots: [['temp', 'tempF']],
+  fields: [
+    ['dew', 'dewF'],
+    ['feels', 'feelsF'],
+    ['temp', 'tempF'],
+  ],
+  dots: [
+    ['dew', 'dewF'],
+    ['feels', 'feelsF'],
+    ['temp', 'tempF'],
+  ],
   every: 10,
   unit: '°F',
 }
@@ -145,6 +163,8 @@ const SKY: PanelSpec = {
 /** The fields a station reports. The chance of rain is forecast all day. */
 const OBSERVED_FIELDS = new Set<Field>([
   'tempF',
+  'dewF',
+  'humidityPct',
   'windMph',
   'gustMph',
   'windDeg',
@@ -152,13 +172,16 @@ const OBSERVED_FIELDS = new Set<Field>([
 ])
 
 /**
- * The hours with only the gusts worth showing: an hour whose gust does not
- * stand out from its wind has none. The staircase, the dot and the words
- * then agree. The vertical range is worked out from the hours as given, so
- * the panel does not jump as the rule hides a gust.
+ * The hours with only the gusts and the feels-likes worth showing: an hour
+ * whose gust does not stand out from its wind has none, nor one whose
+ * feels-like is within 2°F of its temperature. The staircase, the dot and the
+ * words then agree. The vertical range is worked out from the hours as given,
+ * so the panel does not jump as the rule hides a value.
  */
-function withShownGusts<T extends ForecastHour | null>(hour: T): T {
-  return hour === null ? hour : { ...hour, gustMph: shownGust(hour) }
+function withShownValues<T extends ForecastHour | null>(hour: T): T {
+  return hour === null
+    ? hour
+    : { ...hour, gustMph: shownGust(hour), feelsF: shownFeel(hour) }
 }
 
 function arrowFor(hour: ForecastHour, observed: boolean): Arrow | null {
@@ -251,23 +274,37 @@ function staircases(
   ]
 }
 
+/** The most rules a panel draws; more print their labels over each other. */
+export const MAX_RULES = 6
+
+/** `every`, doubled until the range holds at most MAX_RULES rules. */
+function ruleStep(bounds: [number, number], every: number): number {
+  let step = every
+  while (wholeSteps(bounds[0], bounds[1], step).length > MAX_RULES) step *= 2
+  return step
+}
+
 function panel(
   spec: PanelSpec,
-  readout: ReadoutPart[],
+  rows: ReadoutPart[][],
   bounds: [number, number],
   hours: TodayHour[],
   now: number | null,
   dots: Dot[],
   arrows: Arrow[] = [],
 ): WeatherPanelView {
+  const readout = rows.flat()
   return {
     title: spec.title,
     readout: readout.length > 0 ? readout : NOTHING_HERE,
+    rows: readout.length > 0 ? rows : [NOTHING_HERE, ...rows.slice(1)],
     bounds,
-    rules: wholeSteps(bounds[0], bounds[1], spec.every).map((v) => ({
-      v,
-      label: `${v}${spec.unit}`,
-    })),
+    rules: wholeSteps(bounds[0], bounds[1], ruleStep(bounds, spec.every)).map(
+      (v) => ({
+        v,
+        label: `${v}${spec.unit}`,
+      }),
+    ),
     series: spec.fields.flatMap(([name, field]) =>
       staircases(name, field, hours, now),
     ),
@@ -301,7 +338,7 @@ function todayHours(
       observed: null,
       sky: null,
     }
-    hour.observed = withShownGusts(asForecastHour(row))
+    hour.observed = withShownValues(asForecastHour(row))
     hour.sky = row.sky
     byHour.set(row.t, hour)
   }
@@ -356,7 +393,7 @@ export function weatherView(
     const last = all.length > 0 ? all[all.length - 1].t : -Infinity
     const reaches = Math.floor(selected.anchor / HOUR) * HOUR <= last
     // The hours across the whole window; the rows stay today's.
-    hours = todayHours(onDay(all, selected.window).map(withShownGusts), rows)
+    hours = todayHours(onDay(all, selected.window).map(withShownValues), rows)
     if (hours.length === 0 || !(reaches || selected.isToday)) {
       notice = 'No forecast this far out.'
       hours = []
@@ -377,7 +414,7 @@ export function weatherView(
     10,
   )
   const tempBounds = steppedBounds(
-    values([...all, ...observedHours], ['tempF']),
+    values([...all, ...observedHours], ['tempF', 'feelsF', 'dewF']),
     10,
   )
 
@@ -388,7 +425,7 @@ export function weatherView(
 
   const wind = panel(
     WIND,
-    read.wind,
+    [read.wind],
     windBounds,
     hours,
     today,
@@ -403,7 +440,14 @@ export function weatherView(
     today,
     dotsFor(TEMP, atSide),
   )
-  const sky = panel(SKY, read.sky, [0, 100], hours, today, dotsFor(SKY, atSide))
+  const sky = panel(
+    SKY,
+    [read.sky],
+    [0, 100],
+    hours,
+    today,
+    dotsFor(SKY, atSide),
+  )
   // For a screen reader. Each panel is named, so "No forecast here" never
   // reads as if it were the temperature. Where none of them has anything to
   // say, that is said once, not three times.
@@ -434,8 +478,8 @@ function forecastOnly(at: TodayHour | null): TodayHour | null {
 function readoutFor(
   at: TodayHour | null,
   labelled: boolean,
-): { wind: ReadoutPart[]; temp: ReadoutPart[]; sky: ReadoutPart[] } {
-  if (at === null) return { wind: [], temp: [], sky: [] }
+): { wind: ReadoutPart[]; temp: ReadoutPart[][]; sky: ReadoutPart[] } {
+  if (at === null) return { wind: [], temp: [[], []], sky: [] }
   const forecast: SourceWord | undefined = labelled ? 'forecast' : undefined
   const wind = rowStands(at, 'windMph')
     ? windParts(at.observed, 'observed')
@@ -452,9 +496,22 @@ function readoutFor(
             'observed',
           ),
         ]
-  const temp = rowStands(at, 'tempF')
-    ? tempParts(at.observed, 'observed')
-    : tempParts(at.forecast, forecast)
+  // The row's parts where it stands for the value, the forecast's where not,
+  // in a fixed order. The feels-like is the forecast's always.
+  const fromForecast = temperaturePanelParts(at.forecast, forecast)
+  const fromRow = temperaturePanelParts(at.observed, 'observed')
+  const pick = (key: string | null, field: Field): ReadoutPart[] =>
+    (rowStands(at, field) ? fromRow : fromForecast).filter(
+      (one) => one.key === key,
+    )
+  const tempRows: [ReadoutPart[], ReadoutPart[]] = [
+    [
+      ...pick('temp', 'tempF'),
+      ...pick('dew', 'dewF'),
+      ...pick(null, 'humidityPct'),
+    ],
+    fromForecast.filter((one) => one.key === 'feels'),
+  ]
   const sky: ReadoutPart[] = []
   if (rowStands(at, 'cloudPct') && at.sky !== null) {
     sky.push(skyCategoryPart(at.sky, 'observed'))
@@ -466,7 +523,7 @@ function readoutFor(
   }
   return {
     wind: withSourceWords(wind),
-    temp: withSourceWords(temp),
+    temp: tempRows.map(withSourceWords),
     sky: withSourceWords(sky),
   }
 }

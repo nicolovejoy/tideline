@@ -39,6 +39,20 @@ describe('skyOf', () => {
 })
 
 describe('parseObservations', () => {
+  test('the dew point in °F and the humidity in percent', () => {
+    // 6 °C and 37.6% in the last KSBA report (the fixture is newest first).
+    expect(ksba[15].dewF).toBeCloseTo(42.8, 5)
+    expect(ksba[15].humidityPct).toBeCloseTo(37.638, 3)
+  })
+
+  test('a dew point flagged bad is left out and the temperature stands', () => {
+    const json = JSON.parse(ksbaRaw)
+    json.features[15].properties.dewpoint.qualityControl = 'X'
+    const [first] = parseObservations(json)
+    expect(first.dewF).toBeNull()
+    expect(first.tempF).toBeCloseTo(66.2, 5)
+  })
+
   const ksba = parseObservations(JSON.parse(ksbaRaw))
   const lpoc1 = parseObservations(JSON.parse(lpoc1Raw))
 

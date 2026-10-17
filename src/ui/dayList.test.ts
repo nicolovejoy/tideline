@@ -83,6 +83,9 @@ describe('dayRows', () => {
       windDeg: 250,
       cloudPct: 30,
       rainPct: 2,
+      feelsF: null,
+      dewF: null,
+      humidityPct: null,
       ...change,
     }
   }

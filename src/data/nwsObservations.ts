@@ -11,6 +11,8 @@ export interface Report {
   /** When it was taken, UTC instant in epoch ms. */
   t: number
   tempF: number | null
+  dewF: number | null
+  humidityPct: number | null
   windMph: number | null
   /** Stations give a gust only when there is one. */
   gustMph: number | null
@@ -97,11 +99,18 @@ export function parseObservations(json: unknown): Report[] {
     // A report that cannot be placed in time is left out. The rest stand.
     if (Number.isNaN(t)) continue
     const celsius = measure('temperature', p.temperature, 'wmoUnit:degC')
+    const dew = measure('dewpoint', p.dewpoint, 'wmoUnit:degC')
     const kmh = measure('windSpeed', p.windSpeed, 'wmoUnit:km_h-1')
     const gust = measure('windGust', p.windGust, 'wmoUnit:km_h-1')
     reports.push({
       t,
       tempF: celsius === null ? null : celsiusToF(celsius),
+      dewF: dew === null ? null : celsiusToF(dew),
+      humidityPct: measure(
+        'relativeHumidity',
+        p.relativeHumidity,
+        'wmoUnit:percent',
+      ),
       windMph: kmh === null ? null : kmhToMph(kmh),
       gustMph: gust === null ? null : kmhToMph(gust),
       windDeg: measure(
