@@ -377,10 +377,15 @@ h1 {
 /* Today's observed side: what the station reported, heavier than the
    forecast beside it, and its arrows filled. */
 .series-temp-observed .line,
-.series-dew-observed .line,
 .series-cloud-observed .line {
   stroke: var(--observed);
   stroke-width: 3.5;
+}
+/* The observed dew point stays the lighter line under the temperature:
+   heavier than the forecast's, lighter than the observed temperature's. */
+.series-dew-observed .line {
+  stroke: var(--observed);
+  stroke-width: 2;
 }
 .series-gust-observed .line {
   stroke: var(--muted);
