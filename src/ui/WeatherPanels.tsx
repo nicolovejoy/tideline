@@ -36,22 +36,26 @@ export function WeatherPanels({
     <Panel
       title={one.title}
       readout={
-        <span className="readout-row">
-          {one.readout.map((part, i) => (
-            <span
-              key={`${i}-${part.text}`}
-              className={
-                part.label
-                  ? 'source'
-                  : part.key === null
-                    ? undefined
-                    : `key key-${part.key}`
-              }
-            >
-              {part.text}
+        <>
+          {one.rows.map((row, r) => (
+            <span key={r} className="readout-row">
+              {row.map((part, i) => (
+                <span
+                  key={`${i}-${part.text}`}
+                  className={
+                    part.label
+                      ? 'source'
+                      : part.key === null
+                        ? undefined
+                        : `key key-${part.key}`
+                  }
+                >
+                  {part.text}
+                </span>
+              ))}
             </span>
           ))}
-        </span>
+        </>
       }
       width={width}
       height={HEIGHT}

@@ -350,6 +350,34 @@ describe('what is read out', () => {
     expect(view.temp.bounds).toEqual([20, 100])
   })
 
+  test('without a station the rows carry no side words, and a hidden feels-like leaves the second row empty', () => {
+    const warm = loaded(
+      hourly(FIRST, 185, (hour) => {
+        if (hour.t === START + 14 * HOUR) hour.feelsF = hour.tempF! + 6
+      }),
+    )
+    const shown = weatherView(
+      warm,
+      day(0),
+      START + 14 * HOUR + 30 * MINUTE,
+      NOW,
+    )
+    expect(shown.temp.rows.map(partsText)).toEqual([
+      '64°F, dew point 45°F, 60% humidity',
+      'feels like 70°F',
+    ])
+    const hidden = weatherView(
+      warm,
+      day(0),
+      START + 10 * HOUR + 30 * MINUTE,
+      NOW,
+    )
+    expect(hidden.temp.rows).toHaveLength(2)
+    expect(hidden.temp.rows[1]).toEqual([])
+    expect(hidden.wind.rows).toHaveLength(1)
+    expect(hidden.sky.rows).toHaveLength(1)
+  })
+
   test('at the cursor the words and the dots say all four, the feels-like where shown', () => {
     const warm = loaded(
       hourly(FIRST, 185, (hour) => {
@@ -827,6 +855,22 @@ describe('today with a station', () => {
     expect(tempObs.cut).toEqual({ at: NOW, keep: 'before' })
   })
 
+  test('the temperature panel has two rows, the feels-like on the second, each with its own side words', () => {
+    const warm = loaded(
+      hourly(FIRST, 185, (hour) => {
+        hour.feelsF = hour.tempF! + 6
+      }),
+    )
+    const cursor = START + 14 * HOUR + 30 * MINUTE
+    const view = weatherView(warm, day(0), cursor, NOW, rows)
+    expect(view.temp.rows.map(partsText)).toEqual([
+      '74°F, dew point 48°F, 65% humidity, observed',
+      'feels like 70°F, forecast',
+    ])
+    expect(view.wind.rows).toHaveLength(1)
+    expect(view.sky.rows).toHaveLength(1)
+  })
+
   test('left of the line the words run the observed parts together and the feels-like after them, as forecast', () => {
     const warm = loaded(
       hourly(FIRST, 185, (hour) => {
@@ -860,7 +904,7 @@ describe('today with a station', () => {
     const cursor = START + 14 * HOUR + 30 * MINUTE
     const view = weatherView(warm, day(0), cursor, NOW, blind)
     expect(partsText(view.temp.readout)).toBe(
-      '74°F, observed; dew point 45°F, 60% humidity, feels like 70°F, forecast',
+      '74°F, observed; dew point 45°F, 60% humidity, forecast; feels like 70°F, forecast',
     )
     expect(view.temp.dots).toEqual([
       { name: 'dew', v: 45 },
