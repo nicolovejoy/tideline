@@ -340,9 +340,11 @@ h1 {
   stroke: var(--observed);
   stroke-width: 2.5;
 }
+/* The forecast is in the sea-green the tide's prediction is in, so that
+   across the app green is what was predicted and white is what happened. */
 .series-temp .line,
 .series-cloud .line {
-  stroke: var(--ink);
+  stroke: var(--sea);
 }
 .series-gust .line,
 .series-dew .line,
@@ -366,17 +368,25 @@ h1 {
    where it is calm or the forecast gives no direction. */
 .arrow path {
   fill: none;
-  stroke: var(--ink);
+  stroke: var(--sea);
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 .arrow-dot {
-  fill: var(--ink);
+  fill: var(--sea);
 }
 
-/* Today's observed side: what the station reported, heavier than the
-   forecast beside it, and its arrows filled. */
+/* Today's observed side: what the station reported, in white as the
+   observed tide is, heavier than the forecast beside it and dashed, so it
+   can be told from the forecast by colour, weight or dash alone (issue 74).
+   Its arrows are filled. The dashes are long against the gusts' dots. */
+.series-temp-observed .line,
+.series-dew-observed .line,
+.series-cloud-observed .line,
+.series-gust-observed .line {
+  stroke-dasharray: 7 5;
+}
 .series-temp-observed .line,
 .series-cloud-observed .line {
   stroke: var(--observed);
@@ -462,7 +472,7 @@ h1 {
 .dot-wind,
 .dot-temp,
 .dot-cloud {
-  fill: var(--ink);
+  fill: var(--sea);
 }
 .dot-gust,
 .dot-dew,
