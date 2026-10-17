@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { FEEL_STANDS_OUT_F, shownFeel } from './feel.ts'
+import { celsiusToF } from '../data/nws.ts'
 import type { ForecastHour } from '../data/nws.ts'
 
 function hour(change: Partial<ForecastHour>): ForecastHour {
@@ -29,6 +30,12 @@ describe('shownFeel', () => {
     expect(shownFeel(hour({ tempF: 70, feelsF: 68 }))).toBe(68)
     expect(shownFeel(hour({ tempF: 70, feelsF: 71.9 }))).toBeNull()
     expect(shownFeel(hour({ tempF: 70, feelsF: 70 }))).toBeNull()
+  })
+
+  test('two degrees reached through °C and back is still shown', () => {
+    const tempF = celsiusToF(21.11111111111111)
+    const feelsF = celsiusToF(22.22222222222222)
+    expect(shownFeel(hour({ tempF, feelsF }))).toBe(feelsF)
   })
 
   test('nothing to set it against, or no feels-like, is none', () => {

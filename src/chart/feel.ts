@@ -14,7 +14,8 @@ export const FEEL_STANDS_OUT_F = 2
  */
 export function shownFeel(hour: ForecastHour): number | null {
   if (hour.feelsF === null || hour.tempF === null) return null
-  return Math.abs(hour.feelsF - hour.tempF) >= FEEL_STANDS_OUT_F
+  // Values converted from °C and back can land a hair under a whole degree.
+  return Math.abs(hour.feelsF - hour.tempF) >= FEEL_STANDS_OUT_F - 1e-9
     ? hour.feelsF
     : null
 }
