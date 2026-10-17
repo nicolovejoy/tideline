@@ -17,8 +17,9 @@
   --ember: #f0a04b;
   --moon: #7f8ce6;
   /* The night, laid over the panels: darker than the ground, which is
-     already dark. */
-  --night: rgb(0 0 0 / 0.28);
+     already dark. Raised from 0.28 on 2026-10-16: the first user could not
+     tell the night from the day on his phone (issue 78). */
+  --night: rgb(0 0 0 / 0.55);
 
   /* Numbers are set in the rounded system face where there is one. */
   --numerals: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
