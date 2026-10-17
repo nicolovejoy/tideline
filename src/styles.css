@@ -270,6 +270,68 @@ h1 {
   background: var(--sea);
   color: var(--ground);
 }
+/* The span buttons on the left, the "?" on the right. */
+.day-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.help-button {
+  min-width: 44px;
+  min-height: 44px;
+  margin-top: 0.5rem;
+  padding: 0;
+  border: 1px solid var(--sea);
+  border-radius: 999px;
+}
+
+/* The sheet that explains the panels, over them. The page behind is
+   shaded and does not scroll; the sheet does. */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: rgb(0 0 0 / 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.sheet {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 450px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 0.75rem 16px calc(1.5rem + env(safe-area-inset-bottom));
+  border-radius: 16px 16px 0 0;
+  background: var(--ground);
+  border-top: 1px solid var(--rule);
+}
+.sheet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.sheet-head h2 {
+  font-size: 1.1333rem;
+  font-weight: 600;
+}
+.sheet-head h2:focus {
+  outline: none;
+}
+.sheet-head h2:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 2px;
+}
+.sheet-section h3 {
+  margin: 1rem 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.sheet-section p {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+}
 
 .stack {
   position: relative;

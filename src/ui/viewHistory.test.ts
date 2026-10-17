@@ -50,6 +50,7 @@ describe('viewOf', () => {
     expect(viewOf(entryFor('month'))).toBe('month')
     expect(viewOf(entryFor('add'))).toBe('add')
     expect(viewOf(entryFor('edit'))).toBe('edit')
+    expect(viewOf(entryFor('help'))).toBe('help')
     expect(viewOf({ tidelineView: 'month', other: 1 })).toBe('month')
   })
 
