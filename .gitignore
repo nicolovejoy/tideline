@@ -10,3 +10,4 @@ dist
 .env*
 # Playwright MCP session output
 .playwright-mcp/
+coverage
