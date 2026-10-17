@@ -274,6 +274,15 @@ function staircases(
   ]
 }
 
+/** The least the wind's range reaches, in mph: one rule above zero. */
+const WIND_LEAST = 10
+
+/** From zero to the next 5 mph above the highest speed or gust, 10 at least. */
+function windRange(speeds: number[]): [number, number] {
+  const [, top] = steppedBounds([0, ...speeds], 5)
+  return [0, Math.max(top, WIND_LEAST)]
+}
+
 /** The most rules a panel draws; more print their labels over each other. */
 export const MAX_RULES = 6
 
@@ -407,11 +416,19 @@ export function weatherView(
   // Left of the line at the current time the cursor reads the observed side.
   const left = today !== null && cursorT < now
 
-  // One vertical range for every day, so one day can be compared with another.
+  // The temperature has one vertical range for every day, so one day can be
+  // compared with another. The wind's follows the days on screen, from zero
+  // to 5 mph above their highest gust (issue 77): a windy day a week out would
+  // otherwise flatten a quiet day's arrows against the bottom of the panel.
   const observedHours = observed.map(asForecastHour)
-  const windBounds = steppedBounds(
-    [0, ...values([...all, ...observedHours], ['windMph', 'gustMph'])],
-    10,
+  const windBounds = windRange(
+    values(
+      [
+        ...onDay(all, selected.window),
+        ...onDay(observedHours, selected.window),
+      ],
+      ['windMph', 'gustMph'],
+    ),
   )
   const tempBounds = steppedBounds(
     values([...all, ...observedHours], ['tempF', 'feelsF', 'dewF']),

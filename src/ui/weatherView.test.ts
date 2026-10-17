@@ -206,7 +206,7 @@ describe('what is drawn', () => {
     expect(view.wind.arrows.map((a) => a.t)).not.toContain(noSpeed + HOUR / 2)
     // The gust line and the range do not change.
     expect(view.wind.series[0].points).toHaveLength(19)
-    expect(view.wind.bounds).toEqual([0, 20])
+    expect(view.wind.bounds).toEqual([0, 15])
   })
 
   test('a gust that does not stand out from the wind is left off the staircase and has no dot, but still counts in the range', () => {
@@ -251,10 +251,10 @@ describe('what is drawn', () => {
       angle: 90,
     })
     // The range still reaches the hidden gust's height, so it does not jump.
-    expect(view.wind.bounds).toEqual([0, 40])
+    expect(view.wind.bounds).toEqual([0, 35])
   })
 
-  test('one vertical range for every day, on round numbers', () => {
+  test('the temperature range is one for every day, on round numbers; the wind range follows the days on screen, to the next 5 mph', () => {
     const afternoon = START + 3 * DAY + 15 * HOUR
     const stormy = loaded(
       hourly(FIRST, 185, (hour) => {
@@ -267,9 +267,37 @@ describe('what is drawn', () => {
     )
     // Today itself has gusts of 12 and temperatures from 55 to 73.
     const view = weatherView(stormy, day(0), NOW, NOW)
-    expect(view.wind.bounds).toEqual([0, 30])
+    expect(view.wind.bounds).toEqual([0, 15])
     expect(view.temp.bounds).toEqual([40, 100])
     expect(view.sky.bounds).toEqual([0, 100])
+    // The blustery day itself, and a week that holds it (issue 77).
+    expect(weatherView(stormy, day(3), NOW, NOW).wind.bounds).toEqual([0, 25])
+    expect(weatherView(stormy, wide(day(0), 7), NOW, NOW).wind.bounds).toEqual([
+      0, 25,
+    ])
+    expect(weatherView(stormy, wide(day(0), 3), NOW, NOW).wind.bounds).toEqual([
+      0, 15,
+    ])
+  })
+
+  test('the wind range reaches 10 mph on a calm day, with rules every 10', () => {
+    const calm = loaded(
+      hourly(FIRST, 185, (hour) => {
+        hour.windMph = 0
+        hour.gustMph = null
+      }),
+    )
+    const view = weatherView(calm, day(0), NOW, NOW)
+    expect(view.wind.bounds).toEqual([0, 10])
+    expect(view.wind.rules.map((rule) => rule.v)).toEqual([0, 10])
+    const stormy = loaded(
+      hourly(FIRST, 185, (hour) => {
+        hour.gustMph = 34
+      }),
+    )
+    expect(
+      weatherView(stormy, day(0), NOW, NOW).wind.rules.map((rule) => rule.v),
+    ).toEqual([0, 10, 20, 30])
   })
 
   test('the wind range starts at zero even when it never drops that low', () => {
@@ -294,10 +322,10 @@ describe('what is drawn', () => {
       { v: 50, label: '50%' },
       { v: 100, label: '100%' },
     ])
+    // Gusts of 12 all day: the range tops out at 15.
     expect(view.wind.rules).toEqual([
       { v: 0, label: '0 mph' },
       { v: 10, label: '10 mph' },
-      { v: 20, label: '20 mph' },
     ])
     expect(view.temp.rules[0]).toEqual({ v: 40, label: '40°F' })
     const all = [...view.wind.series, ...view.temp.series, ...view.sky.series]
@@ -767,10 +795,12 @@ describe('today with a station', () => {
     })
     const view = weatherView(week, day(0), NOW, NOW, hot)
     expect(view.temp.bounds).toEqual([40, 100])
-    expect(view.wind.bounds).toEqual([0, 40])
-    expect(weatherView(week, day(1), NOW, NOW, hot).temp.bounds).toEqual([
-      40, 100,
-    ])
+    expect(view.wind.bounds).toEqual([0, 35])
+    // Tomorrow's panels do not reach today's rows: the temperature range is
+    // the week's, the wind range the day's.
+    const tomorrow = weatherView(week, day(1), NOW, NOW, hot)
+    expect(tomorrow.temp.bounds).toEqual([40, 100])
+    expect(tomorrow.wind.bounds).toEqual([0, 15])
   })
 
   test("in the first half of the current hour its arrow is the forecast's, right of the line", () => {
