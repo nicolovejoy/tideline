@@ -20,9 +20,9 @@ export default defineConfig({
     env: { TZ: 'Asia/Tokyo' },
     // `npm run coverage`. The plain modules only: the components are checked
     // in a browser, and the fixtures and the baked station list are data.
-    // Every module is counted, tested or not, so an untested one shows as 0.
+    // Every module matched is counted, tested or not, so an untested one
+    // shows as 0.
     coverage: {
-      all: true,
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.test.ts', 'src/**/__fixtures__/**'],
     },
