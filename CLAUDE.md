@@ -117,6 +117,16 @@ Decided by the owner on 2026-10-12, for that stage:
 
 Decided by the owner on 2026-10-15: the app takes the share card's look (`public/og.png`). The dark palette is the only one and light mode is gone, not opt-in.
 
+Decided with the first user in person on 2026-10-15 and relayed by the owner on 2026-10-18, for Stage B, sign-in:
+- Google sign-in only. No Apple, no Facebook.
+- Sign-in is needed only for a user's own spots. Everything else stays open, as it is now.
+- A phone's spots move to the account on first sign-in.
+- Sharing stays a link that carries the exact coordinates, viewable without an account, with no re-share controls and no revocation. "Friends" in the brief means share-by-link and nothing more. There are no social features and no friend graph, and nothing is to be designed for them; where an architecture choice would make account-based sharing easy later at no cost, the pull request notes it and builds only what is decided.
+- Photos (issue 13) are roadmap, not v1: no object storage is provisioned yet.
+- The plan to build on, pending the first user's one open answer below: Google auth, a document store for spots, the app still a static page. Sign-in does not ship before he answers.
+
+Open with the first user since 2026-10-18, asked through the ibuild4you handoff: his opinion, as an engineer, on that stack (Firebase Auth and Firestore in the owner's Google Cloud account, called from the browser). A question on the ecosystem's auth and store patterns went to prompt-lab the same day.
+
 Display convention: times and calendar days are shown in the spot's own time zone (returned by NWS `/points`), not the viewer's. Never derive a day from a UTC ISO string; use `Intl.DateTimeFormat` with an explicit `timeZone`.
 
 ## Data sources (verified against the live APIs on 2026-10-08)
@@ -164,8 +174,8 @@ Rewritten on 2026-10-17; the history this section used to carry is in the merged
 - The first user's eighth session (2026-10-17): issues 74, 75 and 77 pass; issue 78 fails, the night band's contrast too low for WCAG on every panel. The answer is the measured palette (above), first in the queue; his ninth session checks it on his iPhone at default brightness, with the ratio table in the pull request.
 - Checks still owed, none of which needs a build: the iPhone steps of pull requests 49 and 51; the owner's step 6 of pull request 50 (a spot of his own on high ground); and item 7 of Stage 1's phone check (a reopen draws at once from saved data and the captions update when the refresh lands). What they turn up is small fixes, inline.
 - The first user's seventh session (2026-10-17) closed his open answers: the 10-day forecast is descoped ("seven is fine", no address); the temperature panel's words fit on one line on his phone; the feels-like is useful and stays. The span buttons, dew point and feels-like passed. He said that before the 2026-10-17 deploy he could not tell night from day on any panel at his usual brightness; the darker band (issue 78) is the answer, and his eighth session verifies it along with the other four checks of pull requests 80 to 83.
-- After his eighth session's results, in this order: edit and delete on the three starting spots (built 2026-10-17, above); Stage B, Google sign-in (a stack discussion with Nico first; returning from sign-in to the home-screen app is a known risk); Stage C, forecast history, design only (issue 11 with issue 10).
-- Held, not for the first user yet: issue 76 (from an observed value to its station's kind and the stations near it), a status bar in the home-screen app, the phone on its side, Google sign-in (a stack discussion first) and forecast history (issue 11, sized in the issue; design only, and it needs a store, so it comes with issue 10).
+- After his eighth session's results, in this order: edit and delete on the three starting spots (built 2026-10-17, above); Stage B, Google sign-in, scoped under Decisions on 2026-10-18 and waiting on the first user's stack answer and prompt-lab's (returning from sign-in to the home-screen app is the known risk, to be spiked before the spec); Stage C, forecast history, design only (issue 11 with issue 10).
+- Held, not for the first user yet: issue 76 (from an observed value to its station's kind and the stations near it), a status bar in the home-screen app, the phone on its side, and forecast history (issue 11, sized in the issue; design only, and it needs a store, so it comes with issue 10).
 - Then from the issues, in the order the first user's use suggests: what is left of issue 8 (pinch and two-finger drag), issue 71 (waves and swell from the marine forecast), issue 33 (a calendar grid in the month view), issue 48 (addresses for views) with issue 45, issue 11 with issue 10, issue 13 last.
 - Known: the three starting spots live in each device's saved list once seeded, so a change to their data in `src/spot.ts` reaches a device only when it has no list (the seed also fills in any of the three whose id is missing, so a removed one comes back only if the list is emptied). A spot saved before 2026-10-10 has no height of its own, so it shows no tide in a cell that averages 300 ft or more and keeps a level horizon, until it is removed and added again or its pin is moved.
 - Not yet tried: a screen reader on the cursor.
