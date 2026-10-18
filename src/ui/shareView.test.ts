@@ -12,7 +12,7 @@ import {
 } from './shareView.ts'
 import type { ShareDevice } from './shareView.ts'
 import { newSpotId } from '../data/savedSpots.ts'
-import { CAMPUS_POINT, SPOTS, allSpots, isSaved, spotById } from '../spot.ts'
+import { CAMPUS_POINT, SPOTS, spotById } from '../spot.ts'
 import type { Spot } from '../spot.ts'
 
 const SITE = 'https://tideline.ibuild4you.com'
@@ -189,7 +189,7 @@ describe('parseShareLink', () => {
 })
 
 describe('spotAt', () => {
-  const spots = allSpots([HENDRYS])
+  const spots = [...SPOTS, HENDRYS]
 
   test('the spot at that point, built in or saved', () => {
     expect(spotAt(spots, { lat: 34.4046, lon: -119.844 })).toBe(CAMPUS_POINT)
@@ -228,7 +228,7 @@ describe('openedLink', () => {
   })
   test('a saved spot is found by its own link', () => {
     const search = new URL(shareUrl(HENDRYS, SITE)).search
-    const opened = openedLink(search, allSpots([HENDRYS]))
+    const opened = openedLink(search, [...SPOTS, HENDRYS])
     expect(opened.kind === 'have' && opened.spot).toBe(HENDRYS)
   })
   test('a place the device has no spot at, with the name it came with', () => {
@@ -271,8 +271,6 @@ describe('sharedSpotId', () => {
     expect(SPOTS.map((spot) => spot.id)).not.toContain(id)
     expect(id.startsWith('spot-')).toBe(false)
     expect(newSpotId().startsWith('shared-')).toBe(false)
-    // So a spot saved from a link can be removed, as any saved spot can.
-    expect(isSaved({ ...CAMPUS_POINT, id })).toBe(true)
   })
 })
 

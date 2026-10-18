@@ -43,28 +43,28 @@ afterEach(() => vi.unstubAllGlobals())
 describe('the spot', () => {
   test('is Campus Point until one is chosen', () => {
     vi.stubGlobal('localStorage', fakeStorage())
-    expect(readSpot()).toBe(CAMPUS_POINT)
+    expect(readSpot(SPOTS)).toBe(CAMPUS_POINT)
   })
 
   test('is remembered once chosen', () => {
     vi.stubGlobal('localStorage', fakeStorage())
     writeSpot(GAVIOTA)
-    expect(readSpot()).toBe(GAVIOTA)
+    expect(readSpot(SPOTS)).toBe(GAVIOTA)
   })
 
   test('a remembered id that is no longer a spot means Campus Point', () => {
     vi.stubGlobal('localStorage', fakeStorage({ 'tideline:spot': 'gone' }))
-    expect(readSpot()).toBe(CAMPUS_POINT)
+    expect(readSpot(SPOTS)).toBe(CAMPUS_POINT)
   })
 
   test('with storage disabled it is Campus Point, and choosing does not throw', () => {
     vi.stubGlobal('localStorage', brokenStorage())
-    expect(readSpot()).toBe(CAMPUS_POINT)
+    expect(readSpot(SPOTS)).toBe(CAMPUS_POINT)
     expect(() => writeSpot(GAVIOTA)).not.toThrow()
   })
 
   test('with no localStorage at all, the same', () => {
-    expect(readSpot()).toBe(CAMPUS_POINT)
+    expect(readSpot(SPOTS)).toBe(CAMPUS_POINT)
     expect(() => writeSpot(GAVIOTA)).not.toThrow()
   })
 })
@@ -76,7 +76,7 @@ describe('with saved spots', () => {
   test('readSpot finds a saved spot in the list it is given', () => {
     vi.stubGlobal('localStorage', fakeStorage({ 'tideline:spot': 'spot-abc' }))
     expect(readSpot([...SPOTS, saved])).toBe(saved)
-    expect(readSpot()).toBe(CAMPUS_POINT)
+    expect(readSpot(SPOTS)).toBe(CAMPUS_POINT)
   })
 
   test('forgetSavedSpot drops the spot and its cache', () => {

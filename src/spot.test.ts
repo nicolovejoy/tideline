@@ -3,10 +3,8 @@ import {
   CAMPUS_POINT,
   SPOTS,
   hasOwnCurve,
-  allSpots,
   hasOwnGauge,
   hasTides,
-  isSaved,
   spotById,
 } from './spot.ts'
 import gaviotaCell from './data/__fixtures__/nws-gridpoint-LOX-87-76.json'
@@ -134,23 +132,15 @@ describe('whether a spot has a tide', () => {
   })
 })
 
-describe('saved spots beside the hard-coded ones', () => {
+describe('spotById', () => {
   const saved = { ...CAMPUS_POINT, id: 'spot-abc', name: 'Leadbetter Beach' }
-  test('allSpots lists the three first, then the saved', () => {
-    expect(allSpots([saved]).map((spot) => spot.id)).toEqual([
-      'campus-point',
-      'gaviota',
-      'la-cumbre-peak',
-      'spot-abc',
-    ])
-    expect(allSpots([])).toEqual(SPOTS)
-  })
-  test('spotById finds a saved spot in the list it is given', () => {
-    expect(spotById('spot-abc', allSpots([saved]))).toBe(saved)
+  test('finds a saved spot in the list it is given', () => {
+    expect(spotById('spot-abc', [...SPOTS, saved])).toBe(saved)
     expect(spotById('spot-abc')).toBe(CAMPUS_POINT)
   })
-  test('only a saved spot can be removed', () => {
-    expect(isSaved(saved)).toBe(true)
-    expect(SPOTS.map(isSaved)).toEqual([false, false, false])
+  test('an id not in the list, or none, is the first of the list', () => {
+    expect(spotById('gone', [saved])).toBe(saved)
+    expect(spotById(null, [saved])).toBe(saved)
+    expect(spotById(null, [])).toBe(CAMPUS_POINT)
   })
 })

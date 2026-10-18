@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   SAVED_KEY,
+  SEEDED_KEY,
+  readSpots,
   addSpot,
   isSpot,
   newSpotId,
@@ -8,7 +10,7 @@ import {
   removeSpot,
   replaceSpot,
 } from './savedSpots.ts'
-import { CAMPUS_POINT } from '../spot.ts'
+import { CAMPUS_POINT, SPOTS } from '../spot.ts'
 import type { Spot } from '../spot.ts'
 
 const LEADBETTER: Spot = {
@@ -106,6 +108,53 @@ describe('readSavedSpots', () => {
     expect(readSavedSpots()).toEqual([])
     expect(addSpot(LEADBETTER)).toBe(false)
     expect(() => removeSpot('spot-abc')).not.toThrow()
+  })
+})
+
+describe('readSpots', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  const ids = (spots: Spot[]) => spots.map((spot) => spot.id)
+  const three = ['campus-point', 'gaviota', 'la-cumbre-peak']
+
+  test('a new device gets the three starting spots, written and marked', () => {
+    const storage = fakeStorage()
+    vi.stubGlobal('localStorage', storage)
+    expect(ids(readSpots())).toEqual(three)
+    expect(ids(readSavedSpots())).toEqual(three)
+    expect(storage.getItem(SEEDED_KEY)).not.toBeNull()
+  })
+
+  test('a device with spots saved before the seed keeps them after the three', () => {
+    vi.stubGlobal(
+      'localStorage',
+      fakeStorage({ [SAVED_KEY]: JSON.stringify([LEADBETTER]) }),
+    )
+    expect(ids(readSpots())).toEqual([...three, 'spot-abc'])
+  })
+
+  test("once seeded, the list is the user's: a removed starting spot stays gone", () => {
+    const storage = fakeStorage()
+    vi.stubGlobal('localStorage', storage)
+    readSpots()
+    removeSpot('gaviota')
+    replaceSpot('campus-point', { ...CAMPUS_POINT, name: 'The Point' })
+    expect(readSpots().map((spot) => spot.name)).toEqual([
+      'The Point',
+      'La Cumbre Peak',
+    ])
+  })
+
+  test('an empty list is seeded again, so there is always a spot', () => {
+    vi.stubGlobal(
+      'localStorage',
+      fakeStorage({ [SEEDED_KEY]: '1', [SAVED_KEY]: '[]' }),
+    )
+    expect(ids(readSpots())).toEqual(three)
+  })
+
+  test('with storage disabled the three are the list, unsaved', () => {
+    vi.stubGlobal('localStorage', brokenStorage())
+    expect(readSpots()).toEqual(SPOTS)
   })
 })
 

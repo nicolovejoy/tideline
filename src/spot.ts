@@ -94,21 +94,18 @@ const LA_CUMBRE_PEAK: Spot = {
   gauge: { ...SANTA_BARBARA, distanceMi: 6.3, direction: 'south' },
 }
 
+/**
+ * The three spots a device starts with. They are seeded into the saved
+ * list the first time the app reads it (`readSpots` in
+ * `src/data/savedSpots.ts`), and from then on are the user's as any added
+ * spot is: renamed, moved or removed from the edit screen. Nothing else
+ * reads this list.
+ */
 export const SPOTS: Spot[] = [CAMPUS_POINT, GAVIOTA, LA_CUMBRE_PEAK]
 
-/** The hard-coded spots followed by the saved ones. */
-export function allSpots(saved: Spot[]): Spot[] {
-  return saved.length === 0 ? SPOTS : [...SPOTS, ...saved]
-}
-
-/** The spot with that id in the list. Any other id, or none, means Campus Point. */
+/** The spot with that id in the list. Any other id, or none, means the first in the list. */
 export function spotById(id: string | null, spots: Spot[] = SPOTS): Spot {
-  return spots.find((spot) => spot.id === id) ?? SPOTS[0]
-}
-
-/** Whether the user added this spot, so it can be removed. */
-export function isSaved(spot: Spot): boolean {
-  return !SPOTS.some((built) => built.id === spot.id)
+  return spots.find((spot) => spot.id === id) ?? spots[0] ?? SPOTS[0]
 }
 
 /** What the tide rule goes by. */

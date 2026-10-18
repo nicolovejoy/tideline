@@ -6,7 +6,7 @@
 
 import { forgetSpot } from '../data/cache.ts'
 import { removeSpot } from '../data/savedSpots.ts'
-import { SPOTS, spotById } from '../spot.ts'
+import { spotById } from '../spot.ts'
 import type { Spot } from '../spot.ts'
 import { SPANS } from './spanView.ts'
 import type { SpanChoice } from './spanView.ts'
@@ -55,7 +55,7 @@ function sessionRemove(key: string): void {
 }
 
 /** The spot last chosen, from the list. Nothing chosen, or a spot since gone, is the first. */
-export function readSpot(spots: Spot[] = SPOTS): Spot {
+export function readSpot(spots: Spot[]): Spot {
   return spotById(read(SPOT_KEY), spots)
 }
 

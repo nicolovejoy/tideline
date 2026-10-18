@@ -3,10 +3,13 @@
 // storage disabled still works. Each entry is checked on read: a damaged
 // one, or one from another build, is dropped rather than break every open.
 
+import { SPOTS } from '../spot.ts'
 import type { Spot, Station } from '../spot.ts'
 import { evictCache } from './cache.ts'
 
 export const SAVED_KEY = 'tideline:spots:v1'
+/** Set once the three starting spots have been written into the list. */
+export const SEEDED_KEY = 'tideline:spots:seeded:v1'
 
 function isStation(value: unknown): value is Station {
   if (typeof value !== 'object' || value === null) return false
@@ -74,6 +77,38 @@ function writeSavedSpots(spots: Spot[]): boolean {
       return false
     }
   }
+}
+
+function isSeeded(): boolean {
+  try {
+    return localStorage.getItem(SEEDED_KEY) !== null
+  } catch {
+    return false
+  }
+}
+
+function markSeeded(): void {
+  try {
+    localStorage.setItem(SEEDED_KEY, '1')
+  } catch {
+    // Not kept; the next read seeds again, which changes nothing.
+  }
+}
+
+/**
+ * The device's spots: the saved list, seeded the first time with the three
+ * starting spots in front of whatever was saved before them. Once seeded the
+ * three are ordinary saved spots, so the user can rename, move or remove
+ * them. A device whose list is empty is seeded again, so there is always a
+ * spot to show; with storage disabled the three are the list each time.
+ */
+export function readSpots(): Spot[] {
+  const saved = readSavedSpots()
+  if (isSeeded() && saved.length > 0) return saved
+  const missing = SPOTS.filter((one) => !saved.some((s) => s.id === one.id))
+  const spots = [...missing, ...saved]
+  if (writeSavedSpots(spots)) markSeeded()
+  return spots
 }
 
 /** Keeps the spot on the device; false when it could not be kept. */
