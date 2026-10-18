@@ -125,7 +125,7 @@ Decided with the first user in person on 2026-10-15 and relayed by the owner on 
 - Photos (issue 13) are roadmap, not v1: no object storage is provisioned yet.
 - The plan to build on, pending the first user's one open answer below: Google auth, a document store for spots, the app still a static page. Sign-in does not ship before he answers.
 
-Open with the first user since 2026-10-18, asked through the ibuild4you handoff: his opinion, as an engineer, on that stack (Firebase Auth and Firestore in the owner's Google Cloud account, called from the browser). A question on the ecosystem's auth and store patterns went to prompt-lab the same day.
+Open with the first user since 2026-10-18, asked through the ibuild4you handoff: his opinion, as an engineer, on that stack (Firebase Auth and Firestore in the owner's Google Cloud account, called from the browser). Prompt-lab answered the ecosystem questions the same day: the leaning holds, copy MusicForge (same-site auth handler, popup, `users/{uid}/spots`, rules tested in the emulator), not Garm. The plan, the owner's console steps and the home-screen sign-in spike are in `docs/superpowers/specs/2026-10-18-stage-b-sign-in-plan.md`.
 
 Display convention: times and calendar days are shown in the spot's own time zone (returned by NWS `/points`), not the viewer's. Never derive a day from a UTC ISO string; use `Intl.DateTimeFormat` with an explicit `timeZone`.
 
