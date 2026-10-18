@@ -44,6 +44,7 @@ export const WORDS = {
   remove: 'Remove this spot',
   removeYes: 'Yes, remove',
   removeNo: 'Keep',
+  lastSpot: 'This is the only spot. Add another before removing it.',
   separator: '·',
 } as const
 

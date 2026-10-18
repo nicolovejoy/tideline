@@ -39,7 +39,7 @@ export interface AddSpotProps {
   editing?: Spot
   onSave: (spot: Spot) => void
   onCancel: () => void
-  /** Given with `editing`: the spot can be removed from here. */
+  /** Given with `editing`: the spot can be removed from here. Left out for the last spot, which stays. */
   onRemove?: () => void
 }
 
@@ -343,6 +343,9 @@ export default function AddSpot({
             </button>
           </p>
         ))}
+      {editing && !onRemove && (
+        <p className="caption remove-spot">{WORDS.lastSpot}</p>
+      )}
     </section>
   )
 }

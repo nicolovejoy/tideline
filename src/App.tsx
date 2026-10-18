@@ -1,7 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { forgetSpot } from './data/cache.ts'
-import { readSavedSpots, addSpot, replaceSpot } from './data/savedSpots.ts'
-import { SPOTS, allSpots, isSaved } from './spot.ts'
+import { readSpots, addSpot, replaceSpot } from './data/savedSpots.ts'
 import type { Spot } from './spot.ts'
 import { WORDS } from './ui/addSpotView.ts'
 import { AddSpotUnavailable } from './ui/AddSpotUnavailable.tsx'
@@ -24,13 +23,12 @@ const AddSpot = lazy(() =>
 )
 
 export default function App() {
-  const [saved, setSaved] = useState<Spot[]>(readSavedSpots)
+  // The device's spots, the three it started with among them.
+  const [spots, setSpots] = useState<Spot[]>(readSpots)
   // What the address asked for, read once as the page starts.
-  const [opened] = useState(() =>
-    openedLink(window.location.search, allSpots(saved)),
-  )
+  const [opened] = useState(() => openedLink(window.location.search, spots))
   const [spot, setSpot] = useState<Spot>(() =>
-    opened.kind === 'have' ? opened.spot : readSpot(allSpots(saved)),
+    opened.kind === 'have' ? opened.spot : readSpot(spots),
   )
   // The point of a link the device has no spot at, until it is saved or
   // closed. While there is one its screen is the page.
@@ -38,18 +36,12 @@ export default function App() {
     opened.kind === 'new' ? opened.point : null,
   )
   // The add screen and the edit screen each have an entry in the browser's
-  // history, so going back closes them. An edit is only of a saved spot: a
-  // reload can bring the edit view up with a built-in one chosen, and then
-  // the forecast is shown and the entry taken off.
+  // history, so going back closes them.
   const view = useView()
   const adding = view === 'add'
-  const editing = view === 'edit' && isSaved(spot)
-  useEffect(() => {
-    if (view === 'edit' && !isSaved(spot)) closeView()
-  }, [view, spot])
+  const editing = view === 'edit'
   // The id of a spot that could not be kept on the device, said on its screen.
   const [notKept, setNotKept] = useState<string | null>(null)
-  const spots = allSpots(saved)
 
   // A link to a spot the device has is a choice of that spot, as a tap on
   // the row is, and is dealt with as soon as it is read.
@@ -67,7 +59,7 @@ export default function App() {
   }
   const saveSpot = (next: Spot) => {
     setNotKept(addSpot(next) ? null : next.id)
-    setSaved([...saved, next])
+    setSpots([...spots, next])
     selectSpot(next)
     window.scrollTo(0, 0)
   }
@@ -77,14 +69,17 @@ export default function App() {
   const editSpot = (next: Spot) => {
     if (next.id !== spot.id) forgetSpot(spot.id)
     setNotKept(replaceSpot(spot.id, next) ? null : next.id)
-    setSaved(saved.map((each) => (each.id === spot.id ? next : each)))
+    setSpots(spots.map((each) => (each.id === spot.id ? next : each)))
     selectSpot(next)
     window.scrollTo(0, 0)
   }
+  // The last spot cannot be removed, so there is always one left to show:
+  // the first of the rest.
   const removeSpot = () => {
+    const rest = spots.filter((each) => each.id !== spot.id)
     forgetSavedSpot(spot)
-    setSaved(saved.filter((each) => each.id !== spot.id))
-    selectSpot(SPOTS[0])
+    setSpots(rest)
+    selectSpot(rest[0])
     window.scrollTo(0, 0)
   }
   // Either way out of a shared spot deals with the link.
@@ -127,7 +122,7 @@ export default function App() {
             editing={editing ? spot : undefined}
             onSave={editing ? editSpot : saveSpot}
             onCancel={closeView}
-            onRemove={editing ? removeSpot : undefined}
+            onRemove={editing && spots.length > 1 ? removeSpot : undefined}
           />
         </Suspense>
         <BuildStamp />
@@ -141,15 +136,13 @@ export default function App() {
         <h1 className="title">Tideline</h1>
         <div className="spot-line">
           <p className="subtitle">{spotSubtitle(spot)}</p>
-          {isSaved(spot) && (
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => openView('edit')}
-            >
-              {WORDS.edit}
-            </button>
-          )}
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => openView('edit')}
+          >
+            {WORDS.edit}
+          </button>
         </div>
       </header>
       <SpotSwitcher
