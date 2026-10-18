@@ -18,6 +18,10 @@ export default defineConfig({
     // that is in the viewer's zone, when the build was made, asks for it by
     // name (`deviceTimeZone` in `src/time.ts`).
     env: { TZ: 'Asia/Tokyo' },
+    // Hand a `.css?raw` import the stylesheet's text, which the palette's
+    // contrast test reads; without this Vitest replaces every stylesheet with
+    // an empty string.
+    css: true,
     // `npm run coverage`. The plain modules only: the components are checked
     // in a browser, and the fixtures and the baked station list are data.
     // Every module matched is counted, tested or not, so an untested one
