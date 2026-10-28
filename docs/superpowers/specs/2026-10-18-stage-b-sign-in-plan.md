@@ -47,6 +47,8 @@ Nobody in the ecosystem has written down a sign-in from inside an iPhone home-sc
 - **What it decides.** Popup passes: build with popup as the three apps do. Only redirect passes: build with redirect. Neither passes in standalone mode: sign-in is done in Safari and the home-screen app reads the session, which needs a design pass of its own before the spec.
 - **Half a day**, plus the console steps.
 
+**Result, 2026-10-27, on the owner's iPhone.** Both flows pass in standalone mode. The spike ran at `https://tideline-spike.vercel.app/spike.html`, a second Vercel project built from the branch `spike/home-screen-sign-in` with Vercel Authentication off, the Firebase project `tideline-ibuild4you`, and the handler rewrite to `tideline-ibuild4you.firebaseapp.com`. In Safari, popup: Google's chooser, back on the page with the email, 8 seconds. Added to the home screen and opened from there, the page said "standalone"; popup: back in the home-screen app with the email, 11 seconds, no detour through Safari; redirect: a white flash and back signed in, 1 second, with Google's chooser skipped because the popup a minute before had left a Google session in the app's web view. Decision: **build with popup**, as the three apps do, with redirect a working fallback. Add to Home Screen from the spike page kept its own manifest's start page, so a page's manifest is honoured over the site's.
+
 ## The build, after the spike and the first user's answer
 
 Four pull requests, each reviewed and checked on production as the working agreement says. The spec that comes before the first of them names the words on every screen; this plan names the pieces.
@@ -63,5 +65,5 @@ Apple or Facebook sign-in; account-based sharing, friends, anything social; phot
 ## Open
 
 1. The first user's opinion on the stack. Through ibuild4you; sign-in does not ship before it.
-2. The spike's result on the iPhone home screen.
+2. ~~The spike's result on the iPhone home screen.~~ Both flows pass (above, 2026-10-27).
 3. Spark or Blaze. Spark to start, with the quota failure worded correctly; Blaze when reads grow or a server job comes.
