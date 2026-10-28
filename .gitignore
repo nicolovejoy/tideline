@@ -8,6 +8,8 @@ dist
 *.log
 .DS_Store
 .env*
+# The example holds names, not values.
+!.env.tpl
 # Playwright MCP session output
 .playwright-mcp/
 coverage
