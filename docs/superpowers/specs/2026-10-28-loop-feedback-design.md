@@ -12,8 +12,8 @@ Tapping it slides up a sheet, as the "?" sheet does: the heading "Send feedback"
 
 - Three buttons, Bug, Idea and Other, one pressed; Bug at first.
 - A box for the note, labelled "What happened, or what would help", up to 5,000 characters.
-- A field labelled "Email, if you would like an answer". Signed in, it holds the account's email, and can be changed or cleared. Signed out it is empty, with the line "Signed in, this is filled in for you." under it.
-- A box, ticked, "Include an outline of this screen", and under it "What is sent", which opens to show the outline: the headings, button and field names on the page, never what was typed.
+- A field labelled "Email, if you would like an answer". Signed in, it holds the account's email, and can be changed or cleared; until it is typed in, it follows the account, so an account still loading when the sheet opens fills it when it arrives. Signed out it is empty, with the line "Signed in, this is filled in for you." under it; while the account is still loading the line is not shown (`showsEmailHint`).
+- A box, ticked, "Include an outline of this screen", and under it "What is sent", which opens to show the outline: the headings, button and field names on the page, the spots' names among them, never what was typed into a field.
 - The line "The page's address goes with it, and for a shared spot that is its name and place."
 - Send. While it is sending it says "Sending…" and cannot be pressed again.
 
@@ -23,9 +23,9 @@ Sent, the sheet says "Sent. Thank you." with "Send another", which brings back a
 - Too many from this connection (429): "Too many notes from here. Try again in 3 minutes.", from `Retry-After` rounded up to whole minutes ("1 minute" for one), or without the time when there is none.
 - Unknown project (404): "Feedback is not set up for Tideline yet."
 - Anything else: "Could not send. Try again."
-- Before sending, an empty note: "Write a note first."; an email without the shape of one: "That email does not look right."
+- Before sending, an empty note: "Write a note first."; a note over 5,000 characters, which the box's cap should prevent: "Keep the note under 5,000 characters."; an email without the shape of one: "That email does not look right."
 
-Close, a tap on the shaded page behind, Escape or going back closes the sheet, as the help sheet's do. A reload with the sheet up brings it back, empty.
+Close, Escape or going back closes the sheet, as the help sheet's do. A tap on the shaded page behind closes it only while the note is empty, and only when the press began there too; while a note is written it does nothing, so a stray tap does not lose it (`backdropCloses`). A reload with the sheet up brings it back, empty.
 
 ## Where the button is
 

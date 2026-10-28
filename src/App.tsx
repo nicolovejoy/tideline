@@ -8,7 +8,7 @@ import { AddSpotUnavailable } from './ui/AddSpotUnavailable.tsx'
 import { BuildStamp } from './ui/BuildStamp.tsx'
 import { FeedbackButton } from './ui/FeedbackButton.tsx'
 import { FeedbackSheet } from './ui/FeedbackSheet.tsx'
-import { initialEmail } from './ui/feedbackView.ts'
+import { initialEmail, showsEmailHint } from './ui/feedbackView.ts'
 import { forgetSavedSpot, readSpot, writeSpot } from './ui/choices.ts'
 import { spotSubtitle } from './ui/captions.ts'
 import { InstallHint } from './ui/InstallHint.tsx'
@@ -114,6 +114,7 @@ export default function App() {
       {view === 'feedback' && (
         <FeedbackSheet
           email={initialEmail(account.account)}
+          hinted={showsEmailHint(account.account)}
           onClose={closeView}
         />
       )}

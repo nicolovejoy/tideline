@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'vitest'
 import {
+  backdropCloses,
   failureWords,
   initialEmail,
   invalidWords,
+  showsEmailHint,
   TYPES,
   WORDS,
 } from './feedbackView.ts'
@@ -44,13 +46,19 @@ describe('failureWords', () => {
 
 describe('invalidWords', () => {
   test('each field has its sentence', () => {
-    const bad = (field: 'projectId' | 'type' | 'body' | 'submitterEmail') =>
-      invalidWords({ ok: false, field, message: 'x' })
+    const bad = (
+      field: 'projectId' | 'type' | 'body' | 'submitterEmail',
+      body = '',
+    ) => invalidWords({ ok: false, field, message: 'x' }, body)
     expect(bad('body')).toBe('Write a note first.')
+    expect(bad('body', '   ')).toBe('Write a note first.')
+    expect(bad('body', 'x'.repeat(5001))).toBe(
+      'Keep the note under 5,000 characters.',
+    )
     expect(bad('submitterEmail')).toBe('That email does not look right.')
     expect(bad('projectId')).toBe('Could not send. Try again.')
     expect(bad('type')).toBe('Could not send. Try again.')
-    expect(invalidWords({ ok: true })).toBeNull()
+    expect(invalidWords({ ok: true }, 'hi')).toBeNull()
   })
 })
 
@@ -61,6 +69,26 @@ describe('initialEmail', () => {
     expect(initialEmail({ kind: 'out' })).toBe('')
     expect(initialEmail({ kind: 'loading', tapped: false })).toBe('')
     expect(initialEmail({ kind: 'failed', words: 'x' })).toBe('')
+  })
+})
+
+describe('showsEmailHint', () => {
+  test('only where the account is known to be signed out', () => {
+    expect(showsEmailHint({ kind: 'out' })).toBe(true)
+    expect(showsEmailHint({ kind: 'failed', words: 'x' })).toBe(true)
+    expect(showsEmailHint({ kind: 'loading', tapped: false })).toBe(false)
+    expect(showsEmailHint({ kind: 'loading', tapped: true })).toBe(false)
+    expect(showsEmailHint({ kind: 'in', email: 'a@b.co' })).toBe(false)
+    expect(showsEmailHint({ kind: 'in', email: null })).toBe(false)
+  })
+})
+
+describe('backdropCloses', () => {
+  test('a tap behind the sheet closes it only while the note is empty', () => {
+    expect(backdropCloses('')).toBe(true)
+    expect(backdropCloses('  \n ')).toBe(true)
+    expect(backdropCloses('a')).toBe(false)
+    expect(backdropCloses('  half a note ')).toBe(false)
   })
 })
 

@@ -8,11 +8,19 @@ import {
 } from '../data/feedback/payload.ts'
 import type { FeedbackType } from '../data/feedback/payload.ts'
 import { LOOP, sendFeedback } from '../data/loop.ts'
-import { TYPES, WORDS, failureWords, invalidWords } from './feedbackView.ts'
+import {
+  TYPES,
+  WORDS,
+  backdropCloses,
+  failureWords,
+  invalidWords,
+} from './feedbackView.ts'
 
 interface FeedbackSheetProps {
-  /** The email the box starts with: the account's, or empty. */
+  /** The account's email, or empty. The box follows it until typed in. */
   email: string
+  /** Whether the line that says signing in fills the box is shown. */
+  hinted: boolean
   onClose: () => void
 }
 
@@ -20,18 +28,21 @@ type Status = 'idle' | 'sending' | 'sent'
 
 /**
  * The sheet that sends a note to Loop, over the page. It opens and closes
- * as the help sheet does. A note that did not go stays in the box with the
+ * as the help sheet does, but for a tap on the page behind, which does
+ * nothing while a note is written. A note that did not go stays in the box with the
  * sentence that says why; only a sent one is cleared. The sheet and its
  * backdrop leave themselves out of the outline. The words are in
  * `feedbackView.ts`.
  */
-export function FeedbackSheet({ email, onClose }: FeedbackSheetProps) {
+export function FeedbackSheet({ email, hinted, onClose }: FeedbackSheetProps) {
   const heading = useRef<HTMLHeadingElement>(null)
+  const anotherButton = useRef<HTMLButtonElement>(null)
   const [type, setType] = useState<FeedbackType>('bug')
   const [body, setBody] = useState('')
-  const [submitterEmail, setSubmitterEmail] = useState(email)
-  // The hint is for a box that started empty, and stays whatever is typed.
-  const [hinted] = useState(email === '')
+  // What was typed in the email box, or null while it has not been touched:
+  // until then it follows the account, which may still be loading.
+  const [typedEmail, setTypedEmail] = useState<string | null>(null)
+  const submitterEmail = typedEmail ?? email
   // The honeypot: a person never sees it, so it stays empty.
   const [website, setWebsite] = useState('')
   const [capture, setCapture] = useState(true)
@@ -42,6 +53,9 @@ export function FeedbackSheet({ email, onClose }: FeedbackSheetProps) {
   const renderedAt = useRef(0)
   // A second tap before the button is drawn disabled sends nothing.
   const sending = useRef(false)
+  // Whether the press began on the page behind, so a selection dragged out
+  // of the box and let go there does not close the sheet.
+  const pressedBehind = useRef(false)
 
   useEffect(() => {
     renderedAt.current = Date.now()
@@ -50,7 +64,7 @@ export function FeedbackSheet({ email, onClose }: FeedbackSheetProps) {
   useEffect(() => {
     heading.current?.focus({ preventScroll: true })
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape' && !event.isComposing) onClose()
     }
     window.addEventListener('keydown', onKey)
     const { overflow } = document.body.style
@@ -61,11 +75,17 @@ export function FeedbackSheet({ email, onClose }: FeedbackSheetProps) {
     }
   }, [onClose])
 
+  // Sent, the focus goes to Send another, so it stays in the sheet and the
+  // change is read out.
+  useEffect(() => {
+    if (status === 'sent') anotherButton.current?.focus({ preventScroll: true })
+  }, [status])
+
   const send = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (sending.current) return
     const input = { projectId: LOOP.projectId, type, body, submitterEmail }
-    const invalid = invalidWords(validateFeedbackInput(input))
+    const invalid = invalidWords(validateFeedbackInput(input), body)
     setSentence(invalid)
     if (invalid) return
     const payload = {
@@ -97,7 +117,7 @@ export function FeedbackSheet({ email, onClose }: FeedbackSheetProps) {
   }
 
   // The next note keeps its type and email, and is timed from now.
-  const another = () => {
+  const sendAnother = () => {
     renderedAt.current = Date.now()
     setStatus('idle')
   }
@@ -109,13 +129,22 @@ export function FeedbackSheet({ email, onClose }: FeedbackSheetProps) {
   }
 
   return (
-    <div className="sheet-backdrop" data-loop-redact="" onClick={onClose}>
+    <div
+      className="sheet-backdrop"
+      data-loop-redact=""
+      onPointerDown={(event) => {
+        pressedBehind.current = event.target === event.currentTarget
+      }}
+      onClick={(event) => {
+        const behind = event.target === event.currentTarget
+        if (behind && pressedBehind.current && backdropCloses(body)) onClose()
+      }}
+    >
       <section
         className="sheet"
         role="dialog"
         aria-modal="true"
         aria-labelledby="feedback-title"
-        onClick={(event) => event.stopPropagation()}
       >
         <header className="sheet-head">
           <h2 id="feedback-title" ref={heading} tabIndex={-1}>
@@ -130,7 +159,12 @@ export function FeedbackSheet({ email, onClose }: FeedbackSheetProps) {
             <p className="notice" role="status">
               {WORDS.sent}
             </p>
-            <button type="button" className="text-button" onClick={another}>
+            <button
+              ref={anotherButton}
+              type="button"
+              className="text-button"
+              onClick={sendAnother}
+            >
               {WORDS.another}
             </button>
           </div>
@@ -166,14 +200,13 @@ export function FeedbackSheet({ email, onClose }: FeedbackSheetProps) {
                 type="email"
                 autoComplete="email"
                 value={submitterEmail}
-                onChange={(event) => setSubmitterEmail(event.target.value)}
+                onChange={(event) => setTypedEmail(event.target.value)}
               />
               {hinted && <p className="caption">{WORDS.emailHint}</p>}
             </div>
             <input
               className="feedback-honeypot"
               type="text"
-              name="website"
               tabIndex={-1}
               autoComplete="off"
               aria-hidden="true"
