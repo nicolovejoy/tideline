@@ -10,6 +10,9 @@
 // missing or the SDK would not load (offline, or a home-screen app left open
 // past a deploy, so its chunk is gone), is `unavailable()`: the device's
 // record that it has signed in stays, and the next tap tries again.
+// Browsers remember a failed chunk import until the page reloads, so a
+// failed load is reported as its own error, `SdkUnavailable`, for the row to
+// word.
 
 import type { Auth, User } from 'firebase/auth'
 import type { AccountUser } from '../ui/accountView.ts'
@@ -22,6 +25,14 @@ export class NotConfigured extends Error {
     super(`Firebase is not configured: ${missing.join(', ')} missing`)
     this.name = 'NotConfigured'
     this.missing = missing
+  }
+}
+
+/** The SDK's chunk could not be loaded; the import's error is `cause`. */
+export class SdkUnavailable extends Error {
+  constructor(cause?: unknown) {
+    super('The sign-in code could not be loaded', { cause })
+    this.name = 'SdkUnavailable'
   }
 }
 
@@ -46,12 +57,17 @@ function ready(): Promise<Ready | NotConfigured> {
   const started = Promise.all([
     import('firebase/app'),
     import('firebase/auth'),
-  ]).then(([{ getApp, getApps, initializeApp }, sdk]) => {
-    // A retry after `getAuth` threw finds the app already registered, and a
-    // second `initializeApp` would fail as a duplicate.
-    const app = getApps().length ? getApp() : initializeApp(config)
-    return { auth: sdk.getAuth(app), sdk }
-  })
+  ]).then(
+    ([{ getApp, getApps, initializeApp }, sdk]) => {
+      // A retry after `getAuth` threw finds the app already registered, and a
+      // second `initializeApp` would fail as a duplicate.
+      const app = getApps().length ? getApp() : initializeApp(config)
+      return { auth: sdk.getAuth(app), sdk }
+    },
+    (error: unknown) => {
+      throw new SdkUnavailable(error)
+    },
+  )
   started.catch(() => {
     if (pending === started) pending = null
   })
@@ -111,7 +127,10 @@ export function watchUser(
   }
 }
 
-/** Google's sign-in in a popup. Throws `NotConfigured`, or the SDK's error. */
+/**
+ * Google's sign-in in a popup. Throws `NotConfigured`, `SdkUnavailable`, or
+ * the SDK's error.
+ */
 export async function signIn(): Promise<AccountUser> {
   const r = await ready()
   if (r instanceof NotConfigured) throw new NotConfigured(r.missing)

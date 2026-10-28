@@ -3,6 +3,8 @@
 // The flag is why the sign-in code loads at start-up on a device that has
 // used it and waits for a tap on one that has not.
 
+import { SdkUnavailable } from '../data/firebase.ts'
+
 /** What the row needs to know about the signed-in user. */
 export type AccountUser = { email: string | null }
 
@@ -45,8 +47,14 @@ const FAILURES: Record<string, string | null> = {
 
 const DID_NOT_FINISH = 'Sign-in did not finish. Try again.'
 
+// The sign-in code's chunk did not load. The browser will not fetch it again
+// until the page reloads, so trying again is not enough.
+export const SDK_UNAVAILABLE =
+  'Sign-in could not load. Reload the page and try again.'
+
 /** The sentence for a failed sign-in, or null where nothing is to be said. */
 export function failureWords(error: unknown): string | null {
+  if (error instanceof SdkUnavailable) return SDK_UNAVAILABLE
   const code = (error as { code?: unknown } | null | undefined)?.code
   if (typeof code !== 'string') return DID_NOT_FINISH
   if (code in FAILURES) return FAILURES[code]

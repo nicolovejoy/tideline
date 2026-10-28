@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
+import { SdkUnavailable } from '../data/firebase.ts'
 import {
   clearSeen,
   emailWords,
@@ -50,6 +51,12 @@ describe('failureWords', () => {
       'Sign-in did not finish. Try again.',
     )
     expect(failureWords(undefined)).toBe('Sign-in did not finish. Try again.')
+  })
+
+  test('a sign-in code that could not load says to reload the page', () => {
+    expect(failureWords(new SdkUnavailable())).toBe(
+      'Sign-in could not load. Reload the page and try again.',
+    )
   })
 })
 
