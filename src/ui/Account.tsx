@@ -1,12 +1,17 @@
 import { WORDS, emailWords, loadingWords } from './accountView.ts'
-import { useAccount } from './useAccount.ts'
+import type { useAccount } from './useAccount.ts'
 
 /**
  * One line under the spot's name: the sign-in button, or the email and
  * Sign out. A caption when signed in and a failure's sentence go under it.
+ * The hook is the page's, so the feedback sheet reads the same account.
  */
-export function Account() {
-  const { account, signIn, signOut, warm } = useAccount()
+export function Account({
+  account,
+  signIn,
+  signOut,
+  warm,
+}: ReturnType<typeof useAccount>) {
   return (
     <>
       <div className="account">

@@ -1,12 +1,13 @@
 // Which view is up over the forecast, the month view, the add screen, the
-// edit screen or the help sheet, and the browser history that lets going back close it. A view
-// puts one entry in the history, at the address the page already has, so
-// going back lands on the forecast and not on whatever came before the site.
-// The browser is handed in, so all of this is tested with a stand-in.
+// edit screen, the help sheet or the feedback sheet, and the browser history
+// that lets going back close it. A view puts one entry in the history, at
+// the address the page already has, so going back lands on the forecast and
+// not on whatever came before the site. The browser is handed in, so all of
+// this is tested with a stand-in.
 
-export type View = 'month' | 'add' | 'edit' | 'help'
+export type View = 'month' | 'add' | 'edit' | 'help' | 'feedback'
 
-const VIEWS: readonly View[] = ['month', 'add', 'edit', 'help']
+const VIEWS: readonly View[] = ['month', 'add', 'edit', 'help', 'feedback']
 
 /** What a view's history entry carries. */
 export interface ViewEntry {

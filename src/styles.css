@@ -51,13 +51,14 @@ body {
 }
 
 /* Opened from the home screen, the page runs under the status bar and the
-   home indicator, so each edge keeps clear of its safe area. */
+   home indicator, so each edge keeps clear of its safe area. The foot has
+   room for the Feedback button, so the build stamp is not under it. */
 main {
   max-width: 30rem;
   margin: 0 auto;
   padding: max(1.25rem, env(safe-area-inset-top))
     max(1rem, env(safe-area-inset-right))
-    calc(2.5rem + env(safe-area-inset-bottom))
+    calc(2.5rem + 44px + env(safe-area-inset-bottom))
     max(1rem, env(safe-area-inset-left));
 }
 
@@ -301,7 +302,8 @@ h1 {
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
-.span-choice[aria-checked='true'] {
+.span-choice[aria-checked='true'],
+.span-choice[aria-pressed='true'] {
   background: var(--sea);
   color: var(--ground);
 }
@@ -366,6 +368,109 @@ h1 {
 .sheet-section p {
   margin: 0 0 0.5rem;
   color: var(--muted);
+}
+
+/* The Feedback button, at the bottom right of the window over the page,
+   clear of the home indicator. Under a sheet's backdrop. */
+.feedback-button {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 5;
+  min-height: 44px;
+  padding: 0.3rem 1rem;
+  border: 1px solid var(--sea);
+  border-radius: 999px;
+  background: var(--ground);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.feedback-button:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 2px;
+}
+/* The feedback sheet's form: one control under another, the sheet's
+   width. */
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+.feedback-form .field,
+.feedback-form .notice,
+.feedback-form .caption {
+  margin-top: 0;
+}
+/* A label over its box. Doubled, to outweigh .field, which comes later. */
+.field.feedback-field {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+.field input[type='email'],
+.field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  /* Under 16px, iOS Safari zooms the page when the field takes focus. */
+  font-size: 16px;
+}
+.field textarea {
+  resize: vertical;
+}
+.field input[type='email']:focus-visible,
+.field textarea:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 1px;
+}
+/* The honeypot, off the screen and out of reach. */
+.feedback-honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.feedback-more {
+  margin-top: 0.25rem;
+  font-size: 0.8667rem;
+}
+.feedback-more summary {
+  color: var(--sea);
+  font-weight: 600;
+  cursor: pointer;
+}
+.feedback-more summary:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 2px;
+}
+.feedback-more pre {
+  max-height: 10rem;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem;
+  overflow: auto;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.7333rem;
+  white-space: pre-wrap;
+}
+.feedback-form .span-row,
+.feedback-form .text-button {
+  margin-top: 0;
+}
+.feedback-form .text-button:not(.span-choice) {
+  align-self: flex-start;
 }
 
 .stack {
@@ -848,7 +953,8 @@ h1 {
 }
 /* Save, once it can save, has the chosen spot's look, so it does not read
    as one more muted chip. */
-.add-actions .spot-choice:enabled {
+.add-actions .spot-choice:enabled,
+.feedback-send:enabled {
   border-color: var(--sea);
   background: var(--sea-fill);
   color: var(--ink);
