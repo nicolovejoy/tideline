@@ -1,6 +1,7 @@
 // The only file that touches Firebase. The SDK is loaded with a dynamic
-// import the first time something asks for the user, so it is a chunk of its
-// own and the forecast page never pays for it. The auth domain is the page's
+// import the first time it is wanted, to ask for the user or to warm it
+// before a tap, so it is a chunk of its own (named `firebase` in
+// `vite.config.ts`) and the forecast page never pays for it. The auth domain is the page's
 // own host, so the sign-in handoff stays on one site: WebKit partitions
 // storage by top-level site, and a handler on Firebase's domain could not
 // read what the SDK wrote on ours (see `firebaseConfig.ts`).
@@ -15,8 +16,10 @@
 // word.
 
 import type { Auth, User } from 'firebase/auth'
-import type { AccountUser } from '../ui/accountView.ts'
 import { firebaseConfig } from './firebaseConfig.ts'
+
+/** What the app needs to know about the signed-in user. */
+export type AccountUser = { email: string | null }
 
 /** The env has no Firebase config, so there is nothing to sign in to. */
 export class NotConfigured extends Error {

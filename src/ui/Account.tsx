@@ -13,12 +13,21 @@ export function Account() {
         {account.kind === 'in' ? (
           <>
             <span className="account-email">{emailWords(account.email)}</span>
-            <button type="button" className="text-button" onClick={signOut}>
+            <button
+              type="button"
+              className="text-button account-signout"
+              onClick={signOut}
+            >
               {WORDS.signOut}
             </button>
           </>
         ) : account.kind === 'loading' ? (
-          <button type="button" className="text-button" disabled>
+          <button
+            type="button"
+            className="text-button"
+            disabled
+            aria-label={WORDS.loadingLabel}
+          >
             {loadingWords(account.tapped)}
           </button>
         ) : (

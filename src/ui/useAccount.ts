@@ -76,7 +76,7 @@ export function useAccount(): {
           setAccount({ kind: 'failed', words: NOT_SET_UP })
           return
         }
-        const words = failureWords(error)
+        const words = failureWords(error, navigator.onLine)
         setAccount(words === null ? { kind: 'out' } : { kind: 'failed', words })
       },
     )

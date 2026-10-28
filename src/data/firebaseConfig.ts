@@ -1,5 +1,6 @@
 // The app's Firebase config, from Vercel's env. Firebase's web config is not
-// a secret, but it stays out of the repo so the repo carries no project ids.
+// a secret, but the key and the app id stay out of the repo; the project id
+// and the auth domain are in `vercel.json`, `vite.config.ts` and `.env.tpl`.
 // `authDomain` is the page's own host unless the env names one, so the
 // sign-in handoff is same-site: WebKit partitions storage by top-level site,
 // and a handler on `<project>.firebaseapp.com` cannot read the state the SDK

@@ -223,8 +223,12 @@ h1 {
   min-height: 1.5em;
 }
 .account .text-button {
-  padding: 0.3rem 0;
-  margin-block: -0.3rem;
+  padding: 0.5rem 0;
+  margin-block: -0.5rem;
+}
+/* Signed in, Sign out sits at the right, under Edit. */
+.account .account-signout {
+  margin-left: auto;
 }
 .account-email {
   min-width: 0;

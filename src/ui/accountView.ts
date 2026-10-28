@@ -5,8 +5,7 @@
 
 import { SdkUnavailable } from '../data/firebase.ts'
 
-/** What the row needs to know about the signed-in user. */
-export type AccountUser = { email: string | null }
+export type { AccountUser } from '../data/firebase.ts'
 
 export type Account =
   | { kind: 'out' }
@@ -20,6 +19,8 @@ export const WORDS = {
   signingIn: 'Signing in…',
   signOut: 'Sign out',
   loading: '…',
+  /** The loading button's name for a screen reader, whatever it shows. */
+  loadingLabel: 'Signing in',
   noEmail: 'Signed in',
   spotsStay: 'Your spots stay on this device for now.',
 } as const
@@ -34,27 +35,35 @@ export function loadingWords(tapped: boolean): string {
   return tapped ? WORDS.signingIn : WORDS.loading
 }
 
+const NO_NETWORK = 'Could not reach Google. Check the connection and try again.'
+
 const FAILURES: Record<string, string | null> = {
   // The user closed the window or tapped again: nothing went wrong.
   'auth/popup-closed-by-user': null,
   'auth/cancelled-popup-request': null,
   'auth/popup-blocked':
     'The sign-in window was blocked. Allow pop-ups for this site and try again.',
-  'auth/network-request-failed':
-    'Could not reach Google. Check the connection and try again.',
+  'auth/network-request-failed': NO_NETWORK,
   'auth/unauthorized-domain': 'This address is not set up for sign-in.',
 }
 
 const DID_NOT_FINISH = 'Sign-in did not finish. Try again.'
 
 // The sign-in code's chunk did not load. The browser will not fetch it again
-// until the page reloads, so trying again is not enough.
+// until the page reloads, so trying again is not enough. A home-screen app
+// has no reload, so the sentence names closing it too.
 export const SDK_UNAVAILABLE =
-  'Sign-in could not load. Reload the page and try again.'
+  'Sign-in could not load. Reload the page, or close and reopen the app, and try again.'
 
-/** The sentence for a failed sign-in, or null where nothing is to be said. */
-export function failureWords(error: unknown): string | null {
-  if (error instanceof SdkUnavailable) return SDK_UNAVAILABLE
+/**
+ * The sentence for a failed sign-in, or null where nothing is to be said.
+ * `online` is the device's word on whether it has a network: a chunk that
+ * would not load while offline is the network's fault, and says so.
+ */
+export function failureWords(error: unknown, online: boolean): string | null {
+  if (error instanceof SdkUnavailable) {
+    return online ? SDK_UNAVAILABLE : NO_NETWORK
+  }
   const code = (error as { code?: unknown } | null | undefined)?.code
   if (typeof code !== 'string') return DID_NOT_FINISH
   if (code in FAILURES) return FAILURES[code]

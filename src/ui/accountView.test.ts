@@ -24,38 +24,48 @@ describe('the words', () => {
 
 describe('failureWords', () => {
   test('closing the window is not a failure', () => {
-    expect(failureWords({ code: 'auth/popup-closed-by-user' })).toBeNull()
-    expect(failureWords({ code: 'auth/cancelled-popup-request' })).toBeNull()
+    expect(failureWords({ code: 'auth/popup-closed-by-user' }, true)).toBeNull()
+    expect(
+      failureWords({ code: 'auth/cancelled-popup-request' }, true),
+    ).toBeNull()
   })
 
   test('the three known failures have their own sentences', () => {
-    expect(failureWords({ code: 'auth/popup-blocked' })).toBe(
+    expect(failureWords({ code: 'auth/popup-blocked' }, true)).toBe(
       'The sign-in window was blocked. Allow pop-ups for this site and try again.',
     )
-    expect(failureWords({ code: 'auth/network-request-failed' })).toBe(
+    expect(failureWords({ code: 'auth/network-request-failed' }, true)).toBe(
       'Could not reach Google. Check the connection and try again.',
     )
-    expect(failureWords({ code: 'auth/unauthorized-domain' })).toBe(
+    expect(failureWords({ code: 'auth/unauthorized-domain' }, true)).toBe(
       'This address is not set up for sign-in.',
     )
   })
 
   test('any other code is named', () => {
-    expect(failureWords({ code: 'auth/internal-error' })).toBe(
+    expect(failureWords({ code: 'auth/internal-error' }, true)).toBe(
       'Sign-in did not finish. Try again. (auth/internal-error)',
     )
   })
 
   test('an error with no code is not named', () => {
-    expect(failureWords(new Error('boom'))).toBe(
+    expect(failureWords(new Error('boom'), true)).toBe(
       'Sign-in did not finish. Try again.',
     )
-    expect(failureWords(undefined)).toBe('Sign-in did not finish. Try again.')
+    expect(failureWords(undefined, true)).toBe(
+      'Sign-in did not finish. Try again.',
+    )
   })
 
   test('a sign-in code that could not load says to reload the page', () => {
-    expect(failureWords(new SdkUnavailable())).toBe(
-      'Sign-in could not load. Reload the page and try again.',
+    expect(failureWords(new SdkUnavailable(), true)).toBe(
+      'Sign-in could not load. Reload the page, or close and reopen the app, and try again.',
+    )
+  })
+
+  test('a sign-in code that could not load while offline names the network', () => {
+    expect(failureWords(new SdkUnavailable(), false)).toBe(
+      'Could not reach Google. Check the connection and try again.',
     )
   })
 })
