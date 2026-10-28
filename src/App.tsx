@@ -6,6 +6,9 @@ import { WORDS } from './ui/addSpotView.ts'
 import { Account } from './ui/Account.tsx'
 import { AddSpotUnavailable } from './ui/AddSpotUnavailable.tsx'
 import { BuildStamp } from './ui/BuildStamp.tsx'
+import { FeedbackButton } from './ui/FeedbackButton.tsx'
+import { FeedbackSheet } from './ui/FeedbackSheet.tsx'
+import { initialEmail } from './ui/feedbackView.ts'
 import { forgetSavedSpot, readSpot, writeSpot } from './ui/choices.ts'
 import { spotSubtitle } from './ui/captions.ts'
 import { InstallHint } from './ui/InstallHint.tsx'
@@ -14,6 +17,7 @@ import { openedLink, sharedSpotId } from './ui/shareView.ts'
 import type { SharedPoint } from './ui/shareView.ts'
 import { SpotScreen } from './ui/SpotScreen.tsx'
 import { SpotSwitcher } from './ui/SpotSwitcher.tsx'
+import { useAccount } from './ui/useAccount.ts'
 import { clearAddress, closeView, openView, useView } from './ui/useView.ts'
 
 // Leaflet and the station list come with it, the first time it is opened.
@@ -43,6 +47,9 @@ export default function App() {
   const editing = view === 'edit'
   // The id of a spot that could not be kept on the device, said on its screen.
   const [notKept, setNotKept] = useState<string | null>(null)
+  // One watcher of the account, for its row and for the feedback sheet's
+  // email.
+  const account = useAccount()
 
   // A link to a spot the device has is a choice of that spot, as a tap on
   // the row is, and is dealt with as soon as it is read.
@@ -99,6 +106,20 @@ export default function App() {
     window.scrollTo(0, 0)
   }
 
+  // The button is shown only where no view is up, since the sheet takes the
+  // place of whichever view it is opened over.
+  const feedback = (
+    <>
+      {view === null && <FeedbackButton onOpen={() => openView('feedback')} />}
+      {view === 'feedback' && (
+        <FeedbackSheet
+          email={initialEmail(account.account)}
+          onClose={closeView}
+        />
+      )}
+    </>
+  )
+
   if (shared) {
     return (
       <main>
@@ -108,6 +129,7 @@ export default function App() {
           onClose={() => closeShared(shared)}
         />
         <BuildStamp />
+        {feedback}
       </main>
     )
   }
@@ -145,7 +167,7 @@ export default function App() {
             {WORDS.edit}
           </button>
         </div>
-        <Account />
+        <Account {...account} />
       </header>
       <SpotSwitcher
         spots={spots}
@@ -162,6 +184,7 @@ export default function App() {
       {/* Keyed, so a switch mounts the screen afresh, as a first open does. */}
       <SpotScreen key={spot.id} spot={spot} />
       <BuildStamp />
+      {feedback}
     </main>
   )
 }
