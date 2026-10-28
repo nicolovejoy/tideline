@@ -3,6 +3,7 @@ import { forgetSpot } from './data/cache.ts'
 import { readSpots, addSpot, replaceSpot } from './data/savedSpots.ts'
 import type { Spot } from './spot.ts'
 import { WORDS } from './ui/addSpotView.ts'
+import { Account } from './ui/Account.tsx'
 import { AddSpotUnavailable } from './ui/AddSpotUnavailable.tsx'
 import { BuildStamp } from './ui/BuildStamp.tsx'
 import { forgetSavedSpot, readSpot, writeSpot } from './ui/choices.ts'
@@ -144,6 +145,7 @@ export default function App() {
             {WORDS.edit}
           </button>
         </div>
+        <Account />
       </header>
       <SpotSwitcher
         spots={spots}
