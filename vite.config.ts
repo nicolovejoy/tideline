@@ -11,6 +11,16 @@ export default defineConfig({
     __BUILT_AT__: JSON.stringify(new Date().toISOString()),
     __COMMIT__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA ?? ''),
   },
+  server: {
+    // `vercel.json`'s rewrite for the dev server, so `localhost:5173` is
+    // same-site for the sign-in handler, as the live host is.
+    proxy: {
+      '/__/auth': {
+        target: 'https://tideline-ibuild4you.firebaseapp.com',
+        changeOrigin: true,
+      },
+    },
+  },
   test: {
     include: ['src/**/*.test.ts'],
     // Run every test as if the device were in Tokyo. Nothing in this app may
