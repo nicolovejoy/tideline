@@ -46,15 +46,27 @@ function ready(): Promise<Ready | NotConfigured> {
   const started = Promise.all([
     import('firebase/app'),
     import('firebase/auth'),
-  ]).then(([{ initializeApp }, sdk]) => ({
-    auth: sdk.getAuth(initializeApp(config)),
-    sdk,
-  }))
+  ]).then(([{ getApp, getApps, initializeApp }, sdk]) => {
+    // A retry after `getAuth` threw finds the app already registered, and a
+    // second `initializeApp` would fail as a duplicate.
+    const app = getApps().length ? getApp() : initializeApp(config)
+    return { auth: sdk.getAuth(app), sdk }
+  })
   started.catch(() => {
     if (pending === started) pending = null
   })
   pending = started
   return pending
+}
+
+/**
+ * Starts loading the SDK without asking it anything, for a pointer-down or a
+ * focus on the sign-in button. Safari may block a popup that opens long
+ * after the tap, and on a device's first sign-in the download would otherwise
+ * sit in that gap.
+ */
+export function warm(): void {
+  ready().catch(() => {})
 }
 
 function accountUser(user: User): AccountUser {
