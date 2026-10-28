@@ -57,10 +57,12 @@ A failure is a line under the row, in the notice style, until the next tap:
 | The page's host is not authorised (`auth/unauthorized-domain`) | This address is not set up for sign-in. |
 | Anything else | Sign-in did not finish. Try again. (`<code>`) |
 | The build has no Firebase config | Sign-in is not set up in this build. |
+| The SDK's code could not load (`SdkUnavailable`), the device online | Sign-in could not load. Reload the page, or close and reopen the app, and try again. |
+| The SDK's code could not load while the device is offline | Could not reach Google. Check the connection and try again. |
 
 The last two carry the code or the fact in the sentence on purpose: they are for whoever is working on the app, and a hidden button would make a misconfigured production look like a choice.
 
-Sign-out never fails visibly; if the SDK throws, the row goes back to signed out anyway and the next open will say the truth.
+Sign-out never fails visibly; if the SDK throws, the row goes back to signed out anyway. The flag is cleared at once, so the next open shows the button even if Firebase still holds the user. Pull request 2 revisits this when spots live in the account.
 
 The shared-spot screen, the add screen, the edit screen, the month view and the help sheet do not get the row. Sign-in lives on the forecast page only.
 
@@ -73,7 +75,7 @@ The shared-spot screen, the add screen, the edit screen, the month view and the 
 - `watchUser(listener)`: starts the SDK, calls `listener` with `{ email } | null` on each change, returns the way to stop. Firebase's own persistence (IndexedDB, falling back to local storage) keeps the user between opens; the adapter does not store the user itself.
 - `signIn()`: `signInWithPopup` with `GoogleAuthProvider`. Throws the SDK's error; the view words it.
 - `signOut()`.
-- Every call imports `firebase/app` and `firebase/auth` dynamically on first use, so the SDK is a chunk of its own that the forecast page does not load. Vite does this from the dynamic import; nothing else is needed.
+- Every call imports `firebase/app` and `firebase/auth` dynamically on first use, so the SDK is a chunk of its own that the forecast page does not load. Vite does this from the dynamic import; `vite.config.ts` only names the chunk `firebase`.
 
 **Whether to load at start-up** (`src/ui/accountView.ts`, pure, tested): a flag `tideline:account:seen` in `localStorage`, written when a sign-in succeeds and removed on sign-out. Set, the app starts the adapter at once and shows "…" until it answers; unset, the adapter is not touched until a tap. The flag is a hint, never the truth: if Firebase has no user the row shows the button and the flag is removed. If the SDK's chunk cannot be fetched at start-up (offline, or a home-screen app left open past a deploy), the row goes back to the button and keeps the flag; the next tap tries again and words the failure. The words for every state and every error code are in this module, with a test for each row of the table above.
 
@@ -85,7 +87,7 @@ An iPhone home-screen app has storage of its own, apart from Safari's, so a sign
 
 **The same-site handler** (`vercel.json`, tested in `src/data/vercel.test.ts`): `/__/auth/:path*` rewritten to `https://tideline-ibuild4you.firebaseapp.com/__/auth/:path*`. `main` has no `vercel.json` today, so this is the whole file; the test still asserts the rewrite sits ahead of any catch-all, for the day one is added. The spike's file and test, moved. Production's `VITE_FIREBASE_AUTH_DOMAIN` is `tideline.ibuild4you.com`, set on 2026-10-27, and that host is on Firebase's authorised domains and on the OAuth client with its handler URL.
 
-**Where sign-in does not work, on purpose.** A pull request preview's host is not authorised and never will be (previews need a Vercel sign-in and are not where checks run), so a preview's button says "This address is not set up for sign-in." CI's build has no env and needs none: the config is read when the page runs, not when it is built. The dev server has the rewrite as a Vite proxy, `server.proxy['/__/auth']` to the Firebase host with `changeOrigin`, so `localhost:5173` is same-site too; `localhost` is on Firebase's authorised domains by default, whatever the port.
+**Where sign-in does not work, on purpose.** A pull request preview's host is not authorised and never will be (previews need a Vercel sign-in and are not where checks run), so a preview's button says "This address is not set up for sign-in." Vite inlines `import.meta.env` into the bundle at build time, so a changed variable needs a redeploy. CI builds without the variables, and the page it builds would say sign-in is not set up, which nothing checks. The owner set the four variables for Production and Preview on 2026-10-27, so a preview is built with the config and its tap fails on the unauthorised host with "This address is not set up for sign-in." Three of the four are required, the auth domain falling back to the page's host. The dev server has the rewrite as a Vite proxy, `server.proxy['/__/auth']` to the Firebase host with `changeOrigin`, so `localhost:5173` is same-site too; `localhost` is on Firebase's authorised domains by default, whatever the port.
 
 **The env example**: `.env.tpl` at the root, the owner's convention for a committed env file, with the four names, the project id and auth domain filled in (they are public and already in `vercel.json` and CLAUDE.md), the key and app id empty, and a comment that none is a secret and where each comes from. `.gitignore` ignores `.env*`, so it gains `!.env.tpl`. A developer copies it to `.env.local`, which stays ignored, and fills the two from the Vercel project's variables. The dev server then signs in with the real project through the proxy above.
 
@@ -105,12 +107,12 @@ An iPhone home-screen app has storage of its own, apart from Safari's, so a sign
 
 All at https://tideline.ibuild4you.com, as the working agreement says.
 
-1. Open the site in Safari. Under the spot's name, a line "Sign in with Google". The forecast draws as before. Pass: the Network tab, or the build's size, shows no firebase chunk loaded.
+1. Open the site in Safari. Under the spot's name, one line, "Sign in with Google", and the forecast as before. (That the SDK is not loaded is checked by the build, whose log names the `firebase` chunk, and by the dev-server check in the pull request; a phone has no network tab.)
 2. Tap it. Google's chooser; pick the account. Pass: the line becomes the email with "Sign out", and under it "Your spots stay on this device for now."
 3. Reload. Pass: "…" for a moment, then the email, with no Google page.
 4. Open the home-screen app. It has storage of its own, so it says "Sign in with Google". Tap it. Pass: Google's chooser over the app, and back in the app with the email, as the spike did. Close the app and open it again. Pass: the email, with no Google page.
 5. Tap "Sign out". Pass: the line is "Sign in with Google" again; the spots are untouched.
-6. Turn on Airplane Mode, tap "Sign in with Google". Pass: "Could not reach Google. Check the connection and try again." and the forecast still on screen.
+6. Without reloading after step 5, turn on Airplane Mode and tap "Sign in with Google". Pass: "Could not reach Google. Check the connection and try again." and the forecast still on screen. (After a reload in Airplane Mode the same tap says the same sentence, because the SDK could not load while offline; with signal back and the page not reloaded it would say to reload.)
 
 ## Calls made here, for the owner to check while reading
 
@@ -125,3 +127,5 @@ All at https://tideline.ibuild4you.com, as the working agreement says.
 - A preview says sign-in is not set up for its address, and that is left so.
 - The dev server gets a Vite proxy for the handler path rather than a cross-site auth domain.
 - A failed SDK load at start-up falls back to the button and keeps the flag.
+- The SDK's chunk is named `firebase`, so the build log shows it apart from the page's own.
+- `failureWords` takes whether the device is online, so a load that failed offline is worded as the network's fault.
