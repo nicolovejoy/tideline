@@ -12,14 +12,19 @@ import {
   watchUser,
 } from '../data/firebase.ts'
 import {
+  DID_NOT_FINISH,
   NOT_SET_UP,
   clearSeen,
   failureWords,
   readSeen,
   startsSignedIn,
+  warmsAtStart,
   writeSeen,
 } from './accountView.ts'
 import type { Account } from './accountView.ts'
+import { browserEnv } from './installHint.ts'
+import { signInWait } from './signInWait.ts'
+import type { SignInWait } from './signInWait.ts'
 
 export function useAccount(): {
   account: Account
@@ -38,6 +43,27 @@ export function useAccount(): {
   // While the popup is open the sign-in's own answer settles the row, not
   // the watcher's first word, which is that nobody is signed in yet.
   const signingIn = useRef(false)
+  // Each tap is an attempt. A tap that follows makes Firebase cancel the
+  // one before, and that one's answer must not settle the row.
+  const attempt = useRef(0)
+  // In a home-screen app only, the clock that gives up on a sign-in.
+  const wait = useRef<SignInWait | null>(null)
+
+  useEffect(() => {
+    if (warmsAtStart(readSeen(), browserEnv().standalone)) warm()
+  }, [])
+
+  useEffect(() => {
+    const seen = () => {
+      if (document.visibilityState === 'hidden') wait.current?.hidden()
+      else wait.current?.visible()
+    }
+    document.addEventListener('visibilitychange', seen)
+    return () => {
+      document.removeEventListener('visibilitychange', seen)
+      wait.current?.stop()
+    }
+  }, [])
 
   useEffect(() => {
     if (!watching) return
@@ -61,17 +87,36 @@ export function useAccount(): {
   }, [watching])
 
   const signIn = useCallback(() => {
+    const mine = ++attempt.current
+    let gaveUp = false
     signingIn.current = true
     setAccount({ kind: 'loading', tapped: true })
+    wait.current?.stop()
+    wait.current = browserEnv().standalone
+      ? signInWait(() => {
+          if (attempt.current !== mine) return
+          gaveUp = true
+          signingIn.current = false
+          setAccount({ kind: 'failed', words: DID_NOT_FINISH })
+        })
+      : null
+    const settled = () => {
+      if (attempt.current !== mine) return false
+      wait.current?.stop()
+      wait.current = null
+      signingIn.current = false
+      return true
+    }
     adapterSignIn().then(
+      // A sign-in that answers after the clock gave up still signs in.
       (user) => {
-        signingIn.current = false
+        if (!settled()) return
         writeSeen()
         setAccount({ kind: 'in', email: user.email })
         setWatching(true)
       },
       (error: unknown) => {
-        signingIn.current = false
+        if (!settled() || gaveUp) return
         if (error instanceof NotConfigured) {
           setAccount({ kind: 'failed', words: NOT_SET_UP })
           return

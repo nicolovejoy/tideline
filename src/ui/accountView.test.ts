@@ -7,6 +7,7 @@ import {
   loadingWords,
   readSeen,
   startsSignedIn,
+  warmsAtStart,
   writeSeen,
 } from './accountView.ts'
 
@@ -128,5 +129,17 @@ describe('startsSignedIn', () => {
   test('loads the SDK at start-up only where the flag is set', () => {
     expect(startsSignedIn(true)).toBe(true)
     expect(startsSignedIn(false)).toBe(false)
+  })
+})
+
+describe('warmsAtStart', () => {
+  test('warms the SDK at start-up in a home-screen app that has not signed in', () => {
+    expect(warmsAtStart(false, true)).toBe(true)
+  })
+
+  test('not where the flag is set, which loads it anyway, nor in a tab', () => {
+    expect(warmsAtStart(true, true)).toBe(false)
+    expect(warmsAtStart(false, false)).toBe(false)
+    expect(warmsAtStart(true, false)).toBe(false)
   })
 })

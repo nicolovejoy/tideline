@@ -10,7 +10,7 @@ A user can sign in to Tideline with Google and sign out again, from a browser ta
 
 - Sign in by popup, as the spike showed works everywhere the first user opens the app.
 - The signed-in state survives a reload and a reopen of the home-screen app, without the sign-in page.
-- The forecast page pays nothing for sign-in until it is used: the Firebase SDK is loaded when "Sign in" is tapped, and at start-up only on a device that has signed in before.
+- The forecast page pays nothing for sign-in until it is used: the Firebase SDK is loaded when "Sign in" is tapped, and at start-up only on a device that has signed in before or in a home-screen app (amended 2026-10-28, below).
 - A failure says what it is, in words the first user can act on, and never blocks the forecast.
 
 ## Non-goals
@@ -78,6 +78,8 @@ The shared-spot screen, the add screen, the edit screen, the month view and the 
 - Every call imports `firebase/app` and `firebase/auth` dynamically on first use, so the SDK is a chunk of its own that the forecast page does not load. Vite does this from the dynamic import; `vite.config.ts` only names the chunk `firebase`.
 
 **Whether to load at start-up** (`src/ui/accountView.ts`, pure, tested): a flag `tideline:account:seen` in `localStorage`, written when a sign-in succeeds and removed on sign-out. Set, the app starts the adapter at once and shows "…" until it answers; unset, the adapter is not touched until a tap. The flag is a hint, never the truth: if Firebase has no user the row shows the button and the flag is removed. If the SDK's chunk cannot be fetched at start-up (offline, or a home-screen app left open past a deploy), the row goes back to the button and keeps the flag; the next tap tries again and words the failure. The words for every state and every error code are in this module, with a test for each row of the table above.
+
+**Amended 2026-10-28, after the production check.** In a home-screen app the first tap hung at "Signing in…" with no chooser. There Firebase does not call `window.open`: it makes a link, clicks it in code and keeps no handle on the window (`openAsNewWindowIOS` in `@firebase/auth`), and iOS drops that click when the SDK's download sits between the tap and it. With no window to watch, Firebase never reports the page as blocked or closed, so its promise never settles. The spike loaded the SDK with the page and did not meet this. So a home-screen app now loads the SDK at start-up even before its first sign-in (`warmsAtStart`; Firebase starts its popup machinery at once on iOS), and gives up on a sign-in that has had no answer for 10 seconds in view (`src/ui/signInWait.ts`; the time out of view, on Google's page, does not count), saying "Sign-in did not finish. Try again." An answer after that still signs in, and a tap that follows makes the earlier attempt's answer be ignored. A tab is unchanged.
 
 An iPhone home-screen app has storage of its own, apart from Safari's, so a sign-in in Safari does not sign in the home-screen app and the other way round. Each signs in once and then remembers; the flag and Firebase's persistence are per app, as the saved spots already are.
 

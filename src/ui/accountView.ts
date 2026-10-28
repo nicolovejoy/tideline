@@ -47,7 +47,7 @@ const FAILURES: Record<string, string | null> = {
   'auth/unauthorized-domain': 'This address is not set up for sign-in.',
 }
 
-const DID_NOT_FINISH = 'Sign-in did not finish. Try again.'
+export const DID_NOT_FINISH = 'Sign-in did not finish. Try again.'
 
 // The sign-in code's chunk did not load. The browser will not fetch it again
 // until the page reloads, so trying again is not enough. A home-screen app
@@ -100,4 +100,16 @@ export function clearSeen(): void {
 /** Load the sign-in code at start-up only where the flag is set. */
 export function startsSignedIn(seen: boolean): boolean {
   return seen
+}
+
+/**
+ * Load the sign-in code at start-up, without asking for the user, in a
+ * home-screen app that has not signed in. There Firebase opens Google's page
+ * by a click it makes on a link, and iOS drops that click when it comes after
+ * a download rather than with the tap; the SDK, once started, gets ready on
+ * its own, so the tap only has the click left to do. Where the flag is set
+ * the watcher loads it anyway.
+ */
+export function warmsAtStart(seen: boolean, standalone: boolean): boolean {
+  return standalone && !seen
 }
