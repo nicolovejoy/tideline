@@ -51,8 +51,10 @@ export function useAccount(): {
         }
       },
       // The SDK could not be had. The device's flag stays, so the next open
-      // or the next tap asks again.
+      // or the next tap asks again. Nothing is watching now, so watching is
+      // set false, and a sign-in that later succeeds starts a watcher again.
       () => {
+        setWatching(false)
         if (!signingIn.current) setAccount({ kind: 'out' })
       },
     )
