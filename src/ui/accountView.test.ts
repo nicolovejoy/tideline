@@ -6,6 +6,7 @@ import {
   failureWords,
   loadingWords,
   readSeen,
+  spotsCaption,
   startsSignedIn,
   warmsAtStart,
   writeSeen,
@@ -20,6 +21,15 @@ describe('the words', () => {
   test('a tap that started the load says so; start-up does not', () => {
     expect(loadingWords(true)).toBe('Signing in…')
     expect(loadingWords(false)).toBe('…')
+  })
+})
+
+describe('spotsCaption', () => {
+  test('spotsCaption says kept, or on this device while pending', () => {
+    expect(spotsCaption(false)).toBe('Your spots are kept in your account.')
+    expect(spotsCaption(true)).toBe(
+      'Your spots are on this device. They go to your account when it can be reached.',
+    )
   })
 })
 

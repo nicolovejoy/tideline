@@ -8,6 +8,7 @@ import {
   newSpotId,
   readSavedSpots,
   removeSpot,
+  replaceSavedSpots,
   replaceSpot,
 } from './savedSpots.ts'
 import { CAMPUS_POINT, SPOTS } from '../spot.ts'
@@ -240,6 +241,26 @@ describe('replaceSpot', () => {
   test('with storage disabled says the spot was not kept', () => {
     vi.stubGlobal('localStorage', brokenStorage())
     expect(replaceSpot('spot-abc', LEADBETTER)).toBe(false)
+  })
+})
+
+describe('replaceSavedSpots', () => {
+  test('writes the list in order and marks it seeded', () => {
+    const storage = fakeStorage()
+    vi.stubGlobal('localStorage', storage)
+    const list = [LEADBETTER, { ...LEADBETTER, id: 'spot-def' }, SPOTS[0]]
+    expect(replaceSavedSpots(list)).toBe(true)
+    expect(readSavedSpots().map((spot) => spot.id)).toEqual([
+      'spot-abc',
+      'spot-def',
+      'campus-point',
+    ])
+    expect(storage.getItem(SEEDED_KEY)).not.toBeNull()
+  })
+
+  test('says false when storage refuses', () => {
+    vi.stubGlobal('localStorage', brokenStorage())
+    expect(replaceSavedSpots([LEADBETTER])).toBe(false)
   })
 })
 
