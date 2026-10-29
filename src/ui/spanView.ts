@@ -140,7 +140,9 @@ export function cursorWords(
 /**
  * The lines across the panels: each day's sunset and moonrise, and the current
  * time on today. Over more than a day, spread across midnight, they lose
- * their names; a window under a day that crosses midnight keeps them.
+ * their names; a window under a day that crosses midnight keeps them. Only
+ * the lines inside the window are kept: a zoom of an afternoon touches a day
+ * whose moonrise is hours off the plot, and its name would be drawn there.
  */
 export function windowMarkers(
   days: DayAstro[],
@@ -148,15 +150,31 @@ export function windowMarkers(
   now: number,
 ): Marker[] {
   const several = window.last > window.first && window.end - window.start > DAY
-  return days.slice(window.first, window.last + 1).flatMap((astro, i) => {
-    const markers = dayMarkers({ astro, isToday: window.first + i === 0 }, now)
-    return several ? unlabelled(markers) : markers
-  })
+  return days
+    .slice(window.first, window.last + 1)
+    .flatMap((astro, i) => {
+      const markers = dayMarkers(
+        { astro, isToday: window.first + i === 0 },
+        now,
+      )
+      return several ? unlabelled(markers) : markers
+    })
+    .filter((marker) => marker.t >= window.start && marker.t <= window.end)
 }
 
-/** The nights of every day in the window. */
+/**
+ * The nights of every day in the window, cut to it, so that a zoom which
+ * starts in the evening does not shade the plot's left from the sunset
+ * before it.
+ */
 export function windowBands(days: DayAstro[], window: DayWindow): Band[] {
   return days
     .slice(window.first, window.last + 1)
     .flatMap((astro) => dayBands({ astro }))
+    .map((band) => ({
+      ...band,
+      start: Math.max(band.start, window.start),
+      end: Math.min(band.end, window.end),
+    }))
+    .filter((band) => band.end > band.start)
 }

@@ -34,6 +34,7 @@ function day(index: number, sunset: number | null = SUNSET): Selected {
       moonriseNearSunset: null,
     },
     isToday: index === 0,
+    showsToday: index === 0,
     anchor: sunset === null ? start + DAY / 2 : start + sunset,
   }
 }
@@ -1089,5 +1090,85 @@ describe('the window', () => {
     )
     const view = weatherView(marked, wide(day(0), 3), START + 3 * DAY, NOW)
     expect(partsText(view.temp.readout)).toContain('99')
+  })
+})
+
+/** A zoom from `start` to `end`, with the chosen day `selected`. */
+function zoomed(
+  selected: Selected,
+  start: number,
+  end: number,
+  first: number,
+  last: number,
+): Selected {
+  return {
+    ...selected,
+    window: { start, end, first, last },
+    showsToday: first === 0,
+  }
+}
+
+describe('a zoom', () => {
+  test('draws the hours it cuts into at either edge, not only those starting in it', () => {
+    const a = START + 2 * DAY + 10 * HOUR + 30 * MINUTE
+    const b = START + 2 * DAY + 14 * HOUR + 30 * MINUTE
+    const view = weatherView(week, zoomed(day(2), a, b, 2, 2), a, NOW)
+    const temps = named(view.temp.series, 'temp').points
+    expect(temps.map((p) => p.t)).toEqual(
+      [10, 11, 12, 13, 14].map((h) => START + 2 * DAY + h * HOUR),
+    )
+    // The arrows are drawn from the same hours.
+    expect(view.wind.arrows).toHaveLength(5)
+  })
+
+  test("the wind's range counts the same hours the arrows are drawn from", () => {
+    // 10 AM is cut into by the zoom's start and has a strong wind; 3 PM,
+    // just after its end, has a stronger one.
+    const windy = loaded(
+      hourly(FIRST, 185, (hour) => {
+        if (hour.t === START + 2 * DAY + 10 * HOUR) hour.windMph = 22
+        if (hour.t === START + 2 * DAY + 15 * HOUR) hour.windMph = 40
+      }),
+    )
+    const a = START + 2 * DAY + 10 * HOUR + 30 * MINUTE
+    const b = START + 2 * DAY + 14 * HOUR + 30 * MINUTE
+    const view = weatherView(windy, zoomed(day(2), a, b, 2, 2), a, NOW)
+    expect(view.wind.arrows.some((arrow) => arrow.v === 22)).toBe(true)
+    expect(view.wind.bounds).toEqual([0, 25])
+  })
+
+  const rows = observed(NOW)
+
+  test("panned back from tomorrow into today draws today's rows, cut at the current time", () => {
+    const a = START + 12 * HOUR
+    const b = START + 18 * HOUR
+    const view = weatherView(week, zoomed(day(1), a, b, 0, 0), b, NOW, rows)
+    const obs = named(view.temp.series, 'temp-observed')
+    expect(obs.points.map((p) => p.t)).toEqual(
+      [12, 13, 14, 15].map((h) => START + h * HOUR),
+    )
+    expect(obs.cut).toEqual({ at: NOW, keep: 'before' })
+  })
+
+  test('of today panned on to tomorrow has no rows and says no side', () => {
+    const a = START + DAY + 6 * HOUR
+    const b = START + DAY + 12 * HOUR
+    const view = weatherView(week, zoomed(day(0), a, b, 1, 1), a, NOW, rows)
+    expect(view.temp.series.map((series) => series.name)).toEqual([
+      'dew',
+      'feels',
+      'temp',
+    ])
+    expect(partsText(view.temp.readout)).not.toContain('forecast')
+  })
+
+  test('draws only the rows the window shows', () => {
+    const a = START + 6 * HOUR
+    const b = START + 10 * HOUR
+    const view = weatherView(week, zoomed(day(0), a, b, 0, 0), a, NOW, rows)
+    const obs = named(view.temp.series, 'temp-observed')
+    expect(obs.points.map((p) => p.t)).toEqual(
+      [6, 7, 8, 9].map((h) => START + h * HOUR),
+    )
   })
 })

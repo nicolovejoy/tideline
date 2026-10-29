@@ -108,7 +108,10 @@ export interface TideSources {
   readings: TidePoint[]
   /** Today's date at the spot. */
   today: string
-  /** Whether the day on screen is today. Readings belong to today only. */
+  /**
+   * Whether the window on screen reaches into today, as the chosen day or a
+   * zoom panned back to it. Readings belong to today only.
+   */
   isToday: boolean
 }
 
@@ -230,10 +233,11 @@ function weatherStationWords(station: NearStation): string {
 }
 
 /**
- * Under the weather's caption on today: the station whose reports are
- * drawn, with its distance, its height and the latest report; or why today
- * is forecast only. Null on any other day, and while the station is still
- * being looked up with nothing saved.
+ * Under the weather's caption where the window reaches into today: the
+ * station whose reports are drawn, with its distance, its height and the
+ * latest report; or why today is forecast only. Null where the window shows
+ * none of today, and while the station is still being looked up with
+ * nothing saved.
  */
 export function observedCaption(
   spot: Spot,

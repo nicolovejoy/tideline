@@ -106,6 +106,7 @@ function day(index: number, sunset: number | null): Selected {
       moonriseNearSunset: null,
     },
     isToday: index === 0,
+    showsToday: index === 0,
     anchor: sunset ?? START + index * DAY + DAY / 2,
   }
 }
@@ -128,11 +129,11 @@ const TODAY = day(0, START + 18 * HOUR + 34 * MINUTE)
 const TOMORROW = day(1, END + 18 * HOUR + 32 * MINUTE)
 
 describe('what is drawn', () => {
-  test('the curve covers the day and reaches both edges of the plot', () => {
+  test('the curve covers the day and reaches past both edges of the plot by a point', () => {
     const { predicted } = own(data(), TODAY, null)
-    expect(predicted[0].t).toBe(START)
-    expect(predicted.at(-1)!.t).toBe(END)
-    expect(predicted).toHaveLength(241)
+    expect(predicted[0].t).toBe(START - 6 * MINUTE)
+    expect(predicted.at(-1)!.t).toBe(END + 6 * MINUTE)
+    expect(predicted).toHaveLength(243)
   })
 
   test('a high or low at midnight belongs to the day it starts', () => {
@@ -155,8 +156,8 @@ describe('what is drawn', () => {
 describe('another day', () => {
   test('has its own curve and its own highs and lows', () => {
     const view = own(data(), TOMORROW, null)
-    expect(view.predicted[0].t).toBe(END)
-    expect(view.predicted.at(-1)!.t).toBe(END + DAY)
+    expect(view.predicted[0].t).toBe(END - 6 * MINUTE)
+    expect(view.predicted.at(-1)!.t).toBe(END + DAY + 6 * MINUTE)
     expect(view.events.map((event) => event.t)).toEqual([END, END + 9 * HOUR])
   })
 
@@ -303,7 +304,7 @@ describe('what the panel is given', () => {
     ])
     expect(view.series[0].filled).toBe(true)
     expect(view.series[0].points).toHaveLength(view.predicted.length)
-    expect(view.series[0].points[0]).toEqual({ t: START, v: 3 })
+    expect(view.series[0].points[0]).toEqual({ t: START - 6 * MINUTE, v: 3 })
     expect(view.series[1].maxGap).toBe(13 * MINUTE)
     expect(view.series[1].points).toHaveLength(readings.length)
   })
@@ -348,7 +349,7 @@ describe('a spot whose gauge is another station', () => {
 
   test("draws the spot's own curve and no readings on it", () => {
     const view = tideView(gauge(), TODAY, null, GAVIOTA)
-    expect(view.predicted[0]).toEqual({ t: START, ft: 3 })
+    expect(view.predicted[0]).toEqual({ t: START - 6 * MINUTE, ft: 3 })
     expect(view.observed).toEqual([])
     expect(view.series.map((series) => series.name)).toEqual(['predicted'])
     expect(view.dots).toEqual([{ name: 'predicted', v: 3 }])
@@ -459,7 +460,7 @@ describe('at a spot whose station publishes highs and lows only', () => {
     expect(view.text.predicted).toBe('3.0 ft interpolated')
     expect(view.words).toContain('3.0 ft interpolated')
     expect(view.words).not.toContain('predicted')
-    expect(view.predicted).toHaveLength(241)
+    expect(view.predicted).toHaveLength(243)
     expect(view.series[0].name).toBe('predicted')
     expect(view.dots).toEqual([{ name: 'predicted', v: 3 }])
     expect(view.notice).toBeNull()
@@ -475,9 +476,11 @@ describe('at a spot whose station publishes highs and lows only', () => {
     const predictions = curveFromHiLo(hilo, { start: START, end: END + DAY })
     const view = tideView(data({ predictions }), TODAY, null, VENTURA)
     expect(view.notice).toBeNull()
-    expect(view.predicted).toHaveLength(241)
+    // The interpolated curve starts at the day's start, so it has no point
+    // before it, and one after the day's end.
+    expect(view.predicted).toHaveLength(242)
     expect(view.predicted[0].t).toBe(START)
-    expect(view.predicted.at(-1)?.t).toBe(END)
+    expect(view.predicted.at(-1)?.t).toBe(END + 6 * MINUTE)
     expect(view.text.predicted.endsWith('interpolated')).toBe(true)
   })
 
@@ -490,10 +493,11 @@ describe('at a spot whose station publishes highs and lows only', () => {
 describe('the window', () => {
   test("three days draw the curve to the end of the third day, and the table stays the day's", () => {
     const view = own(data(), wide(TODAY, 3), null)
-    expect(view.predicted[0].t).toBe(START)
-    expect(view.predicted[view.predicted.length - 1].t).toBe(
-      START + 2 * DAY + HOUR,
-    )
+    expect(view.predicted[0].t).toBe(START - 6 * MINUTE)
+    // The curve runs out on the second day; the next point, a week on, is
+    // the one after the window, and the plot's clip hides the line to it.
+    expect(view.predicted.at(-2)!.t).toBe(START + 2 * DAY + HOUR)
+    expect(view.predicted.at(-1)!.t).toBe(START + 7 * DAY)
     expect(view.events.map((e) => e.t)).toEqual([START, START + 6 * HOUR])
   })
 
@@ -505,5 +509,75 @@ describe('the window', () => {
   test("the same pick is clamped to the day's end when the window is the day", () => {
     const pick = { t: START + 2 * DAY + 6 * HOUR, day: '2026-10-08', shown: 0 }
     expect(own(data(), TODAY, pick).cursor).toBe(END)
+  })
+})
+
+/** A zoom from `start` to `end`, with the chosen day `selected`. */
+function zoomed(
+  selected: Selected,
+  start: number,
+  end: number,
+  first: number,
+  last: number,
+): Selected {
+  return {
+    ...selected,
+    window: { start, end, first, last },
+    showsToday: first === 0,
+  }
+}
+
+describe('a zoom', () => {
+  test('that starts and ends between two points has a point beyond each edge', () => {
+    const a = START + 10 * HOUR + 2 * MINUTE
+    const b = START + 14 * HOUR + 3 * MINUTE
+    const { predicted } = own(data(), zoomed(TODAY, a, b, 0, 0), null)
+    expect(predicted[0].t).toBe(START + 10 * HOUR)
+    expect(predicted.at(-1)!.t).toBe(START + 14 * HOUR + 6 * MINUTE)
+  })
+
+  test('draws only the readings in it, with one either side', () => {
+    const a = START + 10 * HOUR + 3 * MINUTE
+    const b = START + 13 * HOUR + 3 * MINUTE
+    const view = own(data(), zoomed(TODAY, a, b, 0, 0), null)
+    expect(view.observed[0].t).toBe(START + 10 * HOUR)
+    expect(view.observed.at(-1)!.t).toBe(START + 13 * HOUR + 6 * MINUTE)
+    // Every reading is still kept for the caption.
+    expect(view.readings).toEqual(readings)
+  })
+
+  test('holds the resting cursor to it when the latest reading is off its right', () => {
+    const a = START + 6 * HOUR
+    const b = START + 10 * HOUR
+    expect(own(data(), zoomed(TODAY, a, b, 0, 0), null).cursor).toBe(b)
+  })
+
+  test('holds the resting cursor to it when sunset is off its left', () => {
+    const a = END + 20 * HOUR
+    const b = END + DAY + 2 * HOUR
+    expect(own(data(), zoomed(TOMORROW, a, b, 1, 2), null).cursor).toBe(a)
+  })
+
+  test("panned back from tomorrow into today draws today's readings", () => {
+    // The cursor rests at the window's end, inside the readings.
+    const a = START + 10 * HOUR
+    const b = START + 15 * HOUR
+    const view = own(data(), zoomed(TOMORROW, a, b, 0, 0), null)
+    expect(view.observed.length).toBeGreaterThan(0)
+    expect(view.readout.observedFt).not.toBeNull()
+  })
+
+  test('of today panned on to tomorrow draws no readings', () => {
+    const a = END + 6 * HOUR
+    const b = END + 12 * HOUR
+    const view = own(data(), zoomed(TODAY, a, b, 1, 1), null)
+    expect(view.observed).toEqual([])
+  })
+
+  test('panned back into today reads a gauge elsewhere, as today does', () => {
+    const a = START + 10 * HOUR
+    const b = START + 15 * HOUR
+    const view = tideView(data(), zoomed(TOMORROW, a, b, 0, 0), null, GAVIOTA)
+    expect(view.text.second).not.toBeNull()
   })
 })

@@ -3,6 +3,7 @@ import {
   dayBands,
   dayMarkers,
   onDay,
+  overlapping,
   selectedDay,
   unlabelled,
 } from './selection.ts'
@@ -94,6 +95,61 @@ describe('selectedDay with a zoom', () => {
       plain.index,
       plain.date,
       plain.isToday,
+    ])
+  })
+})
+
+describe('showsToday', () => {
+  test('today, and a window from it, show today', () => {
+    expect(selectedDay(frame, null).showsToday).toBe(true)
+    expect(selectedDay(frame, null, 'week').showsToday).toBe(true)
+  })
+
+  test('another day does not', () => {
+    const selected = selectedDay(frame, '2026-10-09')
+    expect([selected.isToday, selected.showsToday]).toEqual([false, false])
+  })
+
+  test('a zoom panned back from tomorrow into today shows today, though the chosen day is tomorrow', () => {
+    const zoom = {
+      start: frame.spans[0].start + 20 * HOUR,
+      end: frame.spans[1].start + 6 * HOUR,
+    }
+    const selected = selectedDay(frame, '2026-10-09', 'day', zoom)
+    expect([selected.isToday, selected.showsToday]).toEqual([false, true])
+  })
+
+  test('a zoom of today chosen but panned on to tomorrow does not', () => {
+    const zoom = {
+      start: frame.spans[1].start + 6 * HOUR,
+      end: frame.spans[1].start + 12 * HOUR,
+    }
+    const selected = selectedDay(frame, null, 'day', zoom)
+    expect([selected.isToday, selected.showsToday]).toEqual([true, false])
+  })
+})
+
+describe('overlapping', () => {
+  test('keeps the hours any part of the window shows, not only those starting in it', () => {
+    const { start } = frame.spans[0]
+    const hours = [0, 1, 2, 3, 4].map((h) => ({ t: start + h * HOUR }))
+    const window = {
+      start: start + HOUR + 30 * MINUTE,
+      end: start + 3 * HOUR + 15 * MINUTE,
+    }
+    expect(overlapping(hours, window, HOUR).map((h) => h.t)).toEqual([
+      start + HOUR,
+      start + 2 * HOUR,
+      start + 3 * HOUR,
+    ])
+  })
+
+  test('an hour that ends at the start, or starts at the end, is not shown', () => {
+    const { start } = frame.spans[0]
+    const hours = [0, 1, 2].map((h) => ({ t: start + h * HOUR }))
+    const window = { start: start + HOUR, end: start + 2 * HOUR }
+    expect(overlapping(hours, window, HOUR).map((h) => h.t)).toEqual([
+      start + HOUR,
     ])
   })
 })

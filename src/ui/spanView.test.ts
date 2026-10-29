@@ -178,6 +178,18 @@ describe('cursorWords', () => {
       'Fri 3:36 PM',
     )
   })
+
+  test('a zoom under a day that crosses midnight puts the weekday before it', () => {
+    const w = zoomWindow(spans, {
+      start: spans[1].start + 20 * HOUR,
+      end: spans[2].start + 4 * HOUR,
+    })
+    expect(w.end - w.start).toBe(8 * HOUR)
+    expect(cursorWords(spans[2].start + HOUR, ZONE, w)).toBe('Sat 1:00 AM')
+    expect(cursorWords(spans[1].start + 22 * HOUR, ZONE, w)).toBe(
+      'Fri 10:00 PM',
+    )
+  })
 })
 
 const NOW = Date.UTC(2026, 9, 8, 22, 36) // 3:36 PM today
@@ -222,6 +234,53 @@ describe('windowBands', () => {
     const window = windowFor(spans, 1, 'days3')
     expect(windowBands(days, window)).toEqual(
       days.slice(1, 4).flatMap((astro) => dayBands({ astro })),
+    )
+  })
+
+  test('a zoom has its nights cut to it, and none that lies outside it', () => {
+    const sunset = days[3].sunset!
+    const w = zoomWindow(spans, {
+      start: sunset - 2 * HOUR,
+      end: spans[4].start + 3 * HOUR,
+    })
+    const bands = windowBands(days, w)
+    expect(bands.length).toBeGreaterThan(0)
+    for (const band of bands) {
+      expect(band.start).toBeGreaterThanOrEqual(w.start)
+      expect(band.end).toBeLessThanOrEqual(w.end)
+      expect(band.end).toBeGreaterThan(band.start)
+    }
+    // The morning of the fourth day, before the zoom, is not shaded.
+    expect(bands.some((band) => band.end <= spans[3].start + 12 * HOUR)).toBe(
+      false,
+    )
+    // The night runs on to the zoom's end, past midnight.
+    expect(bands[bands.length - 1].end).toBe(w.end)
+  })
+})
+
+describe('windowMarkers inside a zoom', () => {
+  test('a zoom of an afternoon keeps only the lines inside it', () => {
+    const w = zoomWindow(spans, {
+      start: spans[3].start + 12 * HOUR,
+      end: spans[3].start + 16 * HOUR,
+    })
+    const markers = windowMarkers(days, w, NOW)
+    for (const marker of markers) {
+      expect(marker.t).toBeGreaterThanOrEqual(w.start)
+      expect(marker.t).toBeLessThanOrEqual(w.end)
+    }
+    expect(markers.some((m) => m.name === 'sunset')).toBe(false)
+  })
+
+  test('a zoom of today that ends before the current time has no line for it', () => {
+    const w = zoomWindow(spans, {
+      start: spans[0].start + 6 * HOUR,
+      end: spans[0].start + 10 * HOUR,
+    })
+    expect(w.first).toBe(0)
+    expect(windowMarkers(days, w, NOW).some((m) => m.name === 'now')).toBe(
+      false,
     )
   })
 })

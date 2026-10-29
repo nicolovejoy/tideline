@@ -50,7 +50,10 @@ export interface TideView {
   predicted: TidePoint[]
   /** The gauge's readings for today, drawn or not. For the caption. */
   readings: TidePoint[]
-  /** The readings that are drawn: today's, at a spot with its own gauge. */
+  /**
+   * The readings that are drawn: today's in the window, with one either side,
+   * at a spot with its own gauge.
+   */
   observed: TidePoint[]
   /** The day's highs and lows. */
   events: TideExtreme[]
@@ -105,6 +108,23 @@ function within(
   return (points ?? []).filter((p) => p.t >= day.start && p.t <= day.end)
 }
 
+/**
+ * The points in a window and one either side of it, so the line reaches both
+ * edges of the plot even when a zoom starts or ends between two points. The
+ * plot is clipped to the window, so the parts beyond it are not seen.
+ */
+function across(
+  points: TidePoint[] | null,
+  window: { start: number; end: number },
+) {
+  const all = points ?? []
+  const first = all.findIndex((p) => p.t >= window.start)
+  if (first === -1) return []
+  const after = all.findIndex((p) => p.t > window.end)
+  const last = after === -1 ? all.length - 1 : after
+  return all.slice(Math.max(first - 1, 0), last + 1)
+}
+
 export function tideView(
   data: Inputs,
   selected: Selected,
@@ -115,13 +135,16 @@ export function tideView(
   const tidal = hasTides(spot)
   const { span } = selected
   const ownGauge = hasOwnGauge(spot)
-  // The curve across the whole window. Both ends are included, so it reaches
-  // the right edge of the plot by using the first point after the window.
-  const predicted = tidal ? within(data.predictions.data, selected.window) : []
+  // The curve across the whole window, with a point beyond each edge.
+  const predicted = tidal ? across(data.predictions.data, selected.window) : []
   // The gauge's readings for today, wherever the gauge is.
   const readings = within(data.observed.data, data.day)
-  // Drawn only where they are this station's own, and only where the tide is.
-  const observed = selected.isToday && ownGauge && tidal ? readings : []
+  // Drawn only where they are this station's own, only where the tide is, and
+  // only where the window reaches into today, whichever day was chosen.
+  const observed =
+    selected.showsToday && ownGauge && tidal
+      ? across(readings, selected.window)
+      : []
   const events = tidal ? onDay(data.hilo.data ?? [], span) : []
 
   // Where the cursor sits until someone moves it. Today that is the latest
@@ -131,9 +154,18 @@ export function tideView(
   // anchor, never the one after: a sunset at 4:59 PM must not tip the cursor
   // into the 5 PM hour, or the weather under it would not be the hour that
   // the day's row in the list gives.
-  const rest = selected.isToday
-    ? restingCursor(data.now, tidal ? readings : [])
-    : Math.floor(selected.anchor / STEP) * STEP
+  // Held to the window as a pick is: a zoom can leave the reading, the clock
+  // or the sunset off the plot.
+  const { start, end } = selected.window
+  const rest = Math.min(
+    Math.max(
+      selected.isToday
+        ? restingCursor(data.now, tidal ? readings : [])
+        : Math.floor(selected.anchor / STEP) * STEP,
+      start,
+    ),
+    end,
+  )
   // A pick belongs to the day it was made on, and lasts until the page is put
   // away and brought back. After that the cursor goes back to rest, so
   // reopening the app shows the latest reading and not wherever the cursor
@@ -141,9 +173,7 @@ export function tideView(
   const held =
     pick !== null && pick.day === selected.date && pick.shown === data.shown
   // A pick holds anywhere in the window, not only on the chosen day.
-  const cursor = held
-    ? Math.min(Math.max(pick.t, selected.window.start), selected.window.end)
-    : rest
+  const cursor = held ? Math.min(Math.max(pick.t, start), end) : rest
 
   // One vertical range for all 14 days, so one day can be compared with
   // another, widened if needed to fit today's readings. Those count on every
@@ -174,7 +204,7 @@ export function tideView(
   let second: SecondLine | null = null
   if (text.observed !== null) {
     second = { words: text.observed, key: 'observed' }
-  } else if (!ownGauge && selected.isToday && tidal) {
+  } else if (!ownGauge && selected.showsToday && tidal) {
     const theirs = within(data.gaugePredictions.data, data.day)
     const { aboveFt } = tideReadout(theirs, readings, cursor)
     if (aboveFt !== null) {

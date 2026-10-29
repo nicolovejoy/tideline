@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import type { ReactNode } from 'react'
 import {
   ARROW_PATH,
@@ -108,6 +109,13 @@ export function Panel({
     markers.map((m) => ({ x: x(m.t), width: labelWidth(m.label ?? '') })),
     width,
   )
+  // The plot shows its window and nothing past it: a curve's point beyond
+  // each edge, an hour a zoom cuts into or an arrow at the middle of one
+  // would otherwise be drawn over the page beside the plot, which lets its
+  // marker labels and the cursor's dots overflow. Ids are unique per panel,
+  // and useId's own characters are not all allowed in a url().
+  const clip = `plot-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
+  const clipped = `url(#${clip})`
   return (
     <section className="panel">
       <h3 className="panel-title">{title}</h3>
@@ -120,82 +128,103 @@ export function Panel({
         viewBox={`0 0 ${width} ${height}`}
         aria-hidden="true"
       >
-        {bands.map((band) => (
-          <rect
-            key={`${band.name}-${band.start}`}
-            className={`band band-${band.name}`}
-            x={x(band.start)}
-            y={0}
-            width={x(band.end) - x(band.start)}
-            height={height}
-          />
-        ))}
-        {series.map((one) => (
-          <g key={one.name} className={`series series-${one.name}`}>
-            {one.filled && (
-              <path className="fill" d={areaPath(one.points, x, y, height)} />
-            )}
-            <path
-              className="line"
-              d={
-                one.step === undefined
-                  ? linePath(one.points, x, y, one.maxGap)
-                  : stepPath(one.points, x, y, one.step, one.cut)
-              }
+        <defs>
+          {/* Cut in time only: a line at the lowest value sits on the
+              plot's bottom edge, and half its stroke is below it. */}
+          <clipPath id={clip}>
+            <rect x={0} y={-height} width={width} height={3 * height} />
+          </clipPath>
+        </defs>
+        <g clipPath={clipped}>
+          {bands.map((band) => (
+            <rect
+              key={`${band.name}-${band.start}`}
+              className={`band band-${band.name}`}
+              x={x(band.start)}
+              y={0}
+              width={x(band.end) - x(band.start)}
+              height={height}
             />
-          </g>
-        ))}
-        {arrows.map((arrow) =>
-          arrow.angle === null ? (
-            <circle
-              key={arrow.t}
-              className={
-                arrow.observed ? 'arrow-dot arrow-dot-observed' : 'arrow-dot'
-              }
-              cx={x(arrow.t)}
-              cy={y(arrow.v)}
-              r={arrow.observed ? DOT_RADIUS_OBSERVED : DOT_RADIUS}
-            />
-          ) : (
-            <g
-              key={arrow.t}
-              className={arrow.observed ? 'arrow arrow-observed' : 'arrow'}
-              transform={`translate(${x(arrow.t).toFixed(1)} ${y(arrow.v).toFixed(1)}) rotate(${arrow.angle})`}
-            >
-              <path d={arrow.observed ? ARROW_SOLID_PATH : ARROW_PATH} />
+          ))}
+          {series.map((one) => (
+            <g key={one.name} className={`series series-${one.name}`}>
+              {one.filled && (
+                <path className="fill" d={areaPath(one.points, x, y, height)} />
+              )}
+              <path
+                className="line"
+                d={
+                  one.step === undefined
+                    ? linePath(one.points, x, y, one.maxGap)
+                    : stepPath(one.points, x, y, one.step, one.cut)
+                }
+              />
             </g>
-          ),
-        )}
+          ))}
+          {arrows.map((arrow) =>
+            arrow.angle === null ? (
+              <circle
+                key={arrow.t}
+                className={
+                  arrow.observed ? 'arrow-dot arrow-dot-observed' : 'arrow-dot'
+                }
+                cx={x(arrow.t)}
+                cy={y(arrow.v)}
+                r={arrow.observed ? DOT_RADIUS_OBSERVED : DOT_RADIUS}
+              />
+            ) : (
+              <g
+                key={arrow.t}
+                className={arrow.observed ? 'arrow arrow-observed' : 'arrow'}
+                transform={`translate(${x(arrow.t).toFixed(1)} ${y(arrow.v).toFixed(1)}) rotate(${arrow.angle})`}
+              >
+                <path d={arrow.observed ? ARROW_SOLID_PATH : ARROW_PATH} />
+              </g>
+            ),
+          )}
+          {rules.map((rule) => (
+            <g key={rule.v} className="rule">
+              <line x1={0} x2={width} y1={y(rule.v)} y2={y(rule.v)} />
+            </g>
+          ))}
+        </g>
         {rules.map((rule) => (
           <g key={rule.v} className="rule">
-            <line x1={0} x2={width} y1={y(rule.v)} y2={y(rule.v)} />
             <text x={4} y={y(rule.v) - 4}>
               {rule.label}
             </text>
           </g>
         ))}
-        {markers.map((marker, i) => {
-          const at = x(marker.t)
-          const place = places[i]
-          return (
+        <g clipPath={clipped}>
+          {markers.map((marker) => {
+            const at = x(marker.t)
+            return (
+              <g
+                key={`${marker.name}-${marker.t}`}
+                className={`marker marker-${marker.name}`}
+              >
+                <line x1={at} x2={at} y1={0} y2={height} />
+              </g>
+            )
+          })}
+        </g>
+        {markers.map((marker, i) =>
+          marker.label === undefined ? null : (
             <g
               key={`${marker.name}-${marker.t}`}
               className={`marker marker-${marker.name}`}
             >
-              <line x1={at} x2={at} y1={0} y2={height} />
-              {marker.label !== undefined && (
-                <text
-                  className="marker-label"
-                  x={place.x}
-                  y={LABEL_Y}
-                  textAnchor={place.anchor}
-                >
-                  {marker.label}
-                </text>
-              )}
+              <text
+                className="marker-label"
+                x={places[i].x}
+                y={LABEL_Y}
+                textAnchor={places[i].anchor}
+              >
+                {marker.label}
+              </text>
             </g>
-          )
-        })}
+          ),
+        )}
         <line className="cursor" x1={cursorX} x2={cursorX} y1={0} y2={height} />
         {dots.map((dot) => (
           <circle

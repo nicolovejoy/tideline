@@ -25,7 +25,7 @@ import type { Sky } from '../data/nwsObservations.ts'
 import { skyPct } from '../data/observed.ts'
 import type { ObservedHour } from '../data/observed.ts'
 import { HOUR } from '../time.ts'
-import { onDay } from './selection.ts'
+import { overlapping } from './selection.ts'
 import type { Selected } from './selection.ts'
 
 const NOTHING_HERE: ReadoutPart[] = [{ key: null, text: 'No forecast here' }]
@@ -380,10 +380,16 @@ export function weatherView(
   now: number,
   observed: ObservedHour[] = [],
 ): WeatherView {
-  const { span } = selected
   const all = forecastHours(forecast, now)
-  // Rows belong to today only, and only where there are any.
-  const rows = selected.isToday ? onDay(observed, span) : []
+  // The hours any part of the window shows: a zoom can cut into an hour at
+  // either edge, and that hour is drawn as far as the plot goes.
+  const inWindow = (items: ForecastHour[]) =>
+    overlapping(items, selected.window, HOUR)
+  // Rows are today's only. They are drawn where the window reaches into
+  // today, whichever day was chosen, and only those it shows.
+  const rows = selected.showsToday
+    ? overlapping(observed, selected.window, HOUR)
+    : []
   const today = rows.length > 0 ? now : null
 
   let notice: string | null = null
@@ -402,8 +408,8 @@ export function weatherView(
     const last = all.length > 0 ? all[all.length - 1].t : -Infinity
     const reaches = Math.floor(selected.anchor / HOUR) * HOUR <= last
     // The hours across the whole window; the rows stay today's.
-    hours = todayHours(onDay(all, selected.window).map(withShownValues), rows)
-    if (hours.length === 0 || !(reaches || selected.isToday)) {
+    hours = todayHours(inWindow(all).map(withShownValues), rows)
+    if (hours.length === 0 || !(reaches || selected.showsToday)) {
       notice = 'No forecast this far out.'
       hours = []
     }
@@ -420,13 +426,12 @@ export function weatherView(
   // compared with another. The wind's follows the days on screen, from zero
   // to 5 mph above their highest gust (issue 77): a windy day a week out would
   // otherwise flatten a quiet day's arrows against the bottom of the panel.
+  // It counts the same hours the arrows are drawn from, the gusts before
+  // the rule hides any.
   const observedHours = observed.map(asForecastHour)
   const windBounds = windRange(
     values(
-      [
-        ...onDay(all, selected.window),
-        ...onDay(observedHours, selected.window),
-      ],
+      [...inWindow(all), ...rows.map(asForecastHour)],
       ['windMph', 'gustMph'],
     ),
   )

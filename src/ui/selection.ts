@@ -17,7 +17,14 @@ export interface Selected {
   /** The days the panels draw: the day itself, or three or seven from it. */
   window: DayWindow
   astro: DayAstro
+  /** Whether the chosen day is today. The cursor rests by it. */
   isToday: boolean
+  /**
+   * Whether the window reaches into today, which a zoom panned back from
+   * tomorrow does though the chosen day is not today. Today's observed side,
+   * the gauge's readings and the station's rows, is drawn by this.
+   */
+  showsToday: boolean
   /**
    * The instant the day is about: sunset, the moment the rest of the screen
    * is about, or the middle of the day where the sun does not set. The
@@ -42,15 +49,18 @@ export function selectedDay(
   const index = found === -1 ? 0 : found
   const astro = data.days[index]
   const span = data.spans[index]
+  const window = zoom
+    ? zoomWindow(data.spans, zoom)
+    : windowFor(data.spans, index, choice)
   return {
     index,
     date: astro.date,
     span,
-    window: zoom
-      ? zoomWindow(data.spans, zoom)
-      : windowFor(data.spans, index, choice),
+    window,
     astro,
     isToday: index === 0,
+    // The same test as the line at the current time, in windowMarkers.
+    showsToday: window.first === 0,
     anchor: astro.sunset ?? (span.start + span.end) / 2,
   }
 }
@@ -61,6 +71,21 @@ export function selectedDay(
  */
 export function onDay<T extends { t: number }>(items: T[], span: Span): T[] {
   return items.filter((item) => item.t >= span.start && item.t < span.end)
+}
+
+/**
+ * The hours, each starting at `t` and lasting `length`, that any part of a
+ * window shows. A zoom can start or end mid-hour, and the hour it cuts into
+ * is drawn as far as the plot goes, not left blank.
+ */
+export function overlapping<T extends { t: number }>(
+  items: T[],
+  window: Span,
+  length: number,
+): T[] {
+  return items.filter(
+    (item) => item.t + length > window.start && item.t < window.end,
+  )
 }
 
 /**
