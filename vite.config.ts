@@ -14,11 +14,18 @@ export default defineConfig({
   build: {
     rolldownOptions: {
       output: {
-        // The SDK's chunk is named, so a build log and a check can see whether
-        // the page loaded it. Rolldown has no object form of `manualChunks`;
-        // a `codeSplitting` group is its equivalent.
+        // The SDK's chunks are named, so a build log and a check can see
+        // whether the page loaded them. Firestore is a chunk of its own,
+        // before the `firebase` group so that group does not take it, and
+        // loads only once a signed-in user's spots are wanted, so the first
+        // sign-in tap downloads auth alone. Rolldown has no object form of
+        // `manualChunks`; a `codeSplitting` group is its equivalent.
         codeSplitting: {
           groups: [
+            {
+              name: 'firestore',
+              test: /node_modules[\\/](@firebase[\\/]firestore|firebase[\\/]firestore)[\\/]/,
+            },
             {
               name: 'firebase',
               test: /node_modules[\\/](@firebase|firebase)[\\/]/,

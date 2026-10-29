@@ -1,9 +1,10 @@
 // The only file that touches Firebase: it signs in and out, and reads,
 // writes and watches a signed-in user's spot list in Firestore. The SDK is
 // loaded with a dynamic import the first time it is wanted, to ask for the
-// user, to reach the spots or to warm it before a tap, so it is a chunk of
-// its own (named `firebase` in `vite.config.ts`) and the forecast page never
-// pays for it. The auth domain is the page's
+// user or to warm it before a tap, so it is a chunk of its own (named
+// `firebase` in `vite.config.ts`) and the forecast page never pays for it.
+// Firestore is a second chunk (`firestore`), loaded only once a signed-in
+// user's spots are wanted, so the first sign-in tap downloads auth alone. The auth domain is the page's
 // own host, so the sign-in handoff stays on one site: WebKit partitions
 // storage by top-level site, and a handler on Firebase's domain could not
 // read what the SDK wrote on ours (see `firebaseConfig.ts`).
@@ -46,7 +47,8 @@ export class SdkUnavailable extends Error {
 
 type AuthModule = typeof import('firebase/auth')
 type FirestoreModule = typeof import('firebase/firestore')
-type Ready = { auth: Auth; sdk: AuthModule; db: Firestore; fs: FirestoreModule }
+type Ready = { app: FirebaseApp; auth: Auth; sdk: AuthModule }
+type StoreReady = { db: Firestore; fs: FirestoreModule }
 
 let pending: Promise<Ready | NotConfigured> | null = null
 
@@ -66,14 +68,12 @@ function ready(): Promise<Ready | NotConfigured> {
   const started = Promise.all([
     import('firebase/app'),
     import('firebase/auth'),
-    import('firebase/firestore'),
   ]).then(
-    ([{ getApp, getApps, initializeApp }, sdk, fs]) => {
+    ([{ getApp, getApps, initializeApp }, sdk]) => {
       // A retry after `getAuth` threw finds the app already registered, and a
       // second `initializeApp` would fail as a duplicate.
       const app = getApps().length ? getApp() : initializeApp(config)
-      const auth = sdk.getAuth(app)
-      return { auth, sdk, db: firestore(fs, app), fs }
+      return { app, auth: sdk.getAuth(app), sdk }
     },
     (error: unknown) => {
       throw new SdkUnavailable(error)
@@ -106,6 +106,32 @@ function firestore(fs: FirestoreModule, app: FirebaseApp): Firestore {
       return fs.getFirestore(app)
     }
   }
+}
+
+let storePending: Promise<StoreReady> | null = null
+
+/**
+ * Firestore, started once after the app. Throws `NotConfigured`,
+ * `SdkUnavailable`, or the start's error; a failure is not kept, so the next
+ * call tries again.
+ */
+function storeReady(): Promise<StoreReady> {
+  if (storePending) return storePending
+  const started = ready().then(async (r) => {
+    if (r instanceof NotConfigured) throw new NotConfigured(r.missing)
+    let fs: FirestoreModule
+    try {
+      fs = await import('firebase/firestore')
+    } catch (error) {
+      throw new SdkUnavailable(error)
+    }
+    return { db: firestore(fs, r.app), fs }
+  })
+  started.catch(() => {
+    if (storePending === started) storePending = null
+  })
+  storePending = started
+  return storePending
 }
 
 /**
@@ -181,13 +207,6 @@ export async function signOut(): Promise<void> {
   await r.sdk.signOut(r.auth)
 }
 
-/** The SDK started, or the reason it could not be, as an error to throw. */
-async function readyOrThrow(): Promise<Ready> {
-  const r = await ready()
-  if (r instanceof NotConfigured) throw new NotConfigured(r.missing)
-  return r
-}
-
 /**
  * The signed-in user's spot list, one document `users/{uid}`. Spot ids can
  * hold dots, so a change writes them as keys of a nested object in a merge
@@ -195,13 +214,13 @@ async function readyOrThrow(): Promise<Ready> {
  */
 export const spotStore: SpotStore = {
   async read(uid) {
-    const { db, fs } = await readyOrThrow()
+    const { db, fs } = await storeReady()
     const snap = await fs.getDoc(fs.doc(db, 'users', uid))
     return snap.exists() ? snap.data() : null
   },
 
   async write(uid, doc) {
-    const { db, fs } = await readyOrThrow()
+    const { db, fs } = await storeReady()
     await fs.setDoc(fs.doc(db, 'users', uid), {
       ...doc,
       updatedAt: fs.serverTimestamp(),
@@ -209,7 +228,7 @@ export const spotStore: SpotStore = {
   },
 
   async change(uid, change) {
-    const { db, fs } = await readyOrThrow()
+    const { db, fs } = await storeReady()
     await fs.setDoc(
       fs.doc(db, 'users', uid),
       {
@@ -235,16 +254,12 @@ export const spotStore: SpotStore = {
   watch(uid, onData, onError) {
     let stopped = false
     let unsubscribe: (() => void) | null = null
-    ready().then(
-      (r) => {
+    storeReady().then(
+      ({ db, fs }) => {
         if (stopped) return
-        if (r instanceof NotConfigured) {
-          onError(new NotConfigured(r.missing))
-          return
-        }
         try {
-          unsubscribe = r.fs.onSnapshot(
-            r.fs.doc(r.db, 'users', uid),
+          unsubscribe = fs.onSnapshot(
+            fs.doc(db, 'users', uid),
             { includeMetadataChanges: true },
             (snap) =>
               onData(
