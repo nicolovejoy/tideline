@@ -13,3 +13,6 @@ dist
 # Playwright MCP session output
 .playwright-mcp/
 coverage
+# Firestore rules tests
+rules-tests/node_modules
+firestore-debug.log

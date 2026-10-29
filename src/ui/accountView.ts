@@ -11,7 +11,7 @@ export type Account =
   | { kind: 'out' }
   /** `tapped` is true when a tap started the load, false at start-up. */
   | { kind: 'loading'; tapped: boolean }
-  | { kind: 'in'; email: string | null }
+  | { kind: 'in'; uid: string; email: string | null }
   | { kind: 'failed'; words: string }
 
 export const WORDS = {
@@ -22,13 +22,20 @@ export const WORDS = {
   /** The loading button's name for a screen reader, whatever it shows. */
   loadingLabel: 'Signing in',
   noEmail: 'Signed in',
-  spotsStay: 'Your spots stay on this device for now.',
+  spotsKept: 'Your spots are kept in your account.',
+  spotsUnsent:
+    'Your spots are on this device. They go to your account when it can be reached.',
 } as const
 
 export const NOT_SET_UP = 'Sign-in is not set up in this build.'
 
 export function emailWords(email: string | null): string {
   return email ?? WORDS.noEmail
+}
+
+/** The caption under the signed-in row: where the spots are kept. */
+export function spotsCaption(pending: boolean): string {
+  return pending ? WORDS.spotsUnsent : WORDS.spotsKept
 }
 
 export function loadingWords(tapped: boolean): string {

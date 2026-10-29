@@ -70,7 +70,7 @@ export function useAccount(): {
     return watchUser(
       (user) => {
         if (user) {
-          setAccount({ kind: 'in', email: user.email })
+          setAccount({ kind: 'in', uid: user.uid, email: user.email })
         } else if (!signingIn.current) {
           clearSeen()
           setAccount({ kind: 'out' })
@@ -112,7 +112,7 @@ export function useAccount(): {
       (user) => {
         if (!settled()) return
         writeSeen()
-        setAccount({ kind: 'in', email: user.email })
+        setAccount({ kind: 'in', uid: user.uid, email: user.email })
         setWatching(true)
       },
       (error: unknown) => {

@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
+import { addChange, removeChange, replaceChange } from './data/accountDoc.ts'
 import { forgetSpot } from './data/cache.ts'
 import { readSpots, addSpot, replaceSpot } from './data/savedSpots.ts'
 import type { Spot } from './spot.ts'
@@ -18,6 +19,7 @@ import type { SharedPoint } from './ui/shareView.ts'
 import { SpotScreen } from './ui/SpotScreen.tsx'
 import { SpotSwitcher } from './ui/SpotSwitcher.tsx'
 import { useAccount } from './ui/useAccount.ts'
+import { useAccountSpots } from './ui/useAccountSpots.ts'
 import { clearAddress, closeView, openView, useView } from './ui/useView.ts'
 
 // Leaflet and the station list come with it, the first time it is opened.
@@ -50,6 +52,22 @@ export default function App() {
   // One watcher of the account, for its row and for the feedback sheet's
   // email.
   const account = useAccount()
+  // Signed in, the account's list is the truth: each snapshot of it replaces
+  // the row, and the chosen spot stays chosen while the list has it. A view
+  // that is up stays up.
+  const uid = account.account.kind === 'in' ? account.account.uid : null
+  const accountSpots = useAccountSpots({
+    uid,
+    onList: (list) => {
+      setSpots(list)
+      setSpot((prev) => {
+        const same = list.find((each) => each.id === prev.id)
+        if (same) return same
+        writeSpot(list[0])
+        return list[0]
+      })
+    },
+  })
 
   // A link to a spot the device has is a choice of that spot, as a tap on
   // the row is, and is dealt with as soon as it is read.
@@ -67,6 +85,7 @@ export default function App() {
   }
   const saveSpot = (next: Spot) => {
     setNotKept(addSpot(next) ? null : next.id)
+    accountSpots.apply(addChange(spots, next))
     setSpots([...spots, next])
     selectSpot(next)
     window.scrollTo(0, 0)
@@ -77,6 +96,7 @@ export default function App() {
   const editSpot = (next: Spot) => {
     if (next.id !== spot.id) forgetSpot(spot.id)
     setNotKept(replaceSpot(spot.id, next) ? null : next.id)
+    accountSpots.apply(replaceChange(spots, spot.id, next))
     setSpots(spots.map((each) => (each.id === spot.id ? next : each)))
     selectSpot(next)
     window.scrollTo(0, 0)
@@ -86,6 +106,7 @@ export default function App() {
   const removeSpot = () => {
     const rest = spots.filter((each) => each.id !== spot.id)
     forgetSavedSpot(spot)
+    accountSpots.apply(removeChange(spots, spot.id))
     setSpots(rest)
     selectSpot(rest[0])
     window.scrollTo(0, 0)
@@ -168,7 +189,7 @@ export default function App() {
             {WORDS.edit}
           </button>
         </div>
-        <Account {...account} />
+        <Account {...account} pending={accountSpots.pending} />
       </header>
       <SpotSwitcher
         spots={spots}

@@ -1,10 +1,14 @@
-// The only file that touches Firebase. The SDK is loaded with a dynamic
-// import the first time it is wanted, to ask for the user or to warm it
-// before a tap, so it is a chunk of its own (named `firebase` in
-// `vite.config.ts`) and the forecast page never pays for it. The auth domain is the page's
-// own host, so the sign-in handoff stays on one site: WebKit partitions
-// storage by top-level site, and a handler on Firebase's domain could not
-// read what the SDK wrote on ours (see `firebaseConfig.ts`).
+// The only file that touches Firebase: it signs in and out, and reads,
+// writes and watches a signed-in user's spot list in Firestore. The SDK is
+// loaded with a dynamic import the first time it is wanted, to ask for the
+// user or to warm it before a tap, so it is a chunk of its own (named
+// `firebase` in `vite.config.ts`) and the forecast page never pays for it.
+// Firestore is a second chunk (`firestore`), loaded only once a signed-in
+// user's spots are wanted, so the first sign-in tap downloads auth alone.
+// The auth domain is the page's own host, so the sign-in handoff stays on
+// one site: WebKit partitions storage by top-level site, and a handler on
+// Firebase's domain could not read what the SDK wrote on ours (see
+// `firebaseConfig.ts`).
 //
 // Two ways to have no user are kept apart. Firebase saying nobody is signed
 // in is `listener(null)`. Not being able to ask at all, because the config is
@@ -15,11 +19,14 @@
 // failed load is reported as its own error, `SdkUnavailable`, for the row to
 // word.
 
+import type { FirebaseApp } from 'firebase/app'
 import type { Auth, User } from 'firebase/auth'
+import type { Firestore } from 'firebase/firestore'
+import type { SpotStore } from './accountDoc.ts'
 import { firebaseConfig } from './firebaseConfig.ts'
 
 /** What the app needs to know about the signed-in user. */
-export type AccountUser = { email: string | null }
+export type AccountUser = { uid: string; email: string | null }
 
 /** The env has no Firebase config, so there is nothing to sign in to. */
 export class NotConfigured extends Error {
@@ -40,7 +47,9 @@ export class SdkUnavailable extends Error {
 }
 
 type AuthModule = typeof import('firebase/auth')
-type Ready = { auth: Auth; sdk: AuthModule }
+type FirestoreModule = typeof import('firebase/firestore')
+type Ready = { app: FirebaseApp; auth: Auth; sdk: AuthModule }
+type StoreReady = { db: Firestore; fs: FirestoreModule }
 
 let pending: Promise<Ready | NotConfigured> | null = null
 
@@ -65,7 +74,7 @@ function ready(): Promise<Ready | NotConfigured> {
       // A retry after `getAuth` threw finds the app already registered, and a
       // second `initializeApp` would fail as a duplicate.
       const app = getApps().length ? getApp() : initializeApp(config)
-      return { auth: sdk.getAuth(app), sdk }
+      return { app, auth: sdk.getAuth(app), sdk }
     },
     (error: unknown) => {
       throw new SdkUnavailable(error)
@@ -79,6 +88,55 @@ function ready(): Promise<Ready | NotConfigured> {
 }
 
 /**
+ * The database, made once with the app: `initializeFirestore` throws if it
+ * is called twice. The spots are kept on the device across tabs where the
+ * browser allows it, and in memory where it does not (a private window, or
+ * storage off). Where one is already made for the app (a dev server's hot
+ * reload), it is taken.
+ */
+function firestore(fs: FirestoreModule, app: FirebaseApp): Firestore {
+  try {
+    return fs.initializeFirestore(app, {
+      localCache: fs.persistentLocalCache({
+        tabManager: fs.persistentMultipleTabManager(),
+      }),
+    })
+  } catch {
+    try {
+      return fs.initializeFirestore(app, { localCache: fs.memoryLocalCache() })
+    } catch {
+      return fs.getFirestore(app)
+    }
+  }
+}
+
+let storePending: Promise<StoreReady> | null = null
+
+/**
+ * Firestore, started once after the app. Throws `NotConfigured`,
+ * `SdkUnavailable`, or the start's error; a failure is not kept, so the next
+ * call tries again.
+ */
+function storeReady(): Promise<StoreReady> {
+  if (storePending) return storePending
+  const started = ready().then(async (r) => {
+    if (r instanceof NotConfigured) throw r
+    let fs: FirestoreModule
+    try {
+      fs = await import('firebase/firestore')
+    } catch (error) {
+      throw new SdkUnavailable(error)
+    }
+    return { db: firestore(fs, r.app), fs }
+  })
+  started.catch(() => {
+    if (storePending === started) storePending = null
+  })
+  storePending = started
+  return storePending
+}
+
+/**
  * Starts loading the SDK without asking it anything, for a pointer-down or a
  * focus on the sign-in button. Safari may block a popup that opens long
  * after the tap, and on a device's first sign-in the download would otherwise
@@ -89,7 +147,7 @@ export function warm(): void {
 }
 
 function accountUser(user: User): AccountUser {
-  return { email: user.email }
+  return { uid: user.uid, email: user.email }
 }
 
 /**
@@ -149,4 +207,81 @@ export async function signOut(): Promise<void> {
   const r = await ready()
   if (r instanceof NotConfigured) return
   await r.sdk.signOut(r.auth)
+}
+
+/**
+ * The signed-in user's spot list, one document `users/{uid}`. Spot ids can
+ * hold dots, so a change writes them as keys of a nested object in a merge
+ * `setDoc`, never as dotted field paths.
+ */
+export const spotStore: SpotStore = {
+  async read(uid) {
+    const { db, fs } = await storeReady()
+    const snap = await fs.getDoc(fs.doc(db, 'users', uid))
+    return snap.exists() ? snap.data() : null
+  },
+
+  async write(uid, doc) {
+    const { db, fs } = await storeReady()
+    await fs.setDoc(fs.doc(db, 'users', uid), {
+      ...doc,
+      updatedAt: fs.serverTimestamp(),
+    })
+  },
+
+  async change(uid, change) {
+    const { db, fs } = await storeReady()
+    await fs.setDoc(
+      fs.doc(db, 'users', uid),
+      {
+        spots: {
+          ...change.set,
+          ...Object.fromEntries(
+            change.remove.map((id) => [id, fs.deleteField()]),
+          ),
+        },
+        order: change.order,
+        updatedAt: fs.serverTimestamp(),
+      },
+      { merge: true },
+    )
+  },
+
+  /**
+   * Calls `onData` with the document, or null when there is none, and whether
+   * a write of this device's has not reached the server yet. Where the SDK
+   * cannot be had, calls `onError` once. The returned function stops it, and
+   * may be called before the SDK has loaded.
+   */
+  watch(uid, onData, onError) {
+    let stopped = false
+    let unsubscribe: (() => void) | null = null
+    storeReady().then(
+      ({ db, fs }) => {
+        if (stopped) return
+        try {
+          unsubscribe = fs.onSnapshot(
+            fs.doc(db, 'users', uid),
+            { includeMetadataChanges: true },
+            (snap) =>
+              onData(
+                snap.exists() ? snap.data() : null,
+                snap.metadata.hasPendingWrites,
+              ),
+            onError,
+          )
+        } catch (error) {
+          onError(error)
+        }
+      },
+      (error: unknown) => {
+        if (!stopped) onError(error)
+      },
+    )
+    return () => {
+      stopped = true
+      unsubscribe?.()
+      unsubscribe = null
+    }
+  },
 }

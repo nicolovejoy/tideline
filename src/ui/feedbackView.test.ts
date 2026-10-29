@@ -64,8 +64,10 @@ describe('invalidWords', () => {
 
 describe('initialEmail', () => {
   test('the signed-in address, or nothing', () => {
-    expect(initialEmail({ kind: 'in', email: 'a@b.co' })).toBe('a@b.co')
-    expect(initialEmail({ kind: 'in', email: null })).toBe('')
+    expect(initialEmail({ kind: 'in', uid: 'u1', email: 'a@b.co' })).toBe(
+      'a@b.co',
+    )
+    expect(initialEmail({ kind: 'in', uid: 'u1', email: null })).toBe('')
     expect(initialEmail({ kind: 'out' })).toBe('')
     expect(initialEmail({ kind: 'loading', tapped: false })).toBe('')
     expect(initialEmail({ kind: 'failed', words: 'x' })).toBe('')
@@ -78,8 +80,10 @@ describe('showsEmailHint', () => {
     expect(showsEmailHint({ kind: 'failed', words: 'x' })).toBe(true)
     expect(showsEmailHint({ kind: 'loading', tapped: false })).toBe(false)
     expect(showsEmailHint({ kind: 'loading', tapped: true })).toBe(false)
-    expect(showsEmailHint({ kind: 'in', email: 'a@b.co' })).toBe(false)
-    expect(showsEmailHint({ kind: 'in', email: null })).toBe(false)
+    expect(showsEmailHint({ kind: 'in', uid: 'u1', email: 'a@b.co' })).toBe(
+      false,
+    )
+    expect(showsEmailHint({ kind: 'in', uid: 'u1', email: null })).toBe(false)
   })
 })
 

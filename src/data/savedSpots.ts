@@ -134,6 +134,17 @@ export function replaceSpot(id: string, next: Spot): boolean {
   return writeSavedSpots(spots.map((spot, i) => (i === at ? next : spot)))
 }
 
+/**
+ * Puts the whole list in place of the device's own, in the order given, and
+ * says whether it went in. It is how the account's list becomes the device's.
+ * A list that went in is marked seeded, as `readSpots` marks its own.
+ */
+export function replaceSavedSpots(spots: Spot[]): boolean {
+  if (!writeSavedSpots(spots)) return false
+  markSeeded()
+  return true
+}
+
 /** An id no hard-coded spot has, from the time it was made. */
 export function newSpotId(now: number = Date.now()): string {
   return `spot-${now.toString(36)}`

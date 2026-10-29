@@ -12,15 +12,33 @@ export default defineConfig({
     __COMMIT__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA ?? ''),
   },
   build: {
+    // The `firestore` chunk is about 581 kB minified, over Vite's 500 kB.
+    chunkSizeWarningLimit: 700,
     rolldownOptions: {
       output: {
-        // The SDK's chunk is named, so a build log and a check can see whether
-        // the page loaded it. Rolldown has no object form of `manualChunks`;
-        // a `codeSplitting` group is its equivalent.
+        // The SDK's chunks are named, so a build log and a check can see
+        // whether the page loaded them. Rolldown has no object form of
+        // `manualChunks`; a `codeSplitting` group is its equivalent.
+        //
+        // Auth and Firestore are two chunks, and Firestore loads only once a
+        // signed-in user's spots are wanted, so the first sign-in tap
+        // downloads auth alone. `firebase` has the higher priority, so it
+        // claims the modules both share (`@firebase/app`, `util`,
+        // `component`, `logger`) and `firestore` imports them from it, not
+        // the other way round. Its test leaves out Firestore and
+        // `@firebase/webchannel-wrapper`, which only Firestore uses; without
+        // that, 18 kB of it lands in the auth chunk. `firestore` takes every
+        // other Firebase module.
         codeSplitting: {
           groups: [
             {
               name: 'firebase',
+              priority: 2,
+              test: /node_modules[\\/](?!@firebase[\\/](firestore|webchannel-wrapper)|firebase[\\/]firestore)(@firebase|firebase)[\\/]/,
+            },
+            {
+              name: 'firestore',
+              priority: 1,
               test: /node_modules[\\/](@firebase|firebase)[\\/]/,
             },
           ],
