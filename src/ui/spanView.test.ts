@@ -242,6 +242,16 @@ describe('a window of any length', () => {
     ])
   })
 
+  test('a zoom that starts off the hour begins at the next whole hour', () => {
+    const w = zoomWindow(spans, {
+      start: spans[3].start + 13 * HOUR + 20 * MINUTE,
+      end: spans[3].start + 18 * HOUR + 20 * MINUTE,
+    })
+    const labels = stackLabels(w, ZONE)
+    expect(labels.map((l) => l.text)).toEqual(['2p', '3p', '4p', '5p', '6p'])
+    expect(labels.every((l) => l.t % HOUR === 0)).toBe(true)
+  })
+
   test('a zoom of 10 hours has a label every 3 hours', () => {
     const w = zoomWindow(spans, {
       start: spans[3].start + 8 * HOUR,

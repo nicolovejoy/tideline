@@ -97,6 +97,8 @@ function hourText(hour: number): string {
  * window covers more than one day, and the end is labelled only in a window
  * of one day, where it is the day's own closing hour. Marks are placed on
  * whole hours, so a window that starts between them begins at the next one.
+ * That rounding is of the instant, so it relies on the spot's zone being a
+ * whole number of hours from UTC, as every US zone is.
  */
 export function stackLabels(window: DayWindow, timeZone: string): StackLabel[] {
   const several = window.last > window.first
