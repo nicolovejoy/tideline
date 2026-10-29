@@ -1,4 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
 import type { Span } from '../data/cache.ts'
 import {
@@ -82,6 +88,40 @@ export function PanelStack<P>({
   useLayoutEffect(() => {
     live.current = { start, end, width, bounds, onWindow }
   })
+  // A finger's moves and a wheel's events can come many times a frame, and
+  // each new window draws every panel again. Only the latest asked for in a
+  // frame is handed on, so the panels are drawn at most once a frame. Until
+  // it is, a wheel or a key builds on the window asked for, not the one
+  // drawn, so no turn of the wheel is lost.
+  const asked = useRef<{ window: Span | null; frame: number | null }>({
+    window: null,
+    frame: null,
+  })
+  const ask = useCallback((next: Span) => {
+    const pending = asked.current
+    pending.window = next
+    if (pending.frame !== null) return
+    pending.frame = requestAnimationFrame(() => {
+      const window = pending.window
+      pending.frame = null
+      pending.window = null
+      if (window !== null) live.current.onWindow(window)
+    })
+  }, [])
+  const shown = useCallback(
+    (): Span =>
+      asked.current.window ?? {
+        start: live.current.start,
+        end: live.current.end,
+      },
+    [],
+  )
+  useEffect(() => {
+    const pending = asked.current
+    return () => {
+      if (pending.frame !== null) cancelAnimationFrame(pending.frame)
+    }
+  }, [])
 
   // Measured before the first paint, so the page does not jump when the
   // panels appear.
@@ -101,9 +141,11 @@ export function PanelStack<P>({
     const element = box.current
     if (!element) return
     const under = (clientX: number) => {
-      const { start, end, width } = live.current
+      const { start, end } = shown()
       const left = element.getBoundingClientRect().left
-      return linearScale([start, end], [0, width]).invert(clientX - left)
+      return linearScale([start, end], [0, live.current.width]).invert(
+        clientX - left,
+      )
     }
     // Safari pinches on a trackpad with these, not with a wheel. On an iPhone
     // they come with a two-finger touch too, which the pointers already pinch.
@@ -115,10 +157,10 @@ export function PanelStack<P>({
         event.preventDefault()
         return
       }
-      const { start, end, width, bounds, onWindow } = live.current
+      const { width, bounds } = live.current
       if (width === 0) return
       const next = wheelWindow(
-        { start, end },
+        shown(),
         event,
         width,
         under(event.clientX),
@@ -129,25 +171,23 @@ export function PanelStack<P>({
       // swipe is kept from the browser, which would take it as going back and
       // leave the site.
       event.preventDefault()
-      onWindow(next)
+      ask(next)
     }
     const onGestureStart = (event: Event) => {
       event.preventDefault()
-      const { start, end, width } = live.current
       gesture =
-        width === 0
+        live.current.width === 0
           ? null
           : {
-              window: { start, end },
+              window: shown(),
               about: under((event as GestureEvent).clientX),
             }
     }
     const onGestureChange = (event: Event) => {
       event.preventDefault()
       if (gesture === null || touches.current.size > 0) return
-      const { bounds, onWindow } = live.current
       const { scale } = event as GestureEvent
-      onWindow(zoomAbout(gesture.window, gesture.about, scale, bounds))
+      ask(zoomAbout(gesture.window, gesture.about, scale, live.current.bounds))
     }
     const onGestureEnd = () => {
       gesture = null
@@ -162,7 +202,7 @@ export function PanelStack<P>({
       element.removeEventListener('gesturechange', onGestureChange)
       element.removeEventListener('gestureend', onGestureEnd)
     }
-  }, [])
+  }, [ask, shown])
 
   const x = linearScale([start, end], [0, width])
   const moveTo = (t: number) =>
@@ -222,7 +262,7 @@ export function PanelStack<P>({
     pinch.current = pinchBegin(
       { id: a, x: ax - left, y: 0 },
       { id: b, x: bx - left, y: 0 },
-      { start, end },
+      shown(),
     )
     capture(event, a)
     capture(event, b)
@@ -243,7 +283,7 @@ export function PanelStack<P>({
     })
     if (next === current || width === 0) return
     pinch.current = next
-    onWindow(pinchWindow(next.window, width, next.from, next.to, bounds))
+    ask(pinchWindow(next.window, width, next.from, next.to, bounds))
   }
 
   // A finger of a pinch lifting ends it, and the other then does nothing
@@ -266,7 +306,7 @@ export function PanelStack<P>({
     const zooms: Record<string, number> = { '+': 2, '=': 2, '-': 0.5 }
     if (event.key in zooms && !event.ctrlKey && !event.metaKey) {
       event.preventDefault()
-      onWindow(zoomAbout({ start, end }, cursor, zooms[event.key], bounds))
+      ask(zoomAbout(shown(), cursor, zooms[event.key], bounds))
       return
     }
     const jump = event.shiftKey ? HOUR : STEP
