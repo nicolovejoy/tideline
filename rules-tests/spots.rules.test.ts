@@ -12,7 +12,7 @@ import {
   serverTimestamp,
   setDoc,
 } from 'firebase/firestore'
-import { afterAll, beforeAll, beforeEach, describe, test } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 
 let env: RulesTestEnvironment
 
@@ -122,6 +122,23 @@ describe('users/{uid}', () => {
         },
         { merge: true },
       ),
+    )
+    let data: Record<string, unknown> | undefined
+    await env.withSecurityRulesDisabled(async (context) => {
+      data = (await getDoc(doc(context.firestore(), 'users/alice'))).data()
+    })
+    expect(data?.spots).toEqual({ a: { id: 'a' }, c: { id: 'c' } })
+    expect(data?.order).toEqual(['a', 'c'])
+    expect(data?.updatedAt).toBeDefined()
+  })
+
+  test('a write with no order is refused', async () => {
+    const alice = env.authenticatedContext('alice').firestore()
+    await assertFails(
+      setDoc(doc(alice, 'users/alice'), {
+        spots: { a: { id: 'a' } },
+        updatedAt: serverTimestamp(),
+      }),
     )
   })
 

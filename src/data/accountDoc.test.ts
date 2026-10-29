@@ -205,6 +205,25 @@ describe('openAccount', () => {
     expect(f.written).toEqual([toDoc([CAMPUS, A])])
   })
 
+  test('openAccount with a document of no spots or order writes the device list', async () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    const f = fakeStore(async () => ({}))
+    expect(await openAccount('u1', f.store, () => [A, B])).toBe(true)
+    expect(f.written).toEqual([toDoc([A, B])])
+    expect(readCombined()).toBe('u1')
+    const g = fakeStore(async () => ({ updatedAt: 1 }))
+    clearCombined()
+    expect(await openAccount('u1', g.store, () => [B])).toBe(true)
+    expect(g.written).toEqual([toDoc([B])])
+  })
+
+  test("openAccount with spots and no order combines in the map's order", async () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    const f = fakeStore(async () => ({ spots: { c: C } }))
+    expect(await openAccount('u1', f.store, () => [A])).toBe(true)
+    expect(f.written).toEqual([toDoc([C, A])])
+  })
+
   test('openAccount combines with the account winning', async () => {
     vi.stubGlobal('localStorage', fakeStorage())
     const f = fakeStore(async () => toDoc([C]))
@@ -243,5 +262,16 @@ describe('openAccount', () => {
     const f = fakeStore(async () => null, { fail: true })
     expect(await openAccount('u1', f.store, () => [A])).toBe(false)
     expect(readCombined()).toBeNull()
+  })
+
+  test('openAccount is false and leaves the mark when the device list cannot be read', async () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    const f = fakeStore(async () => null)
+    const device = () => {
+      throw new Error('storage refused')
+    }
+    expect(await openAccount('u1', f.store, device)).toBe(false)
+    expect(readCombined()).toBeNull()
+    expect(f.written).toEqual([])
   })
 })
