@@ -10,6 +10,7 @@ import { Panel } from '../chart/Panel.tsx'
 import { PanelStack } from '../chart/PanelStack.tsx'
 import { cursorText } from '../chart/readout.ts'
 import { linearScale } from '../chart/scales.ts'
+import type { Span } from '../data/cache.ts'
 import { useSpotData } from '../data/useSpotData.ts'
 import { hasTides } from '../spot.ts'
 import type { Spot } from '../spot.ts'
@@ -81,11 +82,15 @@ export function SpotScreen({ spot }: SpotScreenProps) {
   // A day, three or a week from the chosen day. Kept for a reload; choosing
   // a spot forgets it.
   const [span, setSpan] = useState<SpanChoice>(readSpan)
+  // The window pinching and panning have made, or null for the span's own.
+  // Not kept: a reload, a spot, a day or the month view start from the span.
+  const [zoom, setZoom] = useState<Span | null>(null)
   const chooseSpan = useCallback((choice: SpanChoice) => {
     setSpan(choice)
+    setZoom(null)
     writeSpan(choice)
   }, [])
-  const selected = selectedDay(data, pickedDay, span)
+  const selected = selectedDay(data, pickedDay, span, zoom)
   const tide = tideView(data, selected, pick, spot)
   const observedToday = todaysObserved(
     data.station,
@@ -132,6 +137,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
   const dayHeading = useRef<HTMLHeadingElement>(null)
   const selectDay = useCallback((date: string) => {
     setPickedDay(date)
+    setZoom(null)
     // The cursor goes back to rest, on this day and on the one left behind.
     setPick(null)
     // On a phone the panels are above the list, usually off screen. In a
@@ -163,6 +169,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
     if (monthOpen) {
       setPickedDay(null)
       setPick(null)
+      setZoom(null)
       setMonth(null)
     }
   }
@@ -203,7 +210,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
           <p className="day-cursor">at {cursorTime}</p>
         </header>
         <div className="day-controls">
-          <SpanControl span={span} onSpan={chooseSpan} />
+          <SpanControl span={span} zoomed={zoom !== null} onSpan={chooseSpan} />
           <button
             type="button"
             className="text-button help-button"
@@ -228,7 +235,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
           pick={pick}
           onRestore={setPick}
           bounds={{ start: spans[0].start, end: spans[spans.length - 1].end }}
-          onWindow={() => {}}
+          onWindow={setZoom}
         >
           {({ width, x }) => (
             <>

@@ -5,6 +5,8 @@ import type { SpanChoice } from './spanView.ts'
 
 interface SpanControlProps {
   span: SpanChoice
+  /** The panels are zoomed to a window of their own, so no button is checked. */
+  zoomed: boolean
   onSpan: (choice: SpanChoice) => void
 }
 
@@ -20,7 +22,7 @@ const ARROWS: Record<string, 1 | -1> = {
  * week. A group of radio buttons: Tab reaches the chosen one, the arrow keys
  * move the choice and the focus with it.
  */
-export function SpanControl({ span, onSpan }: SpanControlProps) {
+export function SpanControl({ span, zoomed, onSpan }: SpanControlProps) {
   const group = useRef<HTMLDivElement>(null)
   const focusChosen = useRef(false)
 
@@ -54,7 +56,7 @@ export function SpanControl({ span, onSpan }: SpanControlProps) {
           key={entry.id}
           type="button"
           role="radio"
-          aria-checked={entry.id === span}
+          aria-checked={!zoomed && entry.id === span}
           tabIndex={entry.id === span ? 0 : -1}
           className="text-button span-choice"
           onClick={() => onSpan(entry.id)}

@@ -45,6 +45,11 @@ describe('the help', () => {
     expect(all.toLowerCase()).toContain(word.toLowerCase())
   })
 
+  test('says how to pinch the panels', () => {
+    const panels = HELP.sections.find((s) => s.heading === 'The panels')
+    expect(panels?.paragraphs.join('\n')).toContain('Pinch')
+  })
+
   test('carries the rules as the app has them', () => {
     expect(all).toContain('10 miles')
     expect(all).toContain('500 feet')
