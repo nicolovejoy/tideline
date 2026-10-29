@@ -1,0 +1,18 @@
+{
+  "name": "tideline-recorder",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The hourly forecast recorder, run by .github/workflows/record.yml. A package of its own so the app's build does not carry firebase-admin.",
+  "scripts": {
+    "record": "node main.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "typescript": "~6.0.2"
+  }
+}

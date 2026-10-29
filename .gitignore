@@ -16,3 +16,5 @@ coverage
 # Firestore rules tests
 rules-tests/node_modules
 firestore-debug.log
+# Recorder
+recorder/node_modules

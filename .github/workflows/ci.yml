@@ -19,6 +19,23 @@ jobs:
       - run: npm run build
       - run: npm test
 
+  recorder:
+    # The forecast recorder is a package of its own (recorder/), type-checked
+    # here with the app's modules it imports.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: recorder
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: recorder/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit -p .
+
   rules:
     # firestore.rules is tested in the Firestore emulator, which needs a JVM,
     # hence the separate job.

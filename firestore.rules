@@ -8,5 +8,9 @@ service cloud.firestore {
         && request.resource.data.spots is map
         && request.resource.data.order is list;
     }
+    match /history/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
   }
 }
