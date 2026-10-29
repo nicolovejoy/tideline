@@ -7,6 +7,7 @@ import {
   loadingWords,
   readSeen,
   spotsCaption,
+  UNSENT_AFTER_MS,
   startsSignedIn,
   warmsAtStart,
   writeSeen,
@@ -25,10 +26,59 @@ describe('the words', () => {
 })
 
 describe('spotsCaption', () => {
-  test('spotsCaption says kept, or on this device while pending', () => {
-    expect(spotsCaption(false)).toBe('Your spots are kept in your account.')
-    expect(spotsCaption(true)).toBe(
-      'Your spots are on this device. They go to your account when it can be reached.',
+  const KEPT = 'Your spots are kept in your account.'
+  const UNSENT =
+    'Your spots are on this device. They go to your account when it can be reached.'
+  const settled = {
+    opened: true,
+    combined: true,
+    pending: false,
+    pendingFor: 0,
+    online: true,
+    failed: false,
+  }
+
+  test('the wait before a pending write is told is two seconds', () => {
+    expect(UNSENT_AFTER_MS).toBe(2000)
+  })
+
+  test('before the first snapshot, kept when the device is combined with the account', () => {
+    expect(spotsCaption({ ...settled, opened: false })).toBe(KEPT)
+  })
+
+  test('before the first snapshot, on this device when it is not', () => {
+    expect(spotsCaption({ ...settled, opened: false, combined: false })).toBe(
+      UNSENT,
+    )
+  })
+
+  test('kept when nothing is pending, offline or not', () => {
+    expect(spotsCaption(settled)).toBe(KEPT)
+    expect(spotsCaption({ ...settled, online: false })).toBe(KEPT)
+  })
+
+  test('kept while a write has been pending under two seconds', () => {
+    expect(spotsCaption({ ...settled, pending: true, pendingFor: 1999 })).toBe(
+      KEPT,
+    )
+  })
+
+  test('on this device once a write has been pending two seconds', () => {
+    expect(spotsCaption({ ...settled, pending: true, pendingFor: 2000 })).toBe(
+      UNSENT,
+    )
+  })
+
+  test('on this device at once when a write is pending offline', () => {
+    expect(
+      spotsCaption({ ...settled, pending: true, pendingFor: 0, online: false }),
+    ).toBe(UNSENT)
+  })
+
+  test('on this device after a failure, whatever else', () => {
+    expect(spotsCaption({ ...settled, failed: true })).toBe(UNSENT)
+    expect(spotsCaption({ ...settled, opened: false, failed: true })).toBe(
+      UNSENT,
     )
   })
 })

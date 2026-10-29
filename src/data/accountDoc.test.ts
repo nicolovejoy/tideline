@@ -156,47 +156,60 @@ describe('accountDoc', () => {
   })
 })
 
-function fakeStore(read: () => Promise<unknown>, failWrite = false) {
+/**
+ * A store whose `open` runs `decide` on `data` as a transaction would,
+ * `runs` times (more than once for a retried transaction), and records each
+ * document it decided.
+ */
+function fakeStore(
+  data: () => Promise<unknown>,
+  { fail = false, runs = 1 }: { fail?: boolean; runs?: number } = {},
+) {
   const written: AccountDoc[] = []
-  let reads = 0
+  let opens = 0
   const store: SpotStore = {
-    read: () => {
-      reads += 1
-      return read()
-    },
-    write: async (_uid, doc) => {
-      if (failWrite) throw new Error('write failed')
-      written.push(doc)
+    open: async (_uid, decide) => {
+      opens += 1
+      const doc = await data()
+      for (let i = 0; i < runs; i += 1) written.push(decide(doc))
+      if (fail) throw new Error('commit failed')
     },
     change: async () => {},
     watch: () => () => {},
   }
-  return { store, written, reads: () => reads }
+  return { store, written, opens: () => opens }
 }
 
 describe('openAccount', () => {
-  test('openAccount with the mark set reads nothing', async () => {
+  test('openAccount with the mark set opens nothing', async () => {
     vi.stubGlobal('localStorage', fakeStorage())
     writeCombined('u1')
     const f = fakeStore(async () => null)
     expect(await openAccount('u1', f.store, () => [A])).toBe(true)
-    expect(f.reads()).toBe(0)
+    expect(f.opens()).toBe(0)
     expect(f.written).toEqual([])
   })
 
   test('openAccount with no document writes the device list', async () => {
     vi.stubGlobal('localStorage', fakeStorage())
-    const f = fakeStore(async () => undefined)
+    const f = fakeStore(async () => null)
     expect(await openAccount('u1', f.store, () => [A, B])).toBe(true)
-    expect(f.written[0]).toEqual(toDoc([A, B]))
+    expect(f.written).toEqual([toDoc([A, B])])
     expect(readCombined()).toBe('u1')
+  })
+
+  test('openAccount with an empty account writes the device list', async () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    const f = fakeStore(async () => toDoc([]))
+    expect(await openAccount('u1', f.store, () => [CAMPUS, A])).toBe(true)
+    expect(f.written).toEqual([toDoc([CAMPUS, A])])
   })
 
   test('openAccount combines with the account winning', async () => {
     vi.stubGlobal('localStorage', fakeStorage())
     const f = fakeStore(async () => toDoc([C]))
     expect(await openAccount('u1', f.store, () => [CAMPUS, A])).toBe(true)
-    expect(f.written[0]).toEqual(toDoc([C, A]))
+    expect(f.written).toEqual([toDoc([C, A])])
     expect(readCombined()).toBe('u1')
   })
 
@@ -205,6 +218,14 @@ describe('openAccount', () => {
     const f = fakeStore(async () => ({ spots: [C] }))
     expect(await openAccount('u1', f.store, () => [])).toBe(true)
     expect(f.written[0].spots).toEqual({ [C.id]: C })
+  })
+
+  test('openAccount decides the same when the transaction is retried', async () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    const f = fakeStore(async () => toDoc([C]), { runs: 2 })
+    expect(await openAccount('u1', f.store, () => [CAMPUS, A])).toBe(true)
+    expect(f.written).toEqual([toDoc([C, A]), toDoc([C, A])])
+    expect(readCombined()).toBe('u1')
   })
 
   test('openAccount is false and leaves the mark when the read fails', async () => {
@@ -219,7 +240,7 @@ describe('openAccount', () => {
 
   test('openAccount is false and leaves the mark when the write fails', async () => {
     vi.stubGlobal('localStorage', fakeStorage())
-    const f = fakeStore(async () => null, true)
+    const f = fakeStore(async () => null, { fail: true })
     expect(await openAccount('u1', f.store, () => [A])).toBe(false)
     expect(readCombined()).toBeNull()
   })

@@ -33,9 +33,37 @@ export function emailWords(email: string | null): string {
   return email ?? WORDS.noEmail
 }
 
-/** The caption under the signed-in row: where the spots are kept. */
-export function spotsCaption(pending: boolean): string {
-  return pending ? WORDS.spotsUnsent : WORDS.spotsKept
+/** How long a write may wait for the server before the caption says so. */
+export const UNSENT_AFTER_MS = 2000
+
+/** What the caption under the signed-in row is decided from. */
+export type SpotsState = {
+  /** A snapshot of the account has come. */
+  opened: boolean
+  /** The device's mark is this account's, so it has been combined before. */
+  combined: boolean
+  /** A write of this device's has not reached the server. */
+  pending: boolean
+  /** How long, in milliseconds, it has been pending. */
+  pendingFor: number
+  /** The device's word on whether it has a network. */
+  online: boolean
+  /** The first sign-in's read or write, or the watch, failed. */
+  failed: boolean
+}
+
+/**
+ * The caption under the signed-in row: where the spots are kept. Before the
+ * first snapshot it goes by the device's mark; after it, a pending write is
+ * told only once it has waited two seconds, or at once offline, so a change
+ * that goes through in a round trip does not flash the long sentence.
+ */
+export function spotsCaption(state: SpotsState): string {
+  if (state.failed) return WORDS.spotsUnsent
+  if (!state.opened) return state.combined ? WORDS.spotsKept : WORDS.spotsUnsent
+  const unsent =
+    state.pending && (!state.online || state.pendingFor >= UNSENT_AFTER_MS)
+  return unsent ? WORDS.spotsUnsent : WORDS.spotsKept
 }
 
 export function loadingWords(tapped: boolean): string {

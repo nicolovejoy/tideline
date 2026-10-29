@@ -3,17 +3,19 @@
 // screen and the device's copy follow the document's live snapshot. A change
 // made while the account is still being opened waits in a queue and is sent,
 // in order, once it is open; if the open fails the queue is dropped and the
-// device keeps the change. Signed out it does nothing and touches no
-// Firestore code. The list arithmetic is in `accountDoc.ts` and
+// device keeps the change. The caption's rule is `spotsCaption`; the hook
+// gives it how long a write has been pending. Signed out it does nothing and
+// touches no Firestore code. The list arithmetic is in `accountDoc.ts` and
 // `accountSpots.ts`; this is the wiring, checked in a browser.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { clearCombined, openAccount } from '../data/accountDoc.ts'
+import { clearCombined, openAccount, readCombined } from '../data/accountDoc.ts'
 import type { SpotChange } from '../data/accountDoc.ts'
 import { spotStore } from '../data/firebase.ts'
-import { readSavedSpots, replaceSavedSpots } from '../data/savedSpots.ts'
+import { readSpots, replaceSavedSpots } from '../data/savedSpots.ts'
 import type { Spot } from '../spot.ts'
 import { listFromSnapshot } from './accountSpots.ts'
+import { UNSENT_AFTER_MS, spotsCaption } from './accountView.ts'
 
 /** Where the account stands: none, being opened, open, or failed to open. */
 type Phase = 'none' | 'opening' | 'open' | 'failed'
@@ -31,11 +33,14 @@ export function useAccountSpots({
 }: {
   uid: string | null
   onList: (spots: Spot[]) => void
-}): { active: boolean; pending: boolean; apply: (change: SpotChange) => void } {
+}): { caption: string; apply: (change: SpotChange) => void } {
   // Whether a snapshot has come, so the screen is the account's.
   const [active, setActive] = useState(false)
-  // Whether a write of this device's has not reached the server.
-  const [pending, setPending] = useState(false)
+  // When a write of this device's that has not reached the server was first
+  // seen pending, or null when none is.
+  const [pendingSince, setPendingSince] = useState<number | null>(null)
+  // The time a pending write's wait was last checked, moved on by a timer.
+  const [now, setNow] = useState(0)
   // Whether the first sign-in's read or write, or the watch, failed.
   const [failed, setFailed] = useState(false)
   // Read through a ref, so the effect runs again only when the uid changes.
@@ -64,7 +69,7 @@ export function useAccountSpots({
     queue.current = []
     let stopped = false
     let unsubscribe: (() => void) | undefined
-    void openAccount(uid, spotStore, readSavedSpots).then((ok) => {
+    void openAccount(uid, spotStore, readSpots).then((ok) => {
       if (stopped) {
         // Signed out while the open was under way: its mark goes too.
         if (uidRef.current === null) clearCombined()
@@ -89,7 +94,7 @@ export function useAccountSpots({
             replaceSavedSpots(list)
             onListRef.current(list)
           }
-          setPending(isPending)
+          setPendingSince((since) => (isPending ? (since ?? Date.now()) : null))
           setActive(true)
         },
         () => setFailed(true),
@@ -101,10 +106,19 @@ export function useAccountSpots({
       queue.current = []
       unsubscribe?.()
       setActive(false)
-      setPending(false)
+      setPendingSince(null)
       setFailed(false)
     }
   }, [uid])
+
+  // Once a write has been pending as long as the caption allows, the page is
+  // drawn again so the caption can say so; the timer goes when it is sent.
+  useEffect(() => {
+    if (pendingSince === null) return
+    const left = pendingSince + UNSENT_AFTER_MS - Date.now()
+    const timer = setTimeout(() => setNow(Date.now()), Math.max(0, left))
+    return () => clearTimeout(timer)
+  }, [pendingSince])
 
   const apply = useCallback((change: SpotChange) => {
     const current = uidRef.current
@@ -113,9 +127,13 @@ export function useAccountSpots({
     else if (phase.current === 'opening') queue.current.push(change)
   }, [])
 
-  return {
-    active,
-    pending: pending || failed || (uid !== null && !active),
-    apply,
-  }
+  const caption = spotsCaption({
+    opened: active,
+    combined: uid !== null && readCombined() === uid,
+    pending: pendingSince !== null,
+    pendingFor: pendingSince === null ? 0 : Math.max(0, now - pendingSince),
+    online: navigator.onLine,
+    failed,
+  })
+  return { caption, apply }
 }

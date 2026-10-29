@@ -54,11 +54,14 @@ export default function App() {
   const account = useAccount()
   // Signed in, the account's list is the truth: each snapshot of it replaces
   // the row, and the chosen spot stays chosen while the list has it. A view
-  // that is up stays up.
+  // that is up stays up, but for the edit screen of a spot that is gone.
   const uid = account.account.kind === 'in' ? account.account.uid : null
   const accountSpots = useAccountSpots({
     uid,
     onList: (list) => {
+      // The spot being edited is gone, removed on another device: its edit
+      // screen closes rather than open on another spot.
+      if (editing && !list.some((each) => each.id === spot.id)) closeView()
       setSpots(list)
       setSpot((prev) => {
         const same = list.find((each) => each.id === prev.id)
@@ -189,7 +192,7 @@ export default function App() {
             {WORDS.edit}
           </button>
         </div>
-        <Account {...account} pending={accountSpots.pending} />
+        <Account {...account} caption={accountSpots.caption} />
       </header>
       <SpotSwitcher
         spots={spots}
