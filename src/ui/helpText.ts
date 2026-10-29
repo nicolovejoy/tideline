@@ -25,7 +25,7 @@ export const HELP: HelpText = {
     {
       heading: 'The panels',
       paragraphs: [
-        'Four panels share one time axis: the tide, the wind, the temperature and the sky, for the same place and the same hours. Touch or drag across any of them to move the cursor; the words above each panel read its values at that time. "Day", "3 days" and "Week" set how many days the axis holds, from the day chosen in the list.',
+        'Four panels share one time axis: the tide, the wind, the temperature and the sky, for the same place and the same hours. Touch or drag across any of them to move the cursor; the words above each panel read its values at that time. "Day", "3 days" and "Week" set how many days the axis holds, from the day chosen in the list. Pinch the panels to see more or less time, and move two fingers sideways to slide along. The Day, 3 days and Week buttons put it back.',
         'The night is shaded, from sunset to sunrise. The orange line is sunset and the violet line moonrise. On today a dotted grey line marks the current time, and the cursor rests there.',
       ],
     },

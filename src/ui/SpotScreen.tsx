@@ -10,6 +10,8 @@ import { Panel } from '../chart/Panel.tsx'
 import { PanelStack } from '../chart/PanelStack.tsx'
 import { cursorText } from '../chart/readout.ts'
 import { linearScale } from '../chart/scales.ts'
+import { heldToBounds } from '../chart/zoom.ts'
+import type { Span } from '../data/cache.ts'
 import { useSpotData } from '../data/useSpotData.ts'
 import { hasTides } from '../spot.ts'
 import type { Spot } from '../spot.ts'
@@ -81,11 +83,28 @@ export function SpotScreen({ spot }: SpotScreenProps) {
   // A day, three or a week from the chosen day. Kept for a reload; choosing
   // a spot forgets it.
   const [span, setSpan] = useState<SpanChoice>(readSpan)
+  // The window pinching and panning have made, or null for the span's own.
+  // Not kept: a reload, a spot, a day or the month view start from the span.
+  const [zoom, setZoom] = useState<Span | null>(null)
   const chooseSpan = useCallback((choice: SpanChoice) => {
     setSpan(choice)
+    setZoom(null)
     writeSpan(choice)
   }, [])
-  const selected = selectedDay(data, pickedDay, span)
+  // The 14 days a pinch or a pan may show.
+  const first = spans[0].start
+  const last = spans[spans.length - 1].end
+  const bounds = useMemo(() => ({ start: first, end: last }), [first, last])
+  // At midnight the 14 days move on a day, and a zoom of the day gone would
+  // lie partly before them. It is held to the new days, its length kept.
+  // Done while drawing, as for the month view below, so the window outside
+  // the days is never drawn.
+  const [zoomBounds, setZoomBounds] = useState(bounds)
+  if (zoomBounds !== bounds) {
+    setZoomBounds(bounds)
+    setZoom(heldToBounds(zoom, bounds))
+  }
+  const selected = selectedDay(data, pickedDay, span, zoom)
   const tide = tideView(data, selected, pick, spot)
   const observedToday = todaysObserved(
     data.station,
@@ -104,14 +123,14 @@ export function SpotScreen({ spot }: SpotScreenProps) {
     data.station,
     data.observedWeather,
     data.day,
-    selected.isToday,
+    selected.showsToday,
   )
   const cursorTime = cursorWords(tide.cursor, zone, selected.window)
   const markers = windowMarkers(days, selected.window, data.now)
   const bands = windowBands(days, selected.window)
   // Not memoized: the window is a new object at each drawing, and the labels
   // are a handful.
-  const labels = stackLabels(selected.window, zone, span)
+  const labels = stackLabels(selected.window, zone)
 
   const tonight = useMemo(() => tonightWords(days[0], zone), [days, zone])
   // The rows do not depend on the cursor, so they are not worked out again,
@@ -132,6 +151,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
   const dayHeading = useRef<HTMLHeadingElement>(null)
   const selectDay = useCallback((date: string) => {
     setPickedDay(date)
+    setZoom(null)
     // The cursor goes back to rest, on this day and on the one left behind.
     setPick(null)
     // On a phone the panels are above the list, usually off screen. In a
@@ -163,6 +183,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
     if (monthOpen) {
       setPickedDay(null)
       setPick(null)
+      setZoom(null)
       setMonth(null)
     }
   }
@@ -203,7 +224,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
           <p className="day-cursor">at {cursorTime}</p>
         </header>
         <div className="day-controls">
-          <SpanControl span={span} onSpan={chooseSpan} />
+          <SpanControl span={span} zoomed={zoom !== null} onSpan={chooseSpan} />
           <button
             type="button"
             className="text-button help-button"
@@ -227,6 +248,8 @@ export function SpotScreen({ spot }: SpotScreenProps) {
           }
           pick={pick}
           onRestore={setPick}
+          bounds={bounds}
+          onWindow={setZoom}
         >
           {({ width, x }) => (
             <>
@@ -292,7 +315,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
               observed: data.observed,
               readings: tide.readings,
               today: data.today,
-              isToday: selected.isToday,
+              isToday: selected.showsToday,
             })}
         </p>
         <p className="caption">{weatherCaption(spot, forecast, data.today)}</p>
