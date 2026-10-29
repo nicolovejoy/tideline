@@ -22,7 +22,6 @@ export const WORDS = {
   /** The loading button's name for a screen reader, whatever it shows. */
   loadingLabel: 'Signing in',
   noEmail: 'Signed in',
-  spotsStay: 'Your spots stay on this device for now.',
   spotsKept: 'Your spots are kept in your account.',
   spotsUnsent:
     'Your spots are on this device. They go to your account when it can be reached.',

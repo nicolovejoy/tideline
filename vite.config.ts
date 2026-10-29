@@ -12,6 +12,8 @@ export default defineConfig({
     __COMMIT__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA ?? ''),
   },
   build: {
+    // The `firestore` chunk is about 581 kB minified, over Vite's 500 kB.
+    chunkSizeWarningLimit: 700,
     rolldownOptions: {
       output: {
         // The SDK's chunks are named, so a build log and a check can see
