@@ -4,10 +4,11 @@
 // user or to warm it before a tap, so it is a chunk of its own (named
 // `firebase` in `vite.config.ts`) and the forecast page never pays for it.
 // Firestore is a second chunk (`firestore`), loaded only once a signed-in
-// user's spots are wanted, so the first sign-in tap downloads auth alone. The auth domain is the page's
-// own host, so the sign-in handoff stays on one site: WebKit partitions
-// storage by top-level site, and a handler on Firebase's domain could not
-// read what the SDK wrote on ours (see `firebaseConfig.ts`).
+// user's spots are wanted, so the first sign-in tap downloads auth alone.
+// The auth domain is the page's own host, so the sign-in handoff stays on
+// one site: WebKit partitions storage by top-level site, and a handler on
+// Firebase's domain could not read what the SDK wrote on ours (see
+// `firebaseConfig.ts`).
 //
 // Two ways to have no user are kept apart. Firebase saying nobody is signed
 // in is `listener(null)`. Not being able to ask at all, because the config is
@@ -87,10 +88,11 @@ function ready(): Promise<Ready | NotConfigured> {
 }
 
 /**
- * The database, made once with the app: `initializeFirestore` throws if it is
- * called twice. The spots are kept on the device across tabs where the browser
- * allows it, and in memory where it does not (a private window, or storage off).
- * Where one is already made for the app (a dev server's hot reload), it is taken.
+ * The database, made once with the app: `initializeFirestore` throws if it
+ * is called twice. The spots are kept on the device across tabs where the
+ * browser allows it, and in memory where it does not (a private window, or
+ * storage off). Where one is already made for the app (a dev server's hot
+ * reload), it is taken.
  */
 function firestore(fs: FirestoreModule, app: FirebaseApp): Firestore {
   try {
@@ -118,7 +120,7 @@ let storePending: Promise<StoreReady> | null = null
 function storeReady(): Promise<StoreReady> {
   if (storePending) return storePending
   const started = ready().then(async (r) => {
-    if (r instanceof NotConfigured) throw new NotConfigured(r.missing)
+    if (r instanceof NotConfigured) throw r
     let fs: FirestoreModule
     try {
       fs = await import('firebase/firestore')
