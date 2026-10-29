@@ -95,10 +95,20 @@ export function toList(data: unknown): Spot[] | null {
   return out
 }
 
+/**
+ * A change to the document. The adapter must write `set` as keys of a nested
+ * object in a merge `setDoc` (or with `new FieldPath('spots', id)`), never as a
+ * dotted string path such as `spots.${id}`, because an id can hold dots.
+ */
 export type SpotChange = {
   set: Record<string, Spot>
   remove: string[]
   order: string[]
+}
+
+/** The ids with each kept once, at its first place. */
+function unique(ids: string[]): string[] {
+  return [...new Set(ids)]
 }
 
 /** The change that adds a spot at the end. */
@@ -106,7 +116,7 @@ export function addChange(list: Spot[], spot: Spot): SpotChange {
   return {
     set: { [spot.id]: clean(spot) },
     remove: [],
-    order: [...list.map((s) => s.id), spot.id],
+    order: unique([...list.map((s) => s.id), spot.id]),
   }
 }
 
@@ -123,7 +133,7 @@ export function replaceChange(
   return {
     set: { [next.id]: clean(next) },
     remove: next.id === id ? [] : [id],
-    order,
+    order: unique(order),
   }
 }
 

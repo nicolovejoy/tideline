@@ -126,6 +126,22 @@ describe('accountDoc', () => {
     })
   })
 
+  test('an id with a dot round-trips and is a key of set', () => {
+    const D = spot('shared-34.4062,-119.8448', 34.4062, -119.8448)
+    expect(toList(toDoc([D]))).toEqual([D])
+    expect(Object.keys(addChange([], D).set)).toEqual([D.id])
+  })
+
+  test('toList skips non-spots and repeated ids in order', () => {
+    expect(toList({ spots: { a: A, b: 7 }, order: ['a', 'a', 'b'] })).toEqual([
+      A,
+    ])
+  })
+
+  test('addChange of an id already in the list keeps one in order', () => {
+    expect(addChange([A, B], A).order).toEqual([A.id, B.id])
+  })
+
   test('the mark is read, written and cleared', () => {
     const storage = fakeStorage()
     vi.stubGlobal('localStorage', storage)
