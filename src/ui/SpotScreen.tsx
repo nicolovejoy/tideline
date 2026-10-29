@@ -111,7 +111,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
   const bands = windowBands(days, selected.window)
   // Not memoized: the window is a new object at each drawing, and the labels
   // are a handful.
-  const labels = stackLabels(selected.window, zone, span)
+  const labels = stackLabels(selected.window, zone)
 
   const tonight = useMemo(() => tonightWords(days[0], zone), [days, zone])
   // The rows do not depend on the cursor, so they are not worked out again,

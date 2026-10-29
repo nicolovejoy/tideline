@@ -6,6 +6,7 @@ import {
   selectedDay,
   unlabelled,
 } from './selection.ts'
+import { zoomWindow } from './spanView.ts'
 import { frameFor } from '../data/useSpotData.ts'
 import { CAMPUS_POINT } from '../spot.ts'
 import { HOUR, MINUTE, localDayStart } from '../time.ts'
@@ -77,6 +78,23 @@ describe('selectedDay', () => {
     }
     const { start, end } = frame.spans[0]
     expect(selectedDay(polar, null).anchor).toBe((start + end) / 2)
+  })
+})
+
+describe('selectedDay with a zoom', () => {
+  test('the window is the zoom, and the day is the picked one', () => {
+    const zoom = {
+      start: frame.spans[3].start + 8 * HOUR,
+      end: frame.spans[3].start + 14 * HOUR,
+    }
+    const zoomed = selectedDay(frame, '2026-10-11', 'day', zoom)
+    const plain = selectedDay(frame, '2026-10-11')
+    expect(zoomed.window).toEqual(zoomWindow(frame.spans, zoom))
+    expect([zoomed.index, zoomed.date, zoomed.isToday]).toEqual([
+      plain.index,
+      plain.date,
+      plain.isToday,
+    ])
   })
 })
 

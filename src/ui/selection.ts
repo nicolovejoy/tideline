@@ -6,7 +6,7 @@ import type { Band, Marker } from '../chart/Panel.tsx'
 import type { DayAstro } from '../data/astro.ts'
 import type { Span } from '../data/cache.ts'
 import type { SpotData } from '../data/useSpotData.ts'
-import { windowFor } from './spanView.ts'
+import { windowFor, zoomWindow } from './spanView.ts'
 import type { SpanChoice, DayWindow } from './spanView.ts'
 
 export interface Selected {
@@ -36,6 +36,7 @@ export function selectedDay(
   data: Pick<SpotData, 'days' | 'spans'>,
   picked: string | null,
   choice: SpanChoice = 'day',
+  zoom: Span | null = null,
 ): Selected {
   const found = data.days.findIndex((day) => day.date === picked)
   const index = found === -1 ? 0 : found
@@ -45,7 +46,9 @@ export function selectedDay(
     index,
     date: astro.date,
     span,
-    window: windowFor(data.spans, index, choice),
+    window: zoom
+      ? zoomWindow(data.spans, zoom)
+      : windowFor(data.spans, index, choice),
     astro,
     isToday: index === 0,
     anchor: astro.sunset ?? (span.start + span.end) / 2,

@@ -5,7 +5,14 @@
 import type { Band, Marker } from '../chart/Panel.tsx'
 import type { DayAstro } from '../data/astro.ts'
 import type { Span } from '../data/cache.ts'
-import { formatDay, formatTime, formatWeekday, hourMarks } from '../time.ts'
+import {
+  DAY,
+  HOUR,
+  formatDay,
+  formatTime,
+  formatWeekday,
+  hourMarks,
+} from '../time.ts'
 import { dayBands, dayMarkers, unlabelled } from './selection.ts'
 
 export type SpanChoice = 'day' | 'days3' | 'week'
@@ -33,13 +40,6 @@ export interface DayWindow extends Span {
   last: number
 }
 
-const HOUR_LABELS: Record<number, string> = {
-  0: '12a',
-  6: '6a',
-  12: '12p',
-  18: '6p',
-}
-
 /** The window from the chosen day, cut short where the 14 days end. */
 export function windowFor(
   spans: Span[],
@@ -51,35 +51,65 @@ export function windowFor(
   return { start: spans[index].start, end: spans[last].end, first: index, last }
 }
 
+/**
+ * The window a pinch or a drag has settled on, which can be any length and
+ * start at any instant. It covers the days the zoom touches: the one holding
+ * its start and the one holding its last instant, so a zoom that ends at
+ * midnight does not claim the day after.
+ */
+export function zoomWindow(spans: Span[], zoom: Span): DayWindow {
+  const dayAt = (t: number) => {
+    const i = spans.findIndex((span) => t >= span.start && t < span.end)
+    if (i !== -1) return i
+    return t < spans[0].start ? 0 : spans.length - 1
+  }
+  return {
+    start: zoom.start,
+    end: zoom.end,
+    first: dayAt(zoom.start),
+    last: dayAt(zoom.end - 1),
+  }
+}
+
 export interface StackLabel {
   t: number
   text: string
 }
 
+/** How far apart the labels are, in hours, for a window of this length. */
+function labelStep(length: number): number {
+  if (length <= 6 * HOUR) return 1
+  if (length <= 12 * HOUR) return 3
+  if (length <= 36 * HOUR) return 6
+  if (length <= 4 * DAY) return 12
+  return 24
+}
+
+/** An hour of the day as '12a', '3a', '12p' or '9p'. */
+function hourText(hour: number): string {
+  return `${hour % 12 || 12}${hour < 12 ? 'a' : 'p'}`
+}
+
 /**
- * The labels under the stack. A window of one day has the hours 12a, 6a, 12p
- * and 6p, both midnights included, whatever span was chosen: three days or a
- * week from the last of the 14 days is one day. Wider windows label each
- * day's start with its weekday, and for three days its noon, and leave the
- * end unlabelled.
+ * The labels under the stack, spaced by how long the window is: every hour up
+ * to 6 hours, every 3 up to 12, every 6 up to a day and a half, every 12 up to
+ * 4 days and every 24 beyond. A midnight is named by its weekday where the
+ * window covers more than one day, and the end is labelled only in a window
+ * of one day, where it is the day's own closing hour. Marks are placed on
+ * whole hours, so a window that starts between them begins at the next one.
  */
-export function stackLabels(
-  window: DayWindow,
-  timeZone: string,
-  choice: SpanChoice,
-): StackLabel[] {
-  if (window.last === window.first) {
-    return hourMarks(window.start, window.end, timeZone, 6).map((mark) => ({
-      t: mark.t,
-      text: HOUR_LABELS[mark.hour],
-    }))
-  }
-  const every = choice === 'days3' ? 12 : 24
-  return hourMarks(window.start, window.end, timeZone, every)
-    .filter((mark) => mark.t !== window.end)
+export function stackLabels(window: DayWindow, timeZone: string): StackLabel[] {
+  const several = window.last > window.first
+  const step = labelStep(window.end - window.start)
+  const first = Math.ceil(window.start / HOUR) * HOUR
+  return hourMarks(first, window.end, timeZone, step)
+    .filter((mark) => !several || mark.t !== window.end)
     .map((mark) => ({
       t: mark.t,
-      text: mark.hour === 0 ? formatWeekday(mark.t, timeZone) : '12p',
+      text:
+        several && mark.hour === 0
+          ? formatWeekday(mark.t, timeZone)
+          : hourText(mark.hour),
     }))
 }
 
@@ -107,14 +137,15 @@ export function cursorWords(
 
 /**
  * The lines across the panels: each day's sunset and moonrise, and the current
- * time on today. Over several days they lose their names.
+ * time on today. Over more than a day, spread across midnight, they lose
+ * their names; a window under a day that crosses midnight keeps them.
  */
 export function windowMarkers(
   days: DayAstro[],
   window: DayWindow,
   now: number,
 ): Marker[] {
-  const several = window.last > window.first
+  const several = window.last > window.first && window.end - window.start > DAY
   return days.slice(window.first, window.last + 1).flatMap((astro, i) => {
     const markers = dayMarkers({ astro, isToday: window.first + i === 0 }, now)
     return several ? unlabelled(markers) : markers

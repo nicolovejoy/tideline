@@ -8,6 +8,7 @@ import {
   windowBands,
   windowFor,
   windowMarkers,
+  zoomWindow,
 } from './spanView.ts'
 import { dayBands, dayMarkers, unlabelled } from './selection.ts'
 import { frameFor } from '../data/useSpotData.ts'
@@ -90,7 +91,7 @@ describe('windowFor', () => {
 describe('stackLabels', () => {
   test('one day keeps the hour marks, both midnights included', () => {
     const window = windowFor(spans, 0, 'day')
-    expect(stackLabels(window, ZONE, 'day')).toEqual([
+    expect(stackLabels(window, ZONE)).toEqual([
       { t: window.start, text: '12a' },
       { t: window.start + 6 * HOUR, text: '6a' },
       { t: window.start + 12 * HOUR, text: '12p' },
@@ -101,7 +102,7 @@ describe('stackLabels', () => {
 
   test('three days label each day with its weekday and its noon, and not the end', () => {
     const window = windowFor(spans, 0, 'days3')
-    expect(stackLabels(window, ZONE, 'days3')).toEqual([
+    expect(stackLabels(window, ZONE)).toEqual([
       { t: spans[0].start, text: 'Thu' },
       { t: spans[0].start + 12 * HOUR, text: '12p' },
       { t: spans[1].start, text: 'Fri' },
@@ -113,7 +114,7 @@ describe('stackLabels', () => {
 
   test('a week labels each day with its weekday only', () => {
     const window = windowFor(spans, 0, 'week')
-    expect(stackLabels(window, ZONE, 'week')).toEqual(
+    expect(stackLabels(window, ZONE)).toEqual(
       ['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'].map((text, i) => ({
         t: spans[i].start,
         text,
@@ -123,7 +124,7 @@ describe('stackLabels', () => {
 
   test('a week from the last day is one day, with the hour labels', () => {
     const window = windowFor(spans, 13, 'week')
-    expect(stackLabels(window, ZONE, 'week')).toEqual([
+    expect(stackLabels(window, ZONE)).toEqual([
       { t: spans[13].start, text: '12a' },
       { t: spans[13].start + 6 * HOUR, text: '6a' },
       { t: spans[13].start + 12 * HOUR, text: '12p' },
@@ -136,7 +137,7 @@ describe('stackLabels', () => {
     // 1 November 2026 is 25 hours long at the spot.
     const late = frameFor(CAMPUS_POINT, '2026-10-31')
     const window = windowFor(late.spans, 0, 'days3')
-    const labels = stackLabels(window, ZONE, 'days3')
+    const labels = stackLabels(window, ZONE)
     expect(labels[2]).toEqual({ t: late.spans[1].start, text: 'Sun' })
     expect(labels[3]).toEqual({
       t: late.spans[1].start + 13 * HOUR,
@@ -222,5 +223,91 @@ describe('windowBands', () => {
     expect(windowBands(days, window)).toEqual(
       days.slice(1, 4).flatMap((astro) => dayBands({ astro })),
     )
+  })
+})
+
+describe('a window of any length', () => {
+  test('a zoom of 5 hours has a label every hour, both ends where on the hour', () => {
+    const w = zoomWindow(spans, {
+      start: spans[3].start + 13 * HOUR,
+      end: spans[3].start + 18 * HOUR,
+    })
+    expect(stackLabels(w, ZONE).map((l) => l.text)).toEqual([
+      '1p',
+      '2p',
+      '3p',
+      '4p',
+      '5p',
+      '6p',
+    ])
+  })
+
+  test('a zoom of 10 hours has a label every 3 hours', () => {
+    const w = zoomWindow(spans, {
+      start: spans[3].start + 8 * HOUR,
+      end: spans[3].start + 18 * HOUR,
+    })
+    expect(stackLabels(w, ZONE).map((l) => l.text)).toEqual([
+      '9a',
+      '12p',
+      '3p',
+      '6p',
+    ])
+  })
+
+  test('a zoom across midnight names the midnight by its weekday and leaves the end unlabelled', () => {
+    const w = zoomWindow(spans, {
+      start: spans[3].start + 18 * HOUR,
+      end: spans[4].start + 6 * HOUR,
+    })
+    expect([w.first, w.last]).toEqual([3, 4])
+    expect(stackLabels(w, ZONE).map((l) => l.text)).toEqual([
+      '6p',
+      '9p',
+      'Mon',
+      '3a',
+    ])
+  })
+
+  test('zoomWindow: a zoom ending at midnight ends on the day before', () => {
+    const w = zoomWindow(spans, {
+      start: spans[3].start + 12 * HOUR,
+      end: spans[4].start,
+    })
+    expect([w.first, w.last]).toEqual([3, 3])
+  })
+
+  test('a zoom across midnight under a day keeps the marker names', () => {
+    const w = zoomWindow(spans, {
+      start: spans[3].start + 12 * HOUR,
+      end: spans[4].start + 6 * HOUR,
+    })
+    expect(windowMarkers(days, w, NOW).some((m) => m.label !== undefined)).toBe(
+      true,
+    )
+  })
+
+  test('a zoom of two days drops the marker names', () => {
+    const w = zoomWindow(spans, { start: spans[3].start, end: spans[5].start })
+    expect(
+      windowMarkers(days, w, NOW).every((m) => m.label === undefined),
+    ).toBe(true)
+  })
+
+  test('the Day window of the 25-hour day has the usual labels and keeps its names', () => {
+    const late = frameFor(CAMPUS_POINT, '2026-10-31')
+    const w = windowFor(late.spans, 1, 'day')
+    expect(w.end - w.start).toBe(25 * HOUR)
+    expect(stackLabels(w, ZONE).map((l) => l.text)).toEqual([
+      '12a',
+      '6a',
+      '12p',
+      '6p',
+      '12a',
+    ])
+    const sunset = windowMarkers(late.days, w, NOW).find(
+      (m) => m.name === 'sunset',
+    )
+    expect(sunset?.label).toBe('Sunset')
   })
 })
