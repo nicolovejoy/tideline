@@ -148,14 +148,27 @@ export function removeChange(list: Spot[], id: string): SpotChange {
 
 /** What the page needs of the account's store; the adapter in firebase.ts is the real one. */
 export type SpotStore = {
-  read(uid: string): Promise<unknown>
-  write(uid: string, doc: AccountDoc): Promise<void>
+  /**
+   * Reads the document and writes what `decide` makes of it in one
+   * transaction, so nothing written between the two is lost. `decide` gets
+   * the document's data, or null when there is none, and may be run more
+   * than once when the transaction is retried.
+   */
+  open(uid: string, decide: (data: unknown) => AccountDoc): Promise<void>
   change(uid: string, change: SpotChange): Promise<void>
   watch(
     uid: string,
     onData: (data: unknown, pending: boolean) => void,
     onError: (error: unknown) => void,
   ): () => void
+}
+
+/** The first sign-in's document: the device's list, or the two combined. */
+function opened(data: unknown, device: Spot[]): AccountDoc {
+  const account = toList(data)
+  const list =
+    account === null || account.length === 0 ? device : combine(account, device)
+  return toDoc(list)
 }
 
 /**
@@ -170,12 +183,7 @@ export async function openAccount(
 ): Promise<boolean> {
   if (readCombined() === uid) return true
   try {
-    const account = toList(await store.read(uid))
-    const list =
-      account === null || account.length === 0
-        ? device()
-        : combine(account, device())
-    await store.write(uid, toDoc(list))
+    await store.open(uid, (data) => opened(data, device()))
     writeCombined(uid)
     return true
   } catch {

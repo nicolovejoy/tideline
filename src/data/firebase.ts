@@ -88,11 +88,12 @@ function ready(): Promise<Ready | NotConfigured> {
 }
 
 /**
- * The database, made once with the app: `initializeFirestore` throws if it
- * is called twice. The spots are kept on the device across tabs where the
- * browser allows it, and in memory where it does not (a private window, or
- * storage off). Where one is already made for the app (a dev server's hot
- * reload), it is taken.
+ * The database, made once with the app. The spots are kept on the device
+ * across tabs where the browser allows it; where IndexedDB refuses (a private
+ * window, or storage off) the SDK falls back to memory by itself and warns,
+ * without throwing. `initializeFirestore` throws only when it has been called
+ * for the app already, as on a dev server's hot reload, and then the one
+ * already made is taken; the memory cache is tried first only as a guard.
  */
 function firestore(fs: FirestoreModule, app: FirebaseApp): Firestore {
   try {
@@ -215,17 +216,15 @@ export async function signOut(): Promise<void> {
  * `setDoc`, never as dotted field paths.
  */
 export const spotStore: SpotStore = {
-  async read(uid) {
+  async open(uid, decide) {
     const { db, fs } = await storeReady()
-    const snap = await fs.getDoc(fs.doc(db, 'users', uid))
-    return snap.exists() ? snap.data() : null
-  },
-
-  async write(uid, doc) {
-    const { db, fs } = await storeReady()
-    await fs.setDoc(fs.doc(db, 'users', uid), {
-      ...doc,
-      updatedAt: fs.serverTimestamp(),
+    const ref = fs.doc(db, 'users', uid)
+    await fs.runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref)
+      tx.set(ref, {
+        ...decide(snap.exists() ? snap.data() : null),
+        updatedAt: fs.serverTimestamp(),
+      })
     })
   },
 
