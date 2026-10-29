@@ -3,6 +3,9 @@ import {
   SLOP,
   isSideways,
   isTap,
+  pinchBegin,
+  pinchEnds,
+  pinchMove,
   pressCancel,
   pressDown,
   pressMove,
@@ -136,5 +139,53 @@ describe('a press', () => {
     expect(pressMove(press, at(300, 100, 2))).toEqual({ press, act: 'nothing' })
     expect(pressUp(press, at(100, 100, 2))).toEqual({ press, act: 'nothing' })
     expect(pressCancel(press, 2)).toEqual({ press, act: 'nothing' })
+  })
+})
+
+describe('a pinch', () => {
+  test('a pinch begins from the two fingers, in order', () => {
+    const p = pinchBegin(
+      { id: 1, x: 60, y: 0 },
+      { id: 2, x: 120, y: 5 },
+      { start: 0, end: 10 },
+    )
+    expect(p).toEqual({
+      ids: [1, 2],
+      from: [60, 120],
+      to: [60, 120],
+      window: { start: 0, end: 10 },
+    })
+  })
+
+  test('moving one finger of a pinch moves its end only', () => {
+    const p = pinchBegin(
+      { id: 1, x: 60, y: 0 },
+      { id: 2, x: 120, y: 0 },
+      { start: 0, end: 10 },
+    )
+    expect(pinchMove(p, { id: 2, x: 200, y: 0 }).to).toEqual([60, 200])
+    expect(pinchMove(p, { id: 1, x: 10, y: 0 }).to).toEqual([10, 120])
+  })
+
+  test('a pointer not in the pinch changes nothing', () => {
+    const p = pinchBegin(
+      { id: 1, x: 60, y: 0 },
+      { id: 2, x: 120, y: 0 },
+      { start: 0, end: 10 },
+    )
+    expect(pinchMove(p, { id: 3, x: 0, y: 0 })).toBe(p)
+  })
+
+  test('a pinch ends when either of its fingers lifts', () => {
+    const p = pinchBegin(
+      { id: 1, x: 60, y: 0 },
+      { id: 2, x: 120, y: 0 },
+      { start: 0, end: 10 },
+    )
+    expect([pinchEnds(p, 1), pinchEnds(p, 2), pinchEnds(p, 3)]).toEqual([
+      true,
+      true,
+      false,
+    ])
   })
 })

@@ -227,6 +227,8 @@ export function SpotScreen({ spot }: SpotScreenProps) {
           }
           pick={pick}
           onRestore={setPick}
+          bounds={{ start: spans[0].start, end: spans[spans.length - 1].end }}
+          onWindow={() => {}}
         >
           {({ width, x }) => (
             <>

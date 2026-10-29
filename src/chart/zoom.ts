@@ -84,3 +84,39 @@ export function pinchWindow(
   const about = start + (midTo / width) * next
   return held({ start, end: start + next }, bounds, about)
 }
+
+/** What a wheel event says, as far as the window is concerned. */
+export interface Wheel {
+  deltaX: number
+  deltaY: number
+  /** Set by Chrome, Edge and Firefox when the wheel is a trackpad pinch. */
+  ctrlKey: boolean
+  /** 0 for pixels, 1 for lines, 2 for pages. */
+  deltaMode: number
+}
+
+/** How many pixels a line of wheel is counted as. */
+const LINE = 16
+
+/**
+ * The window after a wheel event over a stack `width` pixels wide, with the
+ * instant `about` under the pointer: a trackpad pinch zooms about it, and a
+ * sideways swipe pans. A wheel turning up or down gives null, so the page
+ * scrolls, as it does before the stack has a width.
+ */
+export function wheelWindow(
+  window: Span,
+  wheel: Wheel,
+  width: number,
+  about: number,
+  bounds: Span,
+): Span | null {
+  if (width === 0) return null
+  const unit = wheel.deltaMode === 0 ? 1 : LINE
+  const dx = wheel.deltaX * unit
+  const dy = wheel.deltaY * unit
+  if (wheel.ctrlKey)
+    return zoomAbout(window, about, Math.exp(-dy * 0.01), bounds)
+  if (Math.abs(dx) <= Math.abs(dy)) return null
+  return panBy(window, (dx / width) * (window.end - window.start), bounds)
+}

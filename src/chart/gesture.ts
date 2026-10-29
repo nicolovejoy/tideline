@@ -1,6 +1,9 @@
-// Telling a tap and a sideways drag apart from the start of a scroll, and
-// following one press from the pointer going down to it lifting. Plain
-// functions; PanelStack applies them to pointer events.
+// Telling a tap and a sideways drag apart from the start of a scroll,
+// following one press from the pointer going down to it lifting, and
+// following two fingers that pinch. Plain functions; PanelStack applies them
+// to pointer events.
+
+import type { Span } from '../data/cache.ts'
 
 /** How far, in CSS pixels, a finger may wander and still count as a tap. */
 export const SLOP = 6
@@ -94,4 +97,36 @@ export function pressUp<P>(press: Press<P> | null, at: Pointer): Outcome<P> {
 export function pressCancel<P>(press: Press<P> | null, id: number): Outcome<P> {
   if (press === null || press.id !== id) return { press, act: 'nothing' }
   return abandon(press)
+}
+
+/**
+ * Two fingers pinching: which pointers they are, their x when the pinch
+ * began and now, in the order of `ids`, and the window when it began. The
+ * window to show is worked out afresh from these at each move, so it does not
+ * drift as small steps add up.
+ */
+export interface Pinch {
+  ids: [number, number]
+  from: [number, number]
+  to: [number, number]
+  window: Span
+}
+
+/** Two fingers are down: a pinch begins, with the window as it is. */
+export function pinchBegin(a: Pointer, b: Pointer, window: Span): Pinch {
+  return { ids: [a.id, b.id], from: [a.x, b.x], to: [a.x, b.x], window }
+}
+
+/** A pointer moved. Only the pinch's own fingers change it. */
+export function pinchMove(pinch: Pinch, at: Pointer): Pinch {
+  const i = pinch.ids.indexOf(at.id)
+  if (i === -1) return pinch
+  const to: [number, number] = [pinch.to[0], pinch.to[1]]
+  to[i] = at.x
+  return { ...pinch, to }
+}
+
+/** Whether a pointer lifting or cancelled ends the pinch. */
+export function pinchEnds(pinch: Pinch, id: number): boolean {
+  return pinch.ids.includes(id)
 }

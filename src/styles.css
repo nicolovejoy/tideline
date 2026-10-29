@@ -476,9 +476,10 @@ h1 {
 .stack {
   position: relative;
   margin-top: 0.75rem;
-  /* The browser scrolls the page for an up-and-down drag and zooms for a
-     pinch. A sideways drag is left to the stack, to move the cursor. */
-  touch-action: pan-y pinch-zoom;
+  /* The browser still scrolls the page for an up-and-down drag. A sideways
+     drag is left to the stack, to move the cursor, and so is a pinch, to
+     zoom the panels rather than the page. */
+  touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
   cursor: crosshair;

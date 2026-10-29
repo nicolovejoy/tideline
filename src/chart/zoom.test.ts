@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { DAY, HOUR } from '../time.ts'
-import { panBy, pinchWindow, zoomAbout } from './zoom.ts'
+import { panBy, pinchWindow, wheelWindow, zoomAbout } from './zoom.ts'
 
 const T0 = Date.UTC(2026, 9, 29, 7)
 const BOUNDS = { start: T0, end: T0 + 14 * DAY }
@@ -87,5 +87,54 @@ describe('pinchWindow', () => {
       start: T0 + DAY - 1 * HOUR,
       end: T0 + 2 * DAY - 1 * HOUR,
     })
+  })
+})
+
+describe('wheelWindow', () => {
+  const wheel = (
+    deltaX: number,
+    deltaY: number,
+    ctrlKey = false,
+    deltaMode = 0,
+  ) => ({ deltaX, deltaY, ctrlKey, deltaMode })
+
+  test('a trackpad pinch zooms about the instant under the pointer', () => {
+    const about = T0 + 12 * HOUR
+    near(
+      wheelWindow(
+        DAY1,
+        wheel(0, -100 * Math.log(2), true),
+        400,
+        about,
+        BOUNDS,
+      )!,
+      zoomAbout(DAY1, about, 2, BOUNDS),
+    )
+  })
+
+  test('a sideways swipe pans by the time under the distance', () => {
+    const later = { start: T0 + DAY, end: T0 + 2 * DAY }
+    near(wheelWindow(later, wheel(100, 10), 400, T0, BOUNDS)!, {
+      start: T0 + DAY + 6 * HOUR,
+      end: T0 + 2 * DAY + 6 * HOUR,
+    })
+  })
+
+  test('a wheel counted in lines is counted as 16 pixels a line', () => {
+    const later = { start: T0 + DAY, end: T0 + 2 * DAY }
+    near(wheelWindow(later, wheel(-25 / 4, 0, false, 1), 400, T0, BOUNDS)!, {
+      start: T0 + DAY - 6 * HOUR,
+      end: T0 + 2 * DAY - 6 * HOUR,
+    })
+  })
+
+  test('a wheel turning up or down is left to the page', () => {
+    expect(wheelWindow(DAY1, wheel(5, 40), 400, T0, BOUNDS)).toBeNull()
+    expect(wheelWindow(DAY1, wheel(0, 0), 400, T0, BOUNDS)).toBeNull()
+  })
+
+  test('nothing is worked out before the stack has a width', () => {
+    expect(wheelWindow(DAY1, wheel(0, 50, true), 0, T0, BOUNDS)).toBeNull()
+    expect(wheelWindow(DAY1, wheel(50, 0), 0, T0, BOUNDS)).toBeNull()
   })
 })
