@@ -10,6 +10,7 @@ import { Panel } from '../chart/Panel.tsx'
 import { PanelStack } from '../chart/PanelStack.tsx'
 import { cursorText } from '../chart/readout.ts'
 import { linearScale } from '../chart/scales.ts'
+import { heldToBounds } from '../chart/zoom.ts'
 import type { Span } from '../data/cache.ts'
 import { useSpotData } from '../data/useSpotData.ts'
 import { hasTides } from '../spot.ts'
@@ -90,6 +91,19 @@ export function SpotScreen({ spot }: SpotScreenProps) {
     setZoom(null)
     writeSpan(choice)
   }, [])
+  // The 14 days a pinch or a pan may show.
+  const first = spans[0].start
+  const last = spans[spans.length - 1].end
+  const bounds = useMemo(() => ({ start: first, end: last }), [first, last])
+  // At midnight the 14 days move on a day, and a zoom of the day gone would
+  // lie partly before them. It is held to the new days, its length kept.
+  // Done while drawing, as for the month view below, so the window outside
+  // the days is never drawn.
+  const [zoomBounds, setZoomBounds] = useState(bounds)
+  if (zoomBounds !== bounds) {
+    setZoomBounds(bounds)
+    setZoom(heldToBounds(zoom, bounds))
+  }
   const selected = selectedDay(data, pickedDay, span, zoom)
   const tide = tideView(data, selected, pick, spot)
   const observedToday = todaysObserved(
@@ -109,7 +123,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
     data.station,
     data.observedWeather,
     data.day,
-    selected.isToday,
+    selected.showsToday,
   )
   const cursorTime = cursorWords(tide.cursor, zone, selected.window)
   const markers = windowMarkers(days, selected.window, data.now)
@@ -234,7 +248,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
           }
           pick={pick}
           onRestore={setPick}
-          bounds={{ start: spans[0].start, end: spans[spans.length - 1].end }}
+          bounds={bounds}
           onWindow={setZoom}
         >
           {({ width, x }) => (
@@ -301,7 +315,7 @@ export function SpotScreen({ spot }: SpotScreenProps) {
               observed: data.observed,
               readings: tide.readings,
               today: data.today,
-              isToday: selected.isToday,
+              isToday: selected.showsToday,
             })}
         </p>
         <p className="caption">{weatherCaption(spot, forecast, data.today)}</p>

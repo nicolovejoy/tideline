@@ -30,7 +30,10 @@ export function held(window: Span, bounds: Span, about: number): Span {
 
 /**
  * The window made shorter by `factor` (above 1 zooms in, below 1 out), with
- * the instant `about` still the same fraction of the way across it.
+ * the instant `about` still the same fraction of the way across it. An
+ * `about` outside the window, such as a cursor left behind by a pan, is
+ * taken at the nearer edge: zooming about an instant off the plot would
+ * carry the window away from what is on screen at each press.
  */
 export function zoomAbout(
   window: Span,
@@ -38,10 +41,22 @@ export function zoomAbout(
   factor: number,
   bounds: Span,
 ): Span {
+  const at = Math.min(Math.max(about, window.start), window.end)
   const length = (window.end - window.start) / factor
-  const fraction = (about - window.start) / (window.end - window.start)
-  const start = about - fraction * length
-  return held({ start, end: start + length }, bounds, about)
+  const fraction = (at - window.start) / (window.end - window.start)
+  const start = at - fraction * length
+  return held({ start, end: start + length }, bounds, at)
+}
+
+/**
+ * A zoom held again to new bounds, as when the 14 days move on at midnight
+ * and its start may now be before the first of them. A zoom still inside
+ * them is kept as it is. Null, no zoom, stays null.
+ */
+export function heldToBounds(zoom: Span | null, bounds: Span): Span | null {
+  if (zoom === null) return null
+  if (zoom.start >= bounds.start && zoom.end <= bounds.end) return zoom
+  return held(zoom, bounds, (zoom.start + zoom.end) / 2)
 }
 
 /** The window moved by `dt` milliseconds, as far as the bounds allow. */

@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'vitest'
 import { DAY, HOUR } from '../time.ts'
-import { panBy, pinchWindow, wheelWindow, zoomAbout } from './zoom.ts'
+import {
+  heldToBounds,
+  panBy,
+  pinchWindow,
+  wheelWindow,
+  zoomAbout,
+} from './zoom.ts'
 
 const T0 = Date.UTC(2026, 9, 29, 7)
 const BOUNDS = { start: T0, end: T0 + 14 * DAY }
@@ -43,6 +49,56 @@ describe('zoomAbout', () => {
   test('never longer than the bounds', () => {
     const short = { start: T0, end: T0 + 2 * DAY }
     near(zoomAbout(DAY1, T0, 0.1, short), short)
+  })
+})
+
+describe('zoomAbout an instant off the window', () => {
+  test('an instant after the window is taken at its end', () => {
+    near(zoomAbout(DAY1, T0 + 3 * DAY, 2, BOUNDS), {
+      start: T0 + 12 * HOUR,
+      end: T0 + DAY,
+    })
+  })
+
+  test('an instant before the window is taken at its start', () => {
+    const later = { start: T0 + 2 * DAY, end: T0 + 3 * DAY }
+    near(zoomAbout(later, T0, 0.5, BOUNDS), {
+      start: T0 + 2 * DAY,
+      end: T0 + 4 * DAY,
+    })
+  })
+
+  test('zooming out again and again about a cursor left behind does not carry the window away', () => {
+    // A pan has left the cursor on the first day, a day before the window.
+    const cursor = T0 + 12 * HOUR
+    let window = { start: T0 + 2 * DAY, end: T0 + 2 * DAY + 6 * HOUR }
+    for (let i = 0; i < 6; i++) {
+      window = zoomAbout(window, cursor, 0.5, BOUNDS)
+      // The window's start never moves later than where it was.
+      expect(window.start).toBeLessThanOrEqual(T0 + 2 * DAY)
+    }
+    // Out to a week, from the window's start, and no further.
+    near(window, { start: T0 + 2 * DAY, end: T0 + 9 * DAY })
+  })
+})
+
+describe('heldToBounds', () => {
+  test('no zoom stays no zoom', () => {
+    expect(heldToBounds(null, BOUNDS)).toBeNull()
+  })
+
+  test('a zoom inside the bounds is kept as it is', () => {
+    const zoom = { start: T0 + 2 * DAY, end: T0 + 2 * DAY + 6 * HOUR }
+    expect(heldToBounds(zoom, BOUNDS)).toBe(zoom)
+  })
+
+  test('when the days move on at midnight, a zoom of the day gone is slid in, its length kept', () => {
+    const zoom = { start: T0 + 18 * HOUR, end: T0 + DAY + 6 * HOUR }
+    const next = { start: T0 + DAY, end: T0 + 15 * DAY }
+    expect(heldToBounds(zoom, next)).toEqual({
+      start: T0 + DAY,
+      end: T0 + DAY + 12 * HOUR,
+    })
   })
 })
 
