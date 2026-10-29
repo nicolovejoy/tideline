@@ -112,6 +112,20 @@ describe('wheelWindow', () => {
     )
   })
 
+  test('a trackpad pinch zooms even when it moves sideways more', () => {
+    const about = T0 + 12 * HOUR
+    near(
+      wheelWindow(
+        DAY1,
+        wheel(500, -100 * Math.log(2), true),
+        400,
+        about,
+        BOUNDS,
+      )!,
+      zoomAbout(DAY1, about, 2, BOUNDS),
+    )
+  })
+
   test('a sideways swipe pans by the time under the distance', () => {
     const later = { start: T0 + DAY, end: T0 + 2 * DAY }
     near(wheelWindow(later, wheel(100, 10), 400, T0, BOUNDS)!, {

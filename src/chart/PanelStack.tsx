@@ -72,7 +72,8 @@ export function PanelStack<P>({
   const box = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const press = useRef<Press<P> | null>(null)
-  // The fingers that are down, by pointer, at their x from the stack's left.
+  // The fingers that are down, by pointer, at their clientX. They are put in
+  // the stack's frame only when a pinch begins, so a move measures nothing.
   const touches = useRef(new Map<number, number>())
   const pinch = useRef<Pinch | null>(null)
   // What the wheel and Safari's gesture listeners read. They are added once,
@@ -104,7 +105,16 @@ export function PanelStack<P>({
       const left = element.getBoundingClientRect().left
       return linearScale([start, end], [0, width]).invert(clientX - left)
     }
+    // Safari pinches on a trackpad with these, not with a wheel. On an iPhone
+    // they come with a two-finger touch too, which the pointers already pinch.
+    let gesture: { window: Span; about: number } | null = null
     const onWheel = (event: WheelEvent) => {
+      // Should Safari also send a pinch as a wheel with Ctrl, the gesture
+      // events have it, so it is never applied twice.
+      if (gesture !== null && event.ctrlKey) {
+        event.preventDefault()
+        return
+      }
       const { start, end, width, bounds, onWindow } = live.current
       if (width === 0) return
       const next = wheelWindow(
@@ -115,12 +125,12 @@ export function PanelStack<P>({
         bounds,
       )
       if (next === null) return
+      // Even when the window is already at an end of the 14 days, a sideways
+      // swipe is kept from the browser, which would take it as going back and
+      // leave the site.
       event.preventDefault()
       onWindow(next)
     }
-    // Safari pinches on a trackpad with these, not with a wheel. On an iPhone
-    // they come with a two-finger touch too, which the pointers already pinch.
-    let gesture: { window: Span; about: number } | null = null
     const onGestureStart = (event: Event) => {
       event.preventDefault()
       const { start, end, width } = live.current
@@ -139,13 +149,18 @@ export function PanelStack<P>({
       const { scale } = event as GestureEvent
       onWindow(zoomAbout(gesture.window, gesture.about, scale, bounds))
     }
+    const onGestureEnd = () => {
+      gesture = null
+    }
     element.addEventListener('wheel', onWheel, { passive: false })
     element.addEventListener('gesturestart', onGestureStart)
     element.addEventListener('gesturechange', onGestureChange)
+    element.addEventListener('gestureend', onGestureEnd)
     return () => {
       element.removeEventListener('wheel', onWheel)
       element.removeEventListener('gesturestart', onGestureStart)
       element.removeEventListener('gesturechange', onGestureChange)
+      element.removeEventListener('gestureend', onGestureEnd)
     }
   }, [])
 
@@ -189,7 +204,7 @@ export function PanelStack<P>({
       apply(pressDown(press.current, pointer(event), false, pick), event)
       return
     }
-    touches.current.set(event.pointerId, fromLeft(event))
+    touches.current.set(event.pointerId, event.clientX)
     // A third finger, or a second while a pinch is on, is not followed.
     if (pinch.current !== null || touches.current.size > 2) return
     if (touches.current.size === 1) {
@@ -202,10 +217,11 @@ export function PanelStack<P>({
     if (press.current !== null)
       apply(pressDown(press.current, pointer(event), true, pick), event)
     if (width === 0) return
+    const left = event.currentTarget.getBoundingClientRect().left
     const [[a, ax], [b, bx]] = [...touches.current]
     pinch.current = pinchBegin(
-      { id: a, x: ax, y: 0 },
-      { id: b, x: bx, y: 0 },
+      { id: a, x: ax - left, y: 0 },
+      { id: b, x: bx - left, y: 0 },
       { start, end },
     )
     capture(event, a)
@@ -214,7 +230,7 @@ export function PanelStack<P>({
 
   const onMove = (event: PointerEvent<HTMLDivElement>) => {
     if (touches.current.has(event.pointerId))
-      touches.current.set(event.pointerId, fromLeft(event))
+      touches.current.set(event.pointerId, event.clientX)
     const current = pinch.current
     if (current === null) {
       apply(pressMove(press.current, pointer(event)), event)
