@@ -5,7 +5,13 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import {
+  deleteField,
+  doc,
+  getDoc,
+  serverTimestamp,
+  setDoc,
+} from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, test } from 'vitest'
 
 let env: RulesTestEnvironment
@@ -30,7 +36,8 @@ describe('users/{uid}', () => {
     const alice = env.authenticatedContext('alice').firestore()
     await assertSucceeds(
       setDoc(doc(alice, 'users/alice'), {
-        spots: [{ id: 'a' }],
+        spots: { a: { id: 'a' } },
+        order: ['a'],
         updatedAt: serverTimestamp(),
       }),
     )
@@ -40,7 +47,8 @@ describe('users/{uid}', () => {
   test('another user can neither read nor write it', async () => {
     await env.withSecurityRulesDisabled(async (context) => {
       await setDoc(doc(context.firestore(), 'users/alice'), {
-        spots: [],
+        spots: {},
+        order: [],
         updatedAt: serverTimestamp(),
       })
     })
@@ -48,7 +56,8 @@ describe('users/{uid}', () => {
     await assertFails(getDoc(doc(bob, 'users/alice')))
     await assertFails(
       setDoc(doc(bob, 'users/alice'), {
-        spots: [],
+        spots: {},
+        order: [],
         updatedAt: serverTimestamp(),
       }),
     )
@@ -59,7 +68,8 @@ describe('users/{uid}', () => {
     await assertFails(getDoc(doc(anon, 'users/alice')))
     await assertFails(
       setDoc(doc(anon, 'users/alice'), {
-        spots: [],
+        spots: {},
+        order: [],
         updatedAt: serverTimestamp(),
       }),
     )
@@ -69,26 +79,55 @@ describe('users/{uid}', () => {
     const alice = env.authenticatedContext('alice').firestore()
     await assertFails(
       setDoc(doc(alice, 'users/alice'), {
-        spots: [],
+        spots: {},
+        order: [],
         updatedAt: serverTimestamp(),
         extra: 1,
       }),
     )
   })
 
-  test('a write whose spots is not a list is refused', async () => {
+  test('spots must be a map and order a list', async () => {
     const alice = env.authenticatedContext('alice').firestore()
     await assertFails(
       setDoc(doc(alice, 'users/alice'), {
-        spots: 'x',
+        spots: [{ id: 'a' }],
+        order: [],
+        updatedAt: serverTimestamp(),
+      }),
+    )
+    await assertFails(
+      setDoc(doc(alice, 'users/alice'), {
+        spots: {},
+        order: 'a',
         updatedAt: serverTimestamp(),
       }),
     )
   })
 
+  test('a merge that sets one spot and deletes another is allowed', async () => {
+    const alice = env.authenticatedContext('alice').firestore()
+    await setDoc(doc(alice, 'users/alice'), {
+      spots: { a: { id: 'a' }, b: { id: 'b' } },
+      order: ['a', 'b'],
+      updatedAt: serverTimestamp(),
+    })
+    await assertSucceeds(
+      setDoc(
+        doc(alice, 'users/alice'),
+        {
+          spots: { b: deleteField(), c: { id: 'c' } },
+          order: ['a', 'c'],
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      ),
+    )
+  })
+
   test('any other path is refused', async () => {
     const alice = env.authenticatedContext('alice').firestore()
-    const data = { spots: [], updatedAt: serverTimestamp() }
+    const data = { spots: {}, order: [], updatedAt: serverTimestamp() }
     await assertFails(setDoc(doc(alice, 'users/alice/spots/x'), data))
     await assertFails(setDoc(doc(alice, 'other/alice'), data))
   })
