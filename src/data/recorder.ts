@@ -7,7 +7,7 @@ import { toList } from './accountDoc.ts'
 import type { Forecast } from './nws.ts'
 import type { Report } from './nwsObservations.ts'
 import type { WeatherStation } from './nwsStations.ts'
-import { observedHours } from './observed.ts'
+import { REPORT_WITHIN, observedHours } from './observed.ts'
 import {
   endedHours,
   placeId,
@@ -19,7 +19,7 @@ import {
 import type { IssuedDoc, ObservedDoc, Place, PlaceDoc } from './history.ts'
 import { SPOTS } from '../spot.ts'
 import type { Spot } from '../spot.ts'
-import { addDays, localDate, localDayStart } from '../time.ts'
+import { HOUR, addDays, localDate, localDayStart } from '../time.ts'
 
 export interface RecorderStore {
   /** Every `users/{uid}` document's data. */
@@ -40,9 +40,19 @@ export interface RecorderFetch {
   observations(stationId: string, start: number): Promise<Report[]>
 }
 
+/**
+ * Until this long into a place's day, yesterday is fetched and rewritten too,
+ * so its last hours are kept. After it, today alone: a station that reports
+ * every 5 minutes fills NWS's one page of 500 within two days.
+ */
+export const YESTERDAY_UNTIL = 6 * HOUR
+
 export interface RunResult {
   recorded: string[]
+  /** Places that failed, by id. */
   failed: { id: string; error: string }[]
+  /** How many cells' station lists failed; cells are not named in the log. */
+  failedCells: number
 }
 
 function message(error: unknown): string {
@@ -72,18 +82,24 @@ async function recordPlace(
   const { office, gridX, gridY, stationId, timeZone } = place
   let lastIssued = stored?.lastIssued ?? null
   const forecast = await net.forecast(office, gridX, gridY)
-  if (forecast.updatedAt !== lastIssued) {
+  if (forecast.updatedAt > (lastIssued ?? -Infinity)) {
     await store.writeIssued(id, trimIssued(forecast))
     lastIssued = forecast.updatedAt
   }
 
+  // From half an hour before the first day, so its midnight hour can take a
+  // report from before it, as the device does.
   const today = localDate(now, timeZone)
   const yesterday = addDays(today, -1)
+  const days =
+    now < localDayStart(today, timeZone) + YESTERDAY_UNTIL
+      ? [yesterday, today]
+      : [today]
   const reports = await net.observations(
     stationId,
-    localDayStart(yesterday, timeZone),
+    localDayStart(days[0], timeZone) - REPORT_WITHIN,
   )
-  for (const date of [yesterday, today]) {
+  for (const date of days) {
     const span = {
       start: localDayStart(date, timeZone),
       end: localDayStart(addDays(date, 1), timeZone),
@@ -106,7 +122,7 @@ export async function recordOnce(
   net: RecorderFetch,
   now: number,
 ): Promise<RunResult> {
-  const result: RunResult = { recorded: [], failed: [] }
+  const result: RunResult = { recorded: [], failed: [], failedCells: 0 }
   const spots = await allSpots(store)
 
   // Each cell's station list once; a cell that fails is skipped.
@@ -118,9 +134,9 @@ export async function recordOnce(
     if (!stationsByCell.has(cell)) {
       try {
         stationsByCell.set(cell, await net.stations(office, gridX, gridY))
-      } catch (error) {
+      } catch {
         stationsByCell.set(cell, null)
-        result.failed.push({ id: cell, error: message(error) })
+        result.failedCells += 1
       }
     }
     const stations = stationsByCell.get(cell)

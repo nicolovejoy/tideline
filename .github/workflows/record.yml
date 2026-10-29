@@ -8,6 +8,9 @@ on:
 # Runs never overlap.
 concurrency: record
 
+permissions:
+  contents: read
+
 jobs:
   record:
     runs-on: ubuntu-latest
@@ -17,12 +20,14 @@ jobs:
         working-directory: recorder
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: recorder/package-lock.json
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npx tsc --noEmit -p .
       - run: npm run record
         env:

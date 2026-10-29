@@ -3,6 +3,7 @@
 // (src/data/recorder.ts) and prints ids only, nothing from users' documents.
 
 import { cert, initializeApp } from 'firebase-admin/app'
+import type { ServiceAccount } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { recordOnce } from '../src/data/recorder.ts'
 import type { RecorderFetch, RecorderStore } from '../src/data/recorder.ts'
@@ -19,16 +20,39 @@ if (!key) {
   process.exit(1)
 }
 
-// Every request carries the recorder's name, as NWS asks.
+// Requests to NWS carry the recorder's name, as NWS asks, and give up after
+// 30 seconds; every other request is left as it is.
+const NWS_HOST = 'api.weather.gov'
+const NWS_TIMEOUT = 30_000
 const plainFetch = globalThis.fetch
 globalThis.fetch = (input, init) => {
-  const headers = new Headers(init?.headers)
+  const url =
+    typeof input === 'string'
+      ? input
+      : input instanceof URL
+        ? input.href
+        : input.url
+  if (new URL(url).host !== NWS_HOST) return plainFetch(input, init)
+  const headers = new Headers(
+    init?.headers ?? (input instanceof Request ? input.headers : undefined),
+  )
   headers.set('User-Agent', USER_AGENT)
-  return plainFetch(input, { ...init, headers })
+  const timeout = AbortSignal.timeout(NWS_TIMEOUT)
+  const given = init?.signal ?? (input instanceof Request ? input.signal : null)
+  const signal = given ? AbortSignal.any([given, timeout]) : timeout
+  return plainFetch(input, { ...init, headers, signal })
+}
+
+let credential: ServiceAccount
+try {
+  credential = JSON.parse(key)
+} catch {
+  console.error('FIREBASE_SERVICE_ACCOUNT is not valid JSON')
+  process.exit(1)
 }
 
 const app = initializeApp({
-  credential: cert(JSON.parse(key)),
+  credential: cert(credential),
   projectId: 'tideline-ibuild4you',
 })
 const db = getFirestore(app)
@@ -64,4 +88,9 @@ for (const id of result.recorded) console.log(`recorded ${id}`)
 for (const failure of result.failed) {
   console.log(`failed ${failure.id}: ${failure.error}`)
 }
-process.exit(result.recorded.length === 0 && result.failed.length > 0 ? 1 : 0)
+// Cells are counted, not named: a cell may be a user's spot with no place.
+if (result.failedCells > 0) {
+  console.log(`station list failed for ${result.failedCells} cells`)
+}
+const failures = result.failed.length + result.failedCells
+process.exit(result.recorded.length === 0 && failures > 0 ? 1 : 0)

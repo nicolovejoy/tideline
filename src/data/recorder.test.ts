@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { recordOnce } from './recorder.ts'
+import { YESTERDAY_UNTIL, recordOnce } from './recorder.ts'
 import type { RecorderFetch, RecorderStore } from './recorder.ts'
 import { KEEP_UNNEEDED } from './history.ts'
 import type { IssuedDoc, ObservedDoc, PlaceDoc } from './history.ts'
@@ -8,6 +8,8 @@ import { parseStations } from './nwsStations.ts'
 import type { WeatherStation } from './nwsStations.ts'
 import { parseGridpoint } from './nws.ts'
 import { parseObservations } from './nwsObservations.ts'
+import type { Report } from './nwsObservations.ts'
+import { REPORT_WITHIN } from './observed.ts'
 import { CAMPUS_POINT } from '../spot.ts'
 import type { Spot } from '../spot.ts'
 import { DAY, HOUR } from '../time.ts'
@@ -46,6 +48,8 @@ interface Rig {
   issued: [string, IssuedDoc][]
   observed: [string, ObservedDoc][]
   fetched: string[]
+  /** The `start` of each observations request. */
+  starts: number[]
 }
 
 function rig(
@@ -55,6 +59,7 @@ function rig(
     stored?: PlaceDoc[]
     failForecast?: string
     failStations?: string
+    reports?: Report[]
   } = {},
 ): Rig {
   const places = new Map<string, PlaceDoc>()
@@ -66,6 +71,7 @@ function rig(
     issued: [],
     observed: [],
     fetched: [],
+    starts: [],
     store: {
       accountDocs: async () => docs,
       places: async () => [...places.values()],
@@ -90,7 +96,10 @@ function rig(
           updatedAt: options.updatedAt ?? forecast.updatedAt,
         }
       },
-      observations: async (stationId) => (stationId === 'KSBA' ? reports : []),
+      observations: async (stationId, start) => {
+        r.starts.push(start)
+        return stationId === 'KSBA' ? (options.reports ?? reports) : []
+      },
     },
   }
   return r
@@ -102,6 +111,7 @@ describe('recordOnce', () => {
     const result = await recordOnce(r.store, r.net, NOW)
     expect(result.recorded).toEqual([CAMPUS_ID])
     expect(result.failed).toEqual([])
+    expect(result.failedCells).toBe(0)
     expect(r.issued).toHaveLength(1)
     expect(r.observed.map(([, d]) => d.date)).toEqual(['2026-10-13'])
     const doc = r.places.get(CAMPUS_ID)
@@ -139,7 +149,8 @@ describe('recordOnce', () => {
     const r = rig([toDoc([other])], { failStations: 'LOX-50-50' })
     const result = await recordOnce(r.store, r.net, NOW)
     expect(result.recorded).toEqual([CAMPUS_ID])
-    expect(result.failed).toEqual([{ id: 'LOX-50-50', error: 'stations down' }])
+    expect(result.failed).toEqual([])
+    expect(result.failedCells).toBe(1)
   })
 
   test('the hour in progress is not written', async () => {
@@ -188,5 +199,48 @@ describe('recordOnce', () => {
     const result = await recordOnce(r.store, r.net, NOW)
     expect(result.recorded).toEqual([CAMPUS_ID])
     expect(result.failed).toEqual([])
+  })
+
+  test('an older forecast than the last issue is not written and keeps lastIssued', async () => {
+    const first = rig()
+    await recordOnce(first.store, first.net, NOW)
+    const stored = first.places.get(CAMPUS_ID)!
+    const r = rig([], {
+      stored: [stored],
+      updatedAt: forecast.updatedAt - HOUR,
+    })
+    await recordOnce(r.store, r.net, NOW + HOUR)
+    expect(r.issued).toEqual([])
+    expect(r.places.get(CAMPUS_ID)?.lastIssued).toBe(forecast.updatedAt)
+  })
+
+  describe('observed days', () => {
+    // Santa Barbara is UTC-7 in October: 13 October starts at 07:00 UTC.
+    const day13 = Date.parse('2026-10-13T07:00:00Z')
+    const day14 = Date.parse('2026-10-14T07:00:00Z')
+    const hourly: Report[] = []
+    for (let t = day13; t <= day14 + 3 * HOUR; t += HOUR) {
+      hourly.push({ ...reports[0], t })
+    }
+
+    test('late in the day only today is fetched and written', async () => {
+      const r = rig([], { reports: hourly })
+      // 11 PM on 13 October.
+      await recordOnce(r.store, r.net, Date.parse('2026-10-14T06:00:00Z'))
+      expect(r.starts).toEqual([day13 - REPORT_WITHIN])
+      expect(r.observed.map(([, d]) => d.date)).toEqual(['2026-10-13'])
+    })
+
+    test('early in the day yesterday is fetched and written too', async () => {
+      expect(YESTERDAY_UNTIL).toBe(6 * HOUR)
+      const r = rig([], { reports: hourly })
+      // 2 AM on 14 October.
+      await recordOnce(r.store, r.net, Date.parse('2026-10-14T09:00:00Z'))
+      expect(r.starts).toEqual([day13 - REPORT_WITHIN])
+      const days = r.observed.map(([, d]) => d)
+      expect(days.map((d) => d.date)).toEqual(['2026-10-13', '2026-10-14'])
+      expect(days[0].hours).toHaveLength(24)
+      expect(days[1].hours.map((h) => h.t)).toEqual([day14, day14 + HOUR])
+    })
   })
 })
