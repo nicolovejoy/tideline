@@ -145,3 +145,40 @@ export function removeChange(list: Spot[], id: string): SpotChange {
     order: list.map((s) => s.id).filter((i) => i !== id),
   }
 }
+
+/** What the page needs of the account's store; the adapter in firebase.ts is the real one. */
+export type SpotStore = {
+  read(uid: string): Promise<unknown>
+  write(uid: string, doc: AccountDoc): Promise<void>
+  change(uid: string, change: SpotChange): Promise<void>
+  watch(
+    uid: string,
+    onData: (data: unknown, pending: boolean) => void,
+    onError: (error: unknown) => void,
+  ): () => void
+}
+
+/**
+ * The first sign-in on a device: puts the device's spots into the account,
+ * the account's winning, and marks the device. False when the account could
+ * not be read or written, with the mark left for the next try.
+ */
+export async function openAccount(
+  uid: string,
+  store: SpotStore,
+  device: () => Spot[],
+): Promise<boolean> {
+  if (readCombined() === uid) return true
+  try {
+    const account = toList(await store.read(uid))
+    const list =
+      account === null || account.length === 0
+        ? device()
+        : combine(account, device())
+    await store.write(uid, toDoc(list))
+    writeCombined(uid)
+    return true
+  } catch {
+    return false
+  }
+}

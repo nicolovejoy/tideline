@@ -4,6 +4,7 @@ import {
   addChange,
   clearCombined,
   combine,
+  openAccount,
   readCombined,
   removeChange,
   replaceChange,
@@ -12,6 +13,7 @@ import {
   toList,
   writeCombined,
 } from './accountDoc.ts'
+import type { AccountDoc, SpotStore } from './accountDoc.ts'
 import { SPOTS } from '../spot.ts'
 import type { Spot } from '../spot.ts'
 
@@ -150,6 +152,75 @@ describe('accountDoc', () => {
     expect(storage.getItem(ACCOUNT_KEY)).toBe('u1')
     expect(readCombined()).toBe('u1')
     clearCombined()
+    expect(readCombined()).toBeNull()
+  })
+})
+
+function fakeStore(read: () => Promise<unknown>, failWrite = false) {
+  const written: AccountDoc[] = []
+  let reads = 0
+  const store: SpotStore = {
+    read: () => {
+      reads += 1
+      return read()
+    },
+    write: async (_uid, doc) => {
+      if (failWrite) throw new Error('write failed')
+      written.push(doc)
+    },
+    change: async () => {},
+    watch: () => () => {},
+  }
+  return { store, written, reads: () => reads }
+}
+
+describe('openAccount', () => {
+  test('openAccount with the mark set reads nothing', async () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    writeCombined('u1')
+    const f = fakeStore(async () => null)
+    expect(await openAccount('u1', f.store, () => [A])).toBe(true)
+    expect(f.reads()).toBe(0)
+    expect(f.written).toEqual([])
+  })
+
+  test('openAccount with no document writes the device list', async () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    const f = fakeStore(async () => undefined)
+    expect(await openAccount('u1', f.store, () => [A, B])).toBe(true)
+    expect(f.written[0]).toEqual(toDoc([A, B]))
+    expect(readCombined()).toBe('u1')
+  })
+
+  test('openAccount combines with the account winning', async () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    const f = fakeStore(async () => toDoc([C]))
+    expect(await openAccount('u1', f.store, () => [CAMPUS, A])).toBe(true)
+    expect(f.written[0]).toEqual(toDoc([C, A]))
+    expect(readCombined()).toBe('u1')
+  })
+
+  test('openAccount rewrites a list-shaped document as a map', async () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    const f = fakeStore(async () => ({ spots: [C] }))
+    expect(await openAccount('u1', f.store, () => [])).toBe(true)
+    expect(f.written[0].spots).toEqual({ [C.id]: C })
+  })
+
+  test('openAccount is false and leaves the mark when the read fails', async () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    const f = fakeStore(async () => {
+      throw new Error('offline')
+    })
+    expect(await openAccount('u1', f.store, () => [A])).toBe(false)
+    expect(readCombined()).toBeNull()
+    expect(f.written).toEqual([])
+  })
+
+  test('openAccount is false and leaves the mark when the write fails', async () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    const f = fakeStore(async () => null, true)
+    expect(await openAccount('u1', f.store, () => [A])).toBe(false)
     expect(readCombined()).toBeNull()
   })
 })
