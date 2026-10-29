@@ -1,6 +1,6 @@
 # Spots in the account: the account is the truth
 
-Replaces `2026-10-28-spots-in-account-design.md` and the branch `feat/spots-in-account`, which built a hand-written two-way mirror. The owner decided on 2026-10-29 that the mirror was the wrong trade: 470 lines of sync logic to avoid 100 kB of SDK that does the same job.
+Replaces `2026-10-28-spots-in-account-design.md` and the branch `feat/spots-in-account`, which built a hand-written two-way mirror. That design and its branch were never merged, so the file named here is not on `main`. The owner decided on 2026-10-29 that the mirror was the wrong trade: 470 lines of sync logic to avoid 100 kB of SDK that does the same job.
 
 ## Intent
 
